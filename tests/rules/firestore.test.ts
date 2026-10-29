@@ -431,13 +431,23 @@ describe('roles', () => {
 describe('events', () => {
   const newEvent = () => ({ ...eventDoc(), createdAt: serverTimestamp() });
 
-  it('the Events tab reads (src/data/events.ts) work for approved members only', async () => {
+  it('the Events tab and calendar reads (src/data/events.ts) work for approved members only', async () => {
     const eventsTab = (db: Firestore, uid: string) =>
       Promise.all([
         getDocs(
           query(
             collection(db, 'events'),
             where('startsAt', '>=', new Date(Date.now() - 24 * 3600_000)),
+            orderBy('startsAt', 'asc'),
+            limit(100),
+          ),
+        ),
+        // The calendar's month query (#21).
+        getDocs(
+          query(
+            collection(db, 'events'),
+            where('startsAt', '>=', new Date(2026, 9, 1)),
+            where('startsAt', '<', new Date(2026, 10, 1)),
             orderBy('startsAt', 'asc'),
             limit(100),
           ),

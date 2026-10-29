@@ -1,60 +1,35 @@
 import { Image } from 'expo-image';
-import { router, useFocusEffect } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { fetchUpcomingEvents, type EventSummary } from '@/data/events';
 import { useAuth } from '@/features/auth/AuthProvider';
-import { colors, MIN_TOUCH, palette, radius, spacing } from '@/theme';
-import {
-  AppText,
-  Button,
-  FilterChips,
-  ListRow,
-  ListSection,
-  SearchField,
-  StatusChip,
-  type ChipTone,
-} from '@/ui';
+import { colors, palette, radius, spacing } from '@/theme';
+import { AppText, Button, FilterChips, ListSection, SearchField, SegmentedControl } from '@/ui';
 
+import { CalendarView } from './CalendarView';
+
+import { EventRow, openEvent, StatusBadge } from './EventRow';
 import {
   arrangeEvents,
   CATEGORY_FILTERS,
   CATEGORY_LABELS,
-  dateBlock,
   emptyMessage,
   eventMeta,
-  formatTime,
   RSVP_LABELS,
   type CategoryFilter,
 } from './eventsLogic';
 
+type EventsView = 'upcoming' | 'calendar';
+
+const VIEWS = [
+  { value: 'upcoming', label: 'Upcoming' },
+  { value: 'calendar', label: 'Calendar' },
+] as const;
+
 type State = { state: 'loading' } | { state: 'ready'; events: EventSummary[] } | { state: 'error' };
-
-const RSVP_TONES: Record<NonNullable<EventSummary['myRsvp']>, ChipTone> = {
-  going: 'success',
-  maybe: 'gold',
-  not_going: 'neutral',
-};
-
-function openEvent(id: string) {
-  router.push({ pathname: '/events/[id]', params: { id } });
-}
-
-function StatusBadge({ event }: { event: EventSummary }) {
-  if (event.cancelled) {
-    return <StatusChip label="Cancelled" tone="warning" testID={`status-${event.id}`} />;
-  }
-  if (!event.myRsvp) return null;
-  return (
-    <StatusChip
-      label={RSVP_LABELS[event.myRsvp]}
-      tone={RSVP_TONES[event.myRsvp]}
-      testID={`status-${event.id}`}
-    />
-  );
-}
 
 function FeaturedEvent({ event, now }: { event: EventSummary; now: Date }) {
   const label = [
@@ -96,20 +71,6 @@ function FeaturedEvent({ event, now }: { event: EventSummary; now: Date }) {
   );
 }
 
-function DateBlock({ date }: { date: Date }) {
-  const { month, day } = dateBlock(date);
-  return (
-    <View style={styles.dateBlock}>
-      <AppText variant="caption" weight="700" color={colors.link}>
-        {month}
-      </AppText>
-      <AppText variant="headline" weight="700">
-        {day}
-      </AppText>
-    </View>
-  );
-}
-
 export function EventsScreen() {
   const auth = useAuth();
   const uid = auth.status === 'signedIn' ? auth.user.uid : '';
@@ -118,6 +79,7 @@ export function EventsScreen() {
   const [reloadKey, setReloadKey] = useState(0);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState<CategoryFilter>('all');
+  const [view, setView] = useState<EventsView>('upcoming');
   const [now, setNow] = useState(() => new Date());
 
   // Reload whenever the tab comes back into view, so an RSVP changed elsewhere shows here.
@@ -176,6 +138,13 @@ export function EventsScreen() {
           label="Search events"
           testID="events-search"
         />
+        <SegmentedControl
+          segments={VIEWS}
+          value={view}
+          onChange={setView}
+          accessibilityLabel="Events view"
+          testID="events-view"
+        />
         <FilterChips
           options={CATEGORY_FILTERS}
           value={category}
@@ -184,7 +153,9 @@ export function EventsScreen() {
           testID="events-category"
         />
 
-        {value.state === 'loading' ? (
+        {view === 'calendar' ? (
+          <CalendarView uid={uid} category={category} search={search} />
+        ) : value.state === 'loading' ? (
           <AppText variant="callout" color={colors.textSecondary} align="center">
             Loading…
           </AppText>
@@ -209,18 +180,7 @@ export function EventsScreen() {
             {arranged.rest.length > 0 ? (
               <ListSection header="Coming up">
                 {arranged.rest.map((event) => (
-                  <ListRow
-                    key={event.id}
-                    title={event.title}
-                    subtitle={[formatTime(event.startsAt), event.location]
-                      .filter(Boolean)
-                      .join(' · ')}
-                    leading={<DateBlock date={event.startsAt} />}
-                    trailing={<StatusBadge event={event} />}
-                    showChevron
-                    onPress={() => openEvent(event.id)}
-                    testID={`event-${event.id}`}
-                  />
+                  <EventRow key={event.id} event={event} />
                 ))}
               </ListSection>
             ) : null}
@@ -256,13 +216,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   featuredBody: { padding: spacing.lg, gap: spacing.xs },
-  dateBlock: {
-    width: MIN_TOUCH,
-    height: MIN_TOUCH + spacing.xs,
-    borderRadius: radius.md,
-    backgroundColor: colors.fill,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   empty: { paddingTop: spacing.xxl, gap: spacing.sm, alignItems: 'center' },
 });
