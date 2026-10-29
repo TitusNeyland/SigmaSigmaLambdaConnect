@@ -15,6 +15,7 @@ jest.mock('@/data/events');
 jest.mock('@/data/eventAdmin');
 jest.mock('@/data/feed');
 jest.mock('@/data/likes');
+jest.mock('@/data/posts');
 const profile = jest.requireMock<typeof import('@/data/__mocks__/profile')>('@/data/profile');
 
 async function press(target: Parameters<typeof fireEvent.press>[0]) {

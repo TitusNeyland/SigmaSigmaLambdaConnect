@@ -11,6 +11,7 @@ import { colors, spacing } from '@/theme';
 import { AppText, Button } from '@/ui';
 
 import { EventsStrip } from './EventsStrip';
+import { onFeedChanged } from './feedEvents';
 import { appendPage, visiblePosts } from './feedLogic';
 import { PostCard } from './PostCard';
 
@@ -75,6 +76,9 @@ export function FeedScreen() {
     // The strip is a bonus; the feed still shows if it fails.
     fetchUpcomingEvents(uid, at).then(setEvents, () => {});
   }, [uid]);
+
+  // Sharing a post reloads the feed so it shows at the top.
+  useEffect(() => onFeedChanged(loadFirst), [loadFirst]);
 
   // Load the first time Home is shown; after that, pull to refresh.
   const loadedOnce = useRef(false);
