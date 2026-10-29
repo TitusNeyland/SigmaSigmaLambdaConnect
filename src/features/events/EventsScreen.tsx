@@ -1,11 +1,12 @@
 import { Image } from 'expo-image';
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { fetchUpcomingEvents, type EventSummary } from '@/data/events';
 import { useAuth } from '@/features/auth/AuthProvider';
+import { RequireCapability } from '@/features/roles/RoleProvider';
 import { colors, palette, radius, spacing } from '@/theme';
 import { AppText, Button, FilterChips, ListSection, SearchField, SegmentedControl } from '@/ui';
 
@@ -129,9 +130,22 @@ export function EventsScreen() {
           />
         }
       >
-        <AppText variant="largeTitle" accessibilityRole="header">
-          Events
-        </AppText>
+        <View style={styles.titleRow}>
+          <AppText variant="largeTitle" accessibilityRole="header">
+            Events
+          </AppText>
+          {/* Officers only. The rules only let officers create events. */}
+          <RequireCapability capability="events.manage">
+            <Button
+              title="New"
+              variant="secondary"
+              size="small"
+              accessibilityLabel="New event"
+              onPress={() => router.push('/events/new')}
+              testID="new-event"
+            />
+          </RequireCapability>
+        </View>
         <SearchField
           value={search}
           onChangeText={setSearch}
@@ -203,6 +217,7 @@ export function EventsScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.backgroundGrouped },
   content: { padding: spacing.lg, gap: spacing.lg, paddingBottom: spacing.xxxl },
+  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   featured: {
     borderRadius: radius.lg,
     backgroundColor: colors.background,

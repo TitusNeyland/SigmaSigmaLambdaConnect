@@ -24,7 +24,7 @@ import {
 } from 'firebase/firestore';
 import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest';
 
-import { createTestEnv, eventDoc, postDoc, seedBase, USERS } from './helpers';
+import { createTestEnv, eventDoc, hoursFromNow, postDoc, seedBase, USERS } from './helpers';
 
 let env: RulesTestEnvironment;
 
@@ -431,6 +431,7 @@ describe('roles', () => {
 
 describe('events', () => {
   const newEvent = () => ({ ...eventDoc(), createdAt: serverTimestamp() });
+  const eventWith = (extra: object) => ({ ...newEvent(), ...extra });
 
   it('the Events tab and calendar reads (src/data/events.ts) work for approved members only', async () => {
     const eventsTab = (db: Firestore, uid: string) =>
@@ -498,6 +499,50 @@ describe('events', () => {
     await assertSucceeds(updateDoc(doc(as(USERS.olivia), 'events/open'), { title: 'Changed' }));
     await assertFails(deleteDoc(doc(as(USERS.alice), 'events/open')));
     await assertSucceeds(deleteDoc(doc(as(USERS.olivia), 'events/open')));
+  });
+
+  it('accepts the exact event the officer form creates (src/data/eventAdmin.ts)', async () => {
+    const start = new Date(Date.now() + 72 * 3600_000);
+    await assertSucceeds(
+      setDoc(doc(as(USERS.olivia), 'events/form'), {
+        title: 'Scholarship gala',
+        category: 'fundraiser',
+        location: 'Hotel ballroom',
+        address: '200 Sample Ave',
+        description: 'Sample dinner.',
+        startsAt: start,
+        endsAt: new Date(start.getTime() + 3 * 3600_000),
+        rsvpDeadline: new Date(start.getTime() - 24 * 3600_000),
+        feeCents: 2500,
+        photoURL: null,
+        cancelled: false,
+        createdBy: USERS.olivia,
+        createdAt: serverTimestamp(),
+      }),
+    );
+  });
+
+  it('rejects an end before the start, a deadline after it, and a long address', async () => {
+    const db = as(USERS.olivia);
+    const start = hoursFromNow(72);
+    const later = hoursFromNow(80);
+    const earlier = hoursFromNow(60);
+    await assertFails(
+      setDoc(doc(db, 'events/a'), { ...newEvent(), startsAt: start, endsAt: earlier }),
+    );
+    await assertFails(
+      setDoc(doc(db, 'events/b'), { ...newEvent(), startsAt: start, rsvpDeadline: later }),
+    );
+    await assertFails(setDoc(doc(db, 'events/c'), eventWith({ address: 'a'.repeat(201) })));
+    await assertFails(updateDoc(doc(db, 'events/open'), { endsAt: hoursFromNow(1) }));
+  });
+
+  it('officers can cancel; who made it and when can never change', async () => {
+    const db = as(USERS.olivia);
+    await assertSucceeds(updateDoc(doc(db, 'events/open'), { cancelled: true }));
+    await assertFails(updateDoc(doc(db, 'events/open'), { createdBy: USERS.adam }));
+    await assertFails(updateDoc(doc(db, 'events/open'), { createdAt: serverTimestamp() }));
+    await assertFails(updateDoc(doc(as(USERS.alice), 'events/open'), { cancelled: true }));
   });
 });
 

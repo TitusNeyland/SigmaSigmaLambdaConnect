@@ -20,3 +20,16 @@ jest.mock('expo-notifications', () => ({
 }));
 jest.mock('expo-device', () => ({ isDevice: false }));
 jest.mock('@/data/push');
+
+// The date picker is native. The mock renders a plain view; tests call its onChange prop.
+jest.mock('@react-native-community/datetimepicker', () => {
+  const { View } = jest.requireActual('react-native');
+  const React = jest.requireActual('react');
+  const Picker = (props) =>
+    React.createElement(View, { ...props, value: undefined, date: props.value });
+  return {
+    __esModule: true,
+    default: Picker,
+    DateTimePickerAndroid: { open: jest.fn(), dismiss: jest.fn() },
+  };
+});

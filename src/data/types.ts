@@ -81,6 +81,17 @@ export type RoleDoc = {
 export type EventCategory =
   'meeting' | 'service' | 'learning' | 'brotherhood' | 'fundraiser' | 'social' | 'public';
 
+/** Every event category, in the order the app lists them. Matches the rules' list. */
+export const EVENT_CATEGORIES: readonly EventCategory[] = [
+  'meeting',
+  'service',
+  'learning',
+  'brotherhood',
+  'fundraiser',
+  'social',
+  'public',
+];
+
 /** events/{eventId} */
 export type ChapterEvent = {
   title: string;

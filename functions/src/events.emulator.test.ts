@@ -2,7 +2,7 @@ import { deleteApp, initializeApp, type App } from 'firebase-admin/app';
 import { getFirestore, Timestamp, type Firestore } from 'firebase-admin/firestore';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { announceNewEvent, runEventNotifications } from './events';
+import { announceCancellation, announceNewEvent, runEventNotifications } from './events';
 
 // Runs against the Firestore emulator (npm run test:rules). Expo's API is faked.
 
@@ -157,6 +157,40 @@ describe('new event alerts', () => {
       'x',
       { title: 'X', startsAt: at(5), cancelled: true },
       { db, fetchImpl: expo.fetchImpl },
+    );
+    expect(expo.fetchImpl).not.toHaveBeenCalled();
+  });
+});
+
+describe('cancellation notices', () => {
+  it('tells Going and Maybe RSVPs when an event is cancelled', async () => {
+    await event('gala', {}, { alice: 'going', bob: 'maybe', carl: 'not_going', quiet: 'going' });
+    const expo = fakeExpo();
+    await announceCancellation(
+      'gala',
+      { title: 'gala', startsAt: at(72), cancelled: false },
+      { title: 'gala', startsAt: at(72), cancelled: true },
+      { db, fetchImpl: expo.fetchImpl },
+    );
+    expect(expo.to('Cancelled: gala')).toEqual(['alice', 'bob']);
+  });
+
+  it('stays quiet for other edits and for an event already cancelled', async () => {
+    await event('gala', {}, { alice: 'going' });
+    const expo = fakeExpo();
+    const deps = { db, fetchImpl: expo.fetchImpl };
+    const base = { title: 'gala', startsAt: at(72) };
+    await announceCancellation(
+      'gala',
+      { ...base, cancelled: false },
+      { ...base, title: 'x' },
+      deps,
+    );
+    await announceCancellation(
+      'gala',
+      { ...base, cancelled: true },
+      { ...base, cancelled: true },
+      deps,
     );
     expect(expo.fetchImpl).not.toHaveBeenCalled();
   });
