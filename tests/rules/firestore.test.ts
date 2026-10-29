@@ -5,13 +5,16 @@ import {
 } from '@firebase/rules-unit-testing';
 import {
   collection,
+  collectionGroup,
   deleteDoc,
   doc,
   getDoc,
   getDocs,
+  query,
   serverTimestamp,
   setDoc,
   updateDoc,
+  where,
   type Firestore,
 } from 'firebase/firestore';
 import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest';
@@ -344,7 +347,8 @@ describe('RSVPs', () => {
 });
 
 describe('attendance', () => {
-  const checkIn = (by: string, extra: object = {}) => ({
+  const checkIn = (by: string, memberId: string, extra: object = {}) => ({
+    memberId,
     checkedInBy: by,
     checkedInAt: serverTimestamp(),
     ...extra,
@@ -354,14 +358,17 @@ describe('attendance', () => {
     await assertSucceeds(
       setDoc(
         doc(as(USERS.olivia), 'events/open/attendance/pete'),
-        checkIn(USERS.olivia, { serviceHours: 4, walkIn: true }),
+        checkIn(USERS.olivia, USERS.pete, { serviceHours: 4, walkIn: true }),
       ),
     );
   });
 
   it('members cannot check themselves in', async () => {
     await assertFails(
-      setDoc(doc(as(USERS.alice), 'events/open/attendance/alice'), checkIn(USERS.alice)),
+      setDoc(
+        doc(as(USERS.alice), 'events/open/attendance/alice'),
+        checkIn(USERS.alice, USERS.alice),
+      ),
     );
   });
 
@@ -369,13 +376,13 @@ describe('attendance', () => {
     await assertFails(
       setDoc(
         doc(as(USERS.olivia), 'events/open/attendance/pete'),
-        checkIn(USERS.olivia, { serviceHours: 25 }),
+        checkIn(USERS.olivia, USERS.pete, { serviceHours: 25 }),
       ),
     );
     await assertFails(
       setDoc(
         doc(as(USERS.olivia), 'events/open/attendance/pete'),
-        checkIn(USERS.olivia, { serviceHours: -1 }),
+        checkIn(USERS.olivia, USERS.pete, { serviceHours: -1 }),
       ),
     );
   });
@@ -387,6 +394,46 @@ describe('attendance', () => {
 
   it('officers see everyone’s attendance', async () => {
     await assertSucceeds(getDocs(collection(as(USERS.olivia), 'events/open/attendance')));
+  });
+
+  it('requires memberId to match the person checked in', async () => {
+    await assertFails(
+      setDoc(
+        doc(as(USERS.olivia), 'events/open/attendance/pete'),
+        checkIn(USERS.olivia, USERS.alice),
+      ),
+    );
+    const { memberId: _omit, ...withoutMember } = checkIn(USERS.olivia, USERS.pete);
+    await assertFails(setDoc(doc(as(USERS.olivia), 'events/open/attendance/pete'), withoutMember));
+  });
+
+  it('members can list their own attendance across events (profile Activity tab)', async () => {
+    await assertSucceeds(
+      getDocs(
+        query(collectionGroup(as(USERS.alice), 'attendance'), where('memberId', '==', USERS.alice)),
+      ),
+    );
+  });
+
+  it('members cannot list someone else’s attendance across events', async () => {
+    await assertFails(
+      getDocs(
+        query(collectionGroup(as(USERS.alice), 'attendance'), where('memberId', '==', USERS.bob)),
+      ),
+    );
+    await assertFails(getDocs(collectionGroup(as(USERS.alice), 'attendance')));
+  });
+
+  it('pending members cannot list attendance, even their own', async () => {
+    await assertFails(
+      getDocs(
+        query(collectionGroup(as(USERS.pete), 'attendance'), where('memberId', '==', USERS.pete)),
+      ),
+    );
+  });
+
+  it('officers can list everyone’s attendance across events', async () => {
+    await assertSucceeds(getDocs(collectionGroup(as(USERS.olivia), 'attendance')));
   });
 });
 

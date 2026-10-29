@@ -38,7 +38,7 @@ kpis[kpis/periodId]
 | `roles/{uid}`                                   | `officer` or `admin`, plus an officer title | The person themself; approved members (to show role badges) | Admins only                                                                                                                  |
 | `events/{eventId}`                              | Event details                               | Approved members                                            | Officers                                                                                                                     |
 | `events/{eventId}/rsvps/{uid}`                  | Going, maybe or not going                   | Approved members                                            | The member, for themself, until the RSVP deadline                                                                            |
-| `events/{eventId}/attendance/{uid}`             | Officer check-in and service hours          | Officers; the member for their own record                   | Officers                                                                                                                     |
+| `events/{eventId}/attendance/{uid}`             | Officer check-in, service hours, `memberId` | Officers; the member for their own record                   | Officers                                                                                                                     |
 | `posts/{postId}`                                | Photo post                                  | Approved members (removed posts: author and officers only)  | Approved members who accepted the guidelines create their own. Authors edit the caption or delete. Officers remove or delete |
 | `posts/{postId}/comments/{commentId}`           | Comment                                     | Approved members                                            | Approved members create their own if comments are on. Authors or officers delete                                             |
 | `posts/{postId}/likes/{uid}`                    | Like                                        | Approved members                                            | The member, for themself                                                                                                     |
@@ -49,6 +49,8 @@ kpis[kpis/periodId]
 | `goals/{goalId}`                                | Chapter-defined goal                        | Approved members                                            | Officers                                                                                                                     |
 | `announcements/{announcementId}`                | Officer announcement                        | Approved members                                            | Officers                                                                                                                     |
 | `kpis/{periodId}`                               | Computed metrics for a period               | Officers                                                    | Cloud Functions only                                                                                                         |
+
+A member's attendance across all events is read with a collection group query on `attendance` filtered by `memberId == uid` (profile Activity tab). Officers can query everyone's. `memberId` always equals the document ID.
 
 Anything not listed is denied.
 

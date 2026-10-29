@@ -4,6 +4,7 @@ jest.mock('@/data/auth');
 const auth = jest.requireMock<typeof import('@/data/__mocks__/auth')>('@/data/auth');
 jest.mock('@/data/members');
 jest.mock('@/data/roles');
+jest.mock('@/data/profile');
 const members = jest.requireMock<typeof import('@/data/__mocks__/members')>('@/data/members');
 
 const unverified = () => auth.sampleUser({ emailVerified: false });

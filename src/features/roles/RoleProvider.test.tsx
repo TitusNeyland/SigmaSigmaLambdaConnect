@@ -8,6 +8,7 @@ const auth = jest.requireMock<typeof import('@/data/__mocks__/auth')>('@/data/au
 jest.mock('@/data/members');
 const members = jest.requireMock<typeof import('@/data/__mocks__/members')>('@/data/members');
 jest.mock('@/data/roles');
+jest.mock('@/data/profile');
 const roles = jest.requireMock<typeof import('@/data/__mocks__/roles')>('@/data/roles');
 
 function signIn(status: 'approved' | 'pending', role: Parameters<typeof roles.resetRolesMock>[0]) {

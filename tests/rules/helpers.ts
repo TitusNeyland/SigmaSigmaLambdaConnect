@@ -97,11 +97,16 @@ export async function seedBase(env: RulesTestEnvironment) {
       }),
       put('posts/alicePost/likes/alice', { createdAt: now() }),
       put('events/open/attendance/alice', {
+        memberId: USERS.alice,
         checkedInBy: USERS.olivia,
         checkedInAt: now(),
         serviceHours: 4,
       }),
-      put('events/open/attendance/bob', { checkedInBy: USERS.olivia, checkedInAt: now() }),
+      put('events/open/attendance/bob', {
+        memberId: USERS.bob,
+        checkedInBy: USERS.olivia,
+        checkedInAt: now(),
+      }),
       put('reports/r1', {
         reporterId: USERS.bob,
         targetType: 'post',
