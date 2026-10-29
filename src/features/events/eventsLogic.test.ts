@@ -3,10 +3,14 @@ import type { EventSummary } from '@/data/events';
 import {
   arrangeEvents,
   dateBlock,
+  deadlineText,
   emptyMessage,
   eventMeta,
   formatDay,
+  formatFee,
   formatTime,
+  formatTimeRange,
+  goingSummary,
   matchesSearch,
 } from './eventsLogic';
 
@@ -109,4 +113,43 @@ describe('emptyMessage', () => {
     expect(emptyMessage('fundraiser', '')).toBe('No fundraiser events coming up.');
     expect(emptyMessage('service', 'gala')).toBe('No events match your search.');
   });
+});
+
+describe('detail formatting', () => {
+  it.each([
+    [0, 'Free'],
+    [-5, 'Free'],
+    [2500, '$25'],
+    [1250, '$12.50'],
+  ])('formatFee(%i) is %s', (cents, expected) => expect(formatFee(cents)).toBe(expected));
+
+  it('formats time ranges compactly', () => {
+    const at = (h: number, m = 0, d = 7) => new Date(2026, 10, d, h, m);
+    expect(formatTimeRange(at(19), at(22))).toBe('7:00 to 10:00 PM');
+    expect(formatTimeRange(at(11), at(14))).toBe('11:00 AM to 2:00 PM');
+    expect(formatTimeRange(at(19), null)).toBe('7:00 PM');
+    expect(formatTimeRange(at(19), at(18))).toBe('7:00 PM');
+    expect(formatTimeRange(at(22), at(1, 0, 8))).toBe('10:00 PM to Tomorrow, 1:00 AM');
+  });
+
+  it('describes the RSVP deadline', () => {
+    expect(deadlineText(new Date(2026, 10, 6, 19), NOW)).toBe('Fri, Nov 6, 7:00 PM');
+    expect(deadlineText(new Date(2026, 9, 29, 11), NOW)).toBe('RSVPs are closed');
+    expect(deadlineText(null, NOW)).toBe('No deadline');
+  });
+
+  it.each([
+    [0, [], 'No one has said they’re going yet.'],
+    [1, ['Marcus Reed'], 'Marcus Reed is going'],
+    [2, ['Marcus Reed', 'Chris Baptiste'], 'Marcus Reed and Chris Baptiste are going'],
+    [
+      3,
+      ['Marcus Reed', 'Chris Baptiste', 'Zed Allen'],
+      'Marcus Reed, Chris Baptiste and 1 other are going',
+    ],
+    [12, ['Marcus Reed', 'Chris Baptiste'], 'Marcus Reed, Chris Baptiste and 10 others are going'],
+    [4, [], '4 brothers are going'],
+  ])('goingSummary(%i) reads naturally', (count, names, expected) =>
+    expect(goingSummary(count, names)).toBe(expected),
+  );
 });

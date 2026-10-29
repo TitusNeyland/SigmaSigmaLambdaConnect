@@ -1,0 +1,255 @@
+import { Image } from 'expo-image';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { ScrollView, StyleSheet, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { fetchEventDetail, type EventDetail } from '@/data/events';
+import { useAuth } from '@/features/auth/AuthProvider';
+import { colors, palette, radius, spacing } from '@/theme';
+import { AppText, Avatar, Button, ListSection, NavHeader } from '@/ui';
+
+import {
+  CATEGORY_LABELS,
+  deadlineText,
+  formatDay,
+  formatFee,
+  formatTimeRange,
+  goingSummary,
+} from './eventsLogic';
+
+type State =
+  | { state: 'loading' }
+  | { state: 'ready'; event: EventDetail | null; at: Date }
+  | { state: 'error' };
+
+function goBack() {
+  if (router.canGoBack()) router.back();
+  else router.replace('/events');
+}
+
+/** A labeled detail line: small gray label over the value, like iOS contact cards. */
+function DetailRow({
+  label,
+  value,
+  detail,
+  testID,
+}: {
+  label: string;
+  value: string;
+  detail?: string;
+  testID?: string;
+}) {
+  return (
+    <View
+      style={styles.detailRow}
+      accessible
+      accessibilityLabel={[label, value, detail].filter(Boolean).join(', ')}
+      testID={testID}
+    >
+      <AppText variant="footnote" color={colors.textSecondary}>
+        {label}
+      </AppText>
+      <AppText>{value}</AppText>
+      {detail ? (
+        <AppText variant="subhead" color={colors.textSecondary}>
+          {detail}
+        </AppText>
+      ) : null}
+    </View>
+  );
+}
+
+export function EventDetailScreen({ id }: { id: string }) {
+  const auth = useAuth();
+  const uid = auth.status === 'signedIn' ? auth.user.uid : '';
+  const [value, setValue] = useState<{ id: string; state: State } | null>(null);
+  const [attempt, setAttempt] = useState(0);
+
+  // Reload on focus so the going count stays fresh after RSVPing (#23).
+  useFocusEffect(
+    useCallback(() => {
+      if (!uid) return;
+      let live = true;
+      const at = new Date();
+      fetchEventDetail(id, uid).then(
+        (event) => live && setValue({ id, state: { state: 'ready', event, at } }),
+        () =>
+          live &&
+          setValue((v) =>
+            v?.id === id && v.state.state === 'ready' ? v : { id, state: { state: 'error' } },
+          ),
+      );
+      return () => {
+        live = false;
+      };
+      // attempt isn't read inside; bumping it is how Try again reloads.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [id, uid, attempt]),
+  );
+
+  const current: State = value?.id === id ? value.state : { state: 'loading' };
+
+  if (current.state !== 'ready' || !current.event) {
+    return (
+      <SafeAreaView style={styles.safe} edges={['top']}>
+        <NavHeader onBack={goBack} backTestID="event-back" />
+        <View style={styles.center}>
+          <AppText variant="callout" color={colors.textSecondary} align="center">
+            {current.state === 'loading'
+              ? 'Loading…'
+              : current.state === 'error'
+                ? 'Couldn’t load this event.'
+                : 'This event isn’t available. It may have been deleted.'}
+          </AppText>
+          {current.state === 'error' ? (
+            <Button
+              title="Try again"
+              variant="secondary"
+              onPress={() => {
+                setValue(null);
+                setAttempt((n) => n + 1);
+              }}
+              testID="event-retry"
+            />
+          ) : null}
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const { event, at } = current;
+  const names = event.going.preview.map((a) => a.displayName);
+
+  return (
+    <SafeAreaView style={styles.safe} edges={['top']}>
+      <NavHeader onBack={goBack} backTestID="event-back" />
+      <ScrollView contentContainerStyle={styles.content}>
+        {event.photoURL ? (
+          <Image
+            source={{ uri: event.photoURL }}
+            style={styles.hero}
+            contentFit="cover"
+            accessibilityLabel={`Photo for ${event.title}`}
+            testID="event-hero"
+          />
+        ) : (
+          <View style={[styles.hero, styles.heroBlank]} testID="event-hero-blank">
+            <AppText variant="title" color={palette.goldSoftText}>
+              ΣΣΛ
+            </AppText>
+          </View>
+        )}
+
+        <View style={styles.heading}>
+          <AppText variant="footnote" weight="700" color={colors.link}>
+            {CATEGORY_LABELS[event.category].toUpperCase()}
+          </AppText>
+          <AppText variant="title2" accessibilityRole="header">
+            {event.title}
+          </AppText>
+          {event.host ? (
+            <View style={styles.host} testID="event-host">
+              <Avatar name={event.host.displayName} uri={event.host.photoURL} size={28} />
+              <AppText variant="subhead" color={colors.textSecondary}>
+                Hosted by {event.host.displayName}
+              </AppText>
+            </View>
+          ) : null}
+        </View>
+
+        {event.cancelled ? (
+          <View style={styles.cancelled} testID="event-cancelled">
+            <AppText variant="callout" weight="600" color={colors.warning} align="center">
+              This event was cancelled.
+            </AppText>
+          </View>
+        ) : null}
+
+        <ListSection>
+          <DetailRow
+            label="Date"
+            value={formatDay(event.startsAt, at)}
+            detail={formatTimeRange(event.startsAt, event.endsAt)}
+            testID="event-date"
+          />
+          <DetailRow
+            label="Place"
+            value={event.location}
+            detail={event.address || undefined}
+            testID="event-place"
+          />
+          <DetailRow label="Fee" value={formatFee(event.feeCents)} testID="event-fee" />
+          <DetailRow
+            label="RSVP by"
+            value={deadlineText(event.rsvpDeadline, at)}
+            testID="event-deadline"
+          />
+        </ListSection>
+
+        <ListSection header="Who’s going">
+          <View style={styles.going} testID="event-going">
+            {event.going.preview.length > 0 ? (
+              <View style={styles.faces}>
+                {event.going.preview.map((a, i) => (
+                  <View key={a.uid} style={[styles.face, i > 0 && styles.faceOverlap]}>
+                    <Avatar name={a.displayName} uri={a.photoURL} size={32} />
+                  </View>
+                ))}
+              </View>
+            ) : null}
+            <AppText variant="subhead" style={styles.flex}>
+              {goingSummary(event.going.count, names)}
+            </AppText>
+          </View>
+        </ListSection>
+
+        {event.description.trim() ? (
+          <ListSection header="About">
+            <View style={styles.about}>
+              <AppText testID="event-about">{event.description.trim()}</AppText>
+            </View>
+          </ListSection>
+        ) : null}
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: colors.backgroundGrouped },
+  content: { padding: spacing.lg, paddingTop: 0, gap: spacing.lg, paddingBottom: spacing.xxxl },
+  hero: { width: '100%', aspectRatio: 16 / 10, borderRadius: radius.lg },
+  heroBlank: {
+    backgroundColor: colors.accentSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heading: { gap: spacing.xs },
+  host: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.xs },
+  cancelled: {
+    padding: spacing.md,
+    borderRadius: radius.md,
+    backgroundColor: palette.warningSoft,
+  },
+  detailRow: { paddingHorizontal: spacing.lg, paddingVertical: spacing.md, gap: spacing.xxs },
+  going: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+  },
+  faces: { flexDirection: 'row' },
+  face: { borderRadius: radius.pill, borderWidth: 2, borderColor: colors.surface },
+  faceOverlap: { marginLeft: -spacing.sm },
+  about: { paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
+  flex: { flex: 1 },
+  center: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.md,
+    padding: spacing.xl,
+  },
+});

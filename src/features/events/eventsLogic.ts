@@ -90,3 +90,40 @@ export function emptyMessage(category: CategoryFilter, search: string): string {
   if (category === 'all') return 'Nothing on the calendar yet. Check back soon.';
   return `No ${CATEGORY_LABELS[category].toLowerCase()} events coming up.`;
 }
+
+/** "Free", "$25" or "$12.50". */
+export function formatFee(cents: number): string {
+  if (cents <= 0) return 'Free';
+  const dollars = cents / 100;
+  return Number.isInteger(dollars) ? `$${dollars}` : `$${dollars.toFixed(2)}`;
+}
+
+/** "7:00 to 10:00 PM", "11:00 AM to 2:00 PM", or just the start when there's no end. */
+export function formatTimeRange(start: Date, end: Date | null): string {
+  if (!end || end.getTime() <= start.getTime()) return formatTime(start);
+  const a = formatTime(start);
+  const b = formatTime(end);
+  const sameHalf = a.slice(-2) === b.slice(-2);
+  const sameDay = start.toDateString() === end.toDateString();
+  if (!sameDay) return `${a} to ${formatDay(end, start)}, ${b}`;
+  return `${sameHalf ? a.slice(0, -3) : a} to ${b}`;
+}
+
+/** "RSVP by Fri, Nov 6, 7:00 PM", or that RSVPs are closed. */
+export function deadlineText(deadline: Date | null, now: Date): string {
+  if (!deadline) return 'No deadline';
+  if (deadline.getTime() <= now.getTime()) return 'RSVPs are closed';
+  return `${formatDay(deadline, now)}, ${formatTime(deadline)}`;
+}
+
+/** "Marcus Reed is going", "Marcus Reed, Chris Baptiste and 3 others are going". */
+export function goingSummary(count: number, names: string[]): string {
+  if (count <= 0) return 'No one has said they’re going yet.';
+  const shown = names.slice(0, Math.min(2, count));
+  const others = count - shown.length;
+  if (shown.length === 0) return `${count} ${count === 1 ? 'brother is' : 'brothers are'} going`;
+  if (others === 0) {
+    return shown.length === 1 ? `${shown[0]} is going` : `${shown[0]} and ${shown[1]} are going`;
+  }
+  return `${shown.join(', ')} and ${others} ${others === 1 ? 'other' : 'others'} are going`;
+}
