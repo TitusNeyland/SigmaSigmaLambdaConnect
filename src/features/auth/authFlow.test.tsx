@@ -2,9 +2,12 @@ import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testi
 
 jest.mock('@/data/auth');
 const auth = jest.requireMock<typeof import('@/data/__mocks__/auth')>('@/data/auth');
+jest.mock('@/data/members');
+const members = jest.requireMock<typeof import('@/data/__mocks__/members')>('@/data/members');
 
 beforeEach(() => {
   auth.resetAuthMock();
+  members.resetMembersMock();
 });
 
 async function press(target: Parameters<typeof fireEvent.press>[0]) {
