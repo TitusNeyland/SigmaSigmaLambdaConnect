@@ -19,6 +19,10 @@ export function sampleProfile(overrides: Partial<Profile> = {}): Profile {
     bio: 'Mentoring chair. Happy to review a resume.',
     interests: ['Tech', 'Career mentoring'],
     photoURL: null,
+    email: 'marcus@example.com',
+    phone: '',
+    showEmail: true,
+    showPhone: false,
     ...overrides,
   };
 }
@@ -62,6 +66,11 @@ export const fetchProfileStats = jest.fn(
 export const fetchProfilePosts = jest.fn(async () => rejectIfFailing(posts));
 export const fetchActivity = jest.fn(async () => rejectIfFailing(activity));
 export const photoUrl = jest.fn(async (path: string) => `https://example.test/${path}`);
+export const updateOwnProfile = jest.fn(async (_uid: string, _patch: unknown) => {});
+export const uploadAvatar = jest.fn(
+  async (_uid: string, _uri: string) => 'https://example.test/avatar.jpg',
+);
+export const removeAvatar = jest.fn(async (_uid: string) => {});
 
 export function resetProfileMock(initial: Profile | null = sampleProfile()) {
   profile = initial;
@@ -79,6 +88,9 @@ export function resetProfileMock(initial: Profile | null = sampleProfile()) {
   ]) {
     fn.mockClear();
   }
+  updateOwnProfile.mockReset().mockResolvedValue(undefined);
+  uploadAvatar.mockReset().mockResolvedValue('https://example.test/avatar.jpg');
+  removeAvatar.mockReset().mockResolvedValue(undefined);
 }
 
 resetProfileMock();
