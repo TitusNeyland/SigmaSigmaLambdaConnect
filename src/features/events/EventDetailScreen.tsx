@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useState, type ReactNode } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -10,6 +10,12 @@ import { useAuth } from '@/features/auth/AuthProvider';
 import { colors, palette, radius, spacing } from '@/theme';
 import { AppText, Avatar, Button, ListSection, NavHeader, SegmentedControl } from '@/ui';
 
+import {
+  addToCalendar,
+  destination,
+  openDirections,
+  type AddToCalendarResult,
+} from './eventActions';
 import {
   CATEGORY_LABELS,
   deadlineText,
@@ -37,32 +43,43 @@ function DetailRow({
   label,
   value,
   detail,
+  action,
   testID,
 }: {
   label: string;
   value: string;
   detail?: string;
+  /** A small button on the right, like Add or Directions. */
+  action?: ReactNode;
   testID?: string;
 }) {
   return (
-    <View
-      style={styles.detailRow}
-      accessible
-      accessibilityLabel={[label, value, detail].filter(Boolean).join(', ')}
-      testID={testID}
-    >
-      <AppText variant="footnote" color={colors.textSecondary}>
-        {label}
-      </AppText>
-      <AppText>{value}</AppText>
-      {detail ? (
-        <AppText variant="subhead" color={colors.textSecondary}>
-          {detail}
+    <View style={styles.detailRow}>
+      <View
+        style={styles.detailText}
+        accessible
+        accessibilityLabel={[label, value, detail].filter(Boolean).join(', ')}
+        testID={testID}
+      >
+        <AppText variant="footnote" color={colors.textSecondary}>
+          {label}
         </AppText>
-      ) : null}
+        <AppText>{value}</AppText>
+        {detail ? (
+          <AppText variant="subhead" color={colors.textSecondary}>
+            {detail}
+          </AppText>
+        ) : null}
+      </View>
+      {action}
     </View>
   );
 }
+
+const CALENDAR_MESSAGES: Record<Exclude<AddToCalendarResult, 'canceled'>, string> = {
+  added: 'Added to your calendar.',
+  failed: 'Couldn’t open your calendar. Try again.',
+};
 
 export function EventDetailScreen({ id }: { id: string }) {
   const auth = useAuth();
@@ -95,6 +112,8 @@ export function EventDetailScreen({ id }: { id: string }) {
   // The member's choice while it saves, so the control answers at once.
   const [choice, setChoice] = useState<{ id: string; status: RsvpStatus } | null>(null);
   const [rsvpError, setRsvpError] = useState<string | null>(null);
+  const [calendarNote, setCalendarNote] = useState<{ id: string; text: string } | null>(null);
+  const [directionsFailed, setDirectionsFailed] = useState(false);
 
   const current: State = value?.id === id ? value.state : { state: 'loading' };
 
@@ -224,12 +243,42 @@ export function EventDetailScreen({ id }: { id: string }) {
             label="Date"
             value={formatDay(event.startsAt, at)}
             detail={formatTimeRange(event.startsAt, event.endsAt)}
+            action={
+              event.cancelled ? undefined : (
+                <Button
+                  title="Add"
+                  variant="secondary"
+                  size="small"
+                  accessibilityLabel="Add to calendar"
+                  onPress={async () => {
+                    setCalendarNote(null);
+                    const result = await addToCalendar(event);
+                    if (result !== 'canceled') {
+                      setCalendarNote({ id, text: CALENDAR_MESSAGES[result] });
+                    }
+                  }}
+                  testID="add-to-calendar"
+                />
+              )
+            }
             testID="event-date"
           />
           <DetailRow
             label="Place"
             value={event.location}
             detail={event.address || undefined}
+            action={
+              destination(event) ? (
+                <Button
+                  title="Directions"
+                  variant="secondary"
+                  size="small"
+                  accessibilityLabel={`Directions to ${event.location}`}
+                  onPress={async () => setDirectionsFailed(!(await openDirections(event)))}
+                  testID="directions"
+                />
+              ) : undefined
+            }
             testID="event-place"
           />
           <DetailRow label="Fee" value={formatFee(event.feeCents)} testID="event-fee" />
@@ -239,6 +288,18 @@ export function EventDetailScreen({ id }: { id: string }) {
             testID="event-deadline"
           />
         </ListSection>
+
+        {calendarNote?.id === id || directionsFailed ? (
+          <AppText
+            variant="footnote"
+            color={colors.textSecondary}
+            align="center"
+            accessibilityLiveRegion="polite"
+            testID="event-action-note"
+          >
+            {directionsFailed ? 'Couldn’t open maps. Try again.' : calendarNote?.text}
+          </AppText>
+        ) : null}
 
         <ListSection header="Who’s going">
           <View style={styles.going} testID="event-going">
@@ -291,7 +352,14 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     backgroundColor: palette.warningSoft,
   },
-  detailRow: { paddingHorizontal: spacing.lg, paddingVertical: spacing.md, gap: spacing.xxs },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+  },
+  detailText: { flex: 1, gap: spacing.xxs },
   going: {
     flexDirection: 'row',
     alignItems: 'center',

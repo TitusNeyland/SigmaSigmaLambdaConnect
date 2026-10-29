@@ -256,3 +256,61 @@ describe('RSVP', () => {
     );
   });
 });
+
+describe('add to calendar and directions', () => {
+  const { createEventInCalendarAsync } =
+    jest.requireMock<typeof import('expo-calendar/legacy')>('expo-calendar/legacy');
+
+  it('adds the event to the phone calendar and confirms', async () => {
+    await openEvent();
+    await press(screen.getByRole('button', { name: 'Add to calendar' }));
+    expect(createEventInCalendarAsync).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        title: 'Sample scholarship gala',
+        startDate: GALA.startsAt,
+        endDate: GALA.endsAt,
+        location: 'Hotel ballroom, 200 Sample Ave',
+      }),
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId('event-action-note')).toHaveTextContent('Added to your calendar.'),
+    );
+  });
+
+  it('says nothing if you cancel the sheet', async () => {
+    jest
+      .mocked(createEventInCalendarAsync)
+      .mockResolvedValueOnce({ action: 'canceled', id: null } as never);
+    await openEvent();
+    await press(screen.getByRole('button', { name: 'Add to calendar' }));
+    expect(screen.queryByTestId('event-action-note')).toBeNull();
+  });
+
+  it('hides Add for a cancelled event', async () => {
+    events.setMockDetails({ gala: { ...GALA, cancelled: true } });
+    await openEvent();
+    expect(screen.queryByRole('button', { name: 'Add to calendar' })).toBeNull();
+  });
+
+  it('opens maps for directions', async () => {
+    const { Linking } = jest.requireActual<typeof import('react-native')>('react-native');
+    const open = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined as never);
+    await openEvent();
+    await press(screen.getByRole('button', { name: 'Directions to Hotel ballroom' }));
+    expect(open).toHaveBeenCalledWith(expect.stringMatching(/200%20Sample%20Ave$/));
+    open.mockRestore();
+  });
+
+  it('says so when maps won’t open', async () => {
+    const { Linking } = jest.requireActual<typeof import('react-native')>('react-native');
+    const open = jest.spyOn(Linking, 'openURL').mockRejectedValue(new Error('no maps'));
+    await openEvent();
+    await press(screen.getByRole('button', { name: 'Directions to Hotel ballroom' }));
+    await waitFor(() =>
+      expect(screen.getByTestId('event-action-note')).toHaveTextContent(
+        'Couldn’t open maps. Try again.',
+      ),
+    );
+    open.mockRestore();
+  });
+});
