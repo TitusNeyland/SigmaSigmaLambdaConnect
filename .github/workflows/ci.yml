@@ -25,10 +25,13 @@ jobs:
       - run: npm ci
       - run: npm ci --prefix functions
       - run: npm run check
-      - run: npm test -- --ci --json --outputFile=jest-results.json
+      - run: npx jest --ci --json --outputFile=jest-results.json
+      - run: npx vitest run -c vitest.tools.config.ts --reporter=default --reporter=json --outputFile=tools-results.json
       - name: Report unit test counts
         if: always()
-        run: node scripts/report-tests.js jest-results.json "Unit tests"
+        run: |
+          node scripts/report-tests.js jest-results.json "Unit tests"
+          node scripts/report-tests.js tools-results.json "Tools tests"
 
   rules:
     name: Security rules tests
