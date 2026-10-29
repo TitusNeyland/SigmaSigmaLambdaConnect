@@ -12,6 +12,8 @@ const roles = jest.requireMock<typeof import('@/data/__mocks__/roles')>('@/data/
 jest.mock('@/data/profile');
 const profile = jest.requireMock<typeof import('@/data/__mocks__/profile')>('@/data/profile');
 jest.mock('@/data/blocks');
+jest.mock('@/data/account');
+const account = jest.requireMock<typeof import('@/data/__mocks__/account')>('@/data/account');
 const blocks = jest.requireMock<typeof import('@/data/__mocks__/blocks')>('@/data/blocks');
 
 async function press(target: Parameters<typeof fireEvent.press>[0]) {
@@ -34,6 +36,7 @@ beforeEach(() => {
   roles.resetRolesMock(null);
   profile.resetProfileMock();
   blocks.resetBlocksMock();
+  account.resetAccountMock();
   auth.setMockUser(auth.sampleUser());
   openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
 });
@@ -166,4 +169,68 @@ it('Back returns to the profile', async () => {
   await openSettings();
   await press(screen.getByTestId('settings-back'));
   await waitFor(() => expect(screen).toHavePathname('/profile'));
+});
+
+describe('Settings: delete account', () => {
+  async function openDelete() {
+    await openSettings();
+    await press(screen.getByTestId('row-delete-account'));
+    expect(screen.getByText(/This permanently removes your profile/)).toBeTruthy();
+  }
+
+  async function typePassword(text: string) {
+    await act(async () => {
+      fireEvent.changeText(screen.getByTestId('delete-password'), text);
+    });
+  }
+
+  it('explains what is removed and what is kept', async () => {
+    await openDelete();
+    expect(screen.getByText(/Attendance the chapter needs for its records is kept/)).toBeTruthy();
+    expect(screen.getByText(/can’t be\s+undone/)).toBeTruthy();
+  });
+
+  it('needs the password before deleting', async () => {
+    await openDelete();
+    await press(screen.getByTestId('confirm-delete'));
+    expect(screen.getByText('Enter your password to confirm.')).toBeTruthy();
+    expect(account.deleteAccount).not.toHaveBeenCalled();
+  });
+
+  it('deletes the account and returns to Welcome', async () => {
+    account.deleteAccount.mockImplementationOnce(async () => {
+      auth.setMockUser(null);
+    });
+    await openDelete();
+    await typePassword('secret123');
+    await press(screen.getByTestId('confirm-delete'));
+    expect(account.deleteAccount).toHaveBeenCalledWith('secret123');
+    await waitFor(() => expect(screen).toHavePathname('/welcome'));
+  });
+
+  it.each([
+    ['wrong-password', 'That password isn’t right.'],
+    ['too-many-attempts', 'Too many tries. Wait a few minutes and try again.'],
+    ['offline', 'You’re offline. Connect and try again.'],
+    ['failed', 'Couldn’t delete your account. Try again, or contact the chapter.'],
+  ] as const)('explains a %s error and stays signed in', async (reason, message) => {
+    account.deleteAccount.mockRejectedValueOnce(new account.AccountDeletionError(reason));
+    await openDelete();
+    await typePassword('secret123');
+    await press(screen.getByTestId('confirm-delete'));
+    await waitFor(() => expect(screen.getByText(message)).toBeTruthy());
+    expect(screen).toHavePathname('/profile/settings');
+  });
+
+  it('Cancel closes without deleting', async () => {
+    await openDelete();
+    await typePassword('secret123');
+    await press(screen.getAllByRole('button', { name: 'Cancel' }).at(-1)!);
+    expect(account.deleteAccount).not.toHaveBeenCalled();
+  });
+
+  it('is reachable from Settings, as Apple requires', async () => {
+    await openSettings();
+    expect(screen.getByTestId('row-delete-account')).toHaveTextContent('Delete account');
+  });
 });

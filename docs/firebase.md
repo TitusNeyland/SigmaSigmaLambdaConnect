@@ -43,7 +43,13 @@ npm run functions:build               # compile to functions/lib
 npm --prefix functions run deploy:dev # deploy to dev (needs Blaze)
 ```
 
-`health` is a starter function that confirms deploys work. Feature functions are added by their issues.
+`health` confirms deploys work. `deleteAccount` (#16) deletes a member's account and data when they ask from Settings. Functions tests run on the emulators with `npm run test:rules`.
+
+After pulling changes that touch `firestore.indexes.json`, deploy the indexes too:
+
+```bash
+npx firebase deploy --only firestore:indexes --project dev
+```
 
 ## Emulators
 

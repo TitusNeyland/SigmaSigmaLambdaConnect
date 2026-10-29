@@ -102,6 +102,7 @@ describe('seeded data works with the security rules', () => {
   it('sample members can RSVP to the upcoming sample events', async () => {
     await assertSucceeds(
       setDoc(doc(as('sample-brandon'), 'events/sample-service-day/rsvps/sample-brandon'), {
+        memberId: 'sample-brandon',
         status: 'going',
         updatedAt: serverTimestamp(),
       }),
@@ -111,6 +112,7 @@ describe('seeded data works with the security rules', () => {
   it('RSVPs to the past sample meeting are locked', async () => {
     await assertFails(
       setDoc(doc(as('sample-brandon'), 'events/sample-meeting-past/rsvps/sample-brandon'), {
+        memberId: 'sample-brandon',
         status: 'going',
         updatedAt: serverTimestamp(),
       }),

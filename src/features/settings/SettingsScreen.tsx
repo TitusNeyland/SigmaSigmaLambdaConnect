@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
 import { COMMUNITY_GUIDELINES_URL, PRIVACY_URL, SUPPORT_EMAIL, TERMS_URL } from '@/config/app';
+import { AccountDeletionError, deleteAccount, type DeleteAccountError } from '@/data/account';
 import { sendPasswordReset, signOut } from '@/data/auth';
 import { subscribeToBlocked } from '@/data/blocks';
 import { setNotificationPref } from '@/data/profile';
@@ -14,7 +15,16 @@ import { useAuth } from '@/features/auth/AuthProvider';
 import { useSession } from '@/features/auth/session';
 import { useProfile } from '@/features/profile/useProfileData';
 import { colors, MIN_TOUCH, spacing } from '@/theme';
-import { AppText, BottomSheet, Button, ListRow, ListSection, StatusChip, SwitchRow } from '@/ui';
+import {
+  AppText,
+  BottomSheet,
+  Button,
+  ListRow,
+  ListSection,
+  StatusChip,
+  SwitchRow,
+  TextField,
+} from '@/ui';
 
 const NOTIFICATIONS: { key: keyof NotificationPrefs; title: string; subtitle: string }[] = [
   {
@@ -66,6 +76,13 @@ function open(url: string) {
   Linking.openURL(url).catch(() => {});
 }
 
+const DELETE_ERRORS: Record<DeleteAccountError, string> = {
+  'wrong-password': 'That password isn’t right.',
+  'too-many-attempts': 'Too many tries. Wait a few minutes and try again.',
+  offline: 'You’re offline. Connect and try again.',
+  failed: 'Couldn’t delete your account. Try again, or contact the chapter.',
+};
+
 function useBlockedCount(uid: string): number | null {
   const [result, setResult] = useState<{ uid: string; count: number | null } | null>(null);
   useEffect(() => {
@@ -92,7 +109,10 @@ export function SettingsScreen() {
   const [prefsError, setPrefsError] = useState(false);
   const stored = profile.state === 'ready' && profile.data ? profile.data.notificationPrefs : null;
 
-  const [sheet, setSheet] = useState<null | 'signOut' | 'password'>(null);
+  const [sheet, setSheet] = useState<null | 'signOut' | 'password' | 'delete'>(null);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [resetState, setResetState] = useState<'idle' | 'sending' | 'sent' | 'failed'>('idle');
   const [signingOut, setSigningOut] = useState(false);
 
@@ -129,6 +149,30 @@ export function SettingsScreen() {
     } finally {
       setSigningOut(false);
       setSheet(null);
+    }
+  }
+
+  function openDelete() {
+    setDeletePassword('');
+    setDeleteError(null);
+    setSheet('delete');
+  }
+
+  async function confirmDelete() {
+    if (!deletePassword) {
+      setDeleteError('Enter your password to confirm.');
+      return;
+    }
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      // On success the session ends and the app returns to Welcome on its own.
+      await deleteAccount(deletePassword);
+    } catch (error) {
+      setDeleteError(
+        DELETE_ERRORS[error instanceof AccountDeletionError ? error.reason : 'failed'],
+      );
+      setDeleting(false);
     }
   }
 
@@ -226,6 +270,12 @@ export function SettingsScreen() {
 
         <ListSection>
           <ListRow title="Sign out" onPress={() => setSheet('signOut')} testID="row-sign-out" />
+          <ListRow
+            title="Delete account"
+            destructive
+            onPress={openDelete}
+            testID="row-delete-account"
+          />
         </ListSection>
 
         {version ? (
@@ -247,6 +297,45 @@ export function SettingsScreen() {
           testID="confirm-sign-out"
         />
         <Button title="Cancel" variant="plain" onPress={() => setSheet(null)} fullWidth />
+      </BottomSheet>
+
+      <BottomSheet
+        visible={sheet === 'delete'}
+        onClose={() => !deleting && setSheet(null)}
+        title="Delete your account?"
+      >
+        <AppText variant="callout" color={colors.textSecondary} align="center">
+          This permanently removes your profile, photos, posts, comments, likes and RSVPs.
+          Attendance the chapter needs for its records is kept without your name. This can’t be
+          undone.
+        </AppText>
+        <TextField
+          label="Password"
+          value={deletePassword}
+          onChangeText={(v) => {
+            setDeletePassword(v);
+            setDeleteError(null);
+          }}
+          secure
+          autoComplete="current-password"
+          error={deleteError ?? undefined}
+          testID="delete-password"
+        />
+        <Button
+          title="Delete account"
+          variant="destructive"
+          onPress={confirmDelete}
+          loading={deleting}
+          fullWidth
+          testID="confirm-delete"
+        />
+        <Button
+          title="Cancel"
+          variant="plain"
+          onPress={() => setSheet(null)}
+          disabled={deleting}
+          fullWidth
+        />
       </BottomSheet>
 
       <BottomSheet

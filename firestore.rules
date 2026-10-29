@@ -176,7 +176,8 @@ service cloud.firestore {
           && isSelf(userId)
           && exists(eventPath(eventId))
           && rsvpOpen(eventId)
-          && incoming().keys().hasOnly(['status', 'updatedAt'])
+          && incoming().keys().hasOnly(['memberId', 'status', 'updatedAt'])
+          && incoming().memberId == userId
           && incoming().status in ['going', 'maybe', 'not_going']
           && isNow(incoming().updatedAt);
         allow delete: if isApproved() && isSelf(userId) && rsvpOpen(eventId);
@@ -275,7 +276,8 @@ service cloud.firestore {
         allow create: if isApproved()
           && isSelf(userId)
           && exists(postPath(postId))
-          && incoming().keys().hasOnly(['createdAt'])
+          && incoming().keys().hasOnly(['memberId', 'createdAt'])
+          && incoming().memberId == userId
           && isNow(incoming().createdAt);
         allow delete: if isApproved() && isSelf(userId);
       }
