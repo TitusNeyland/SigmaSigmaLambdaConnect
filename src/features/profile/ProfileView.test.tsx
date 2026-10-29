@@ -17,6 +17,7 @@ const baseProps = (overrides: Partial<ProfileViewProps> = {}): ProfileViewProps 
     showEmail: false,
     showPhone: false,
     notificationPrefs: { events: true, announcements: true, social: true, tasks: false },
+    guidelinesAccepted: true,
   },
   roleLabel: null,
   stats: { state: 'ready', data: { posts: 3, eventsAttended: null, serviceHours: null } },

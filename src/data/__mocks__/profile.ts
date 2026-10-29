@@ -24,6 +24,7 @@ export function sampleProfile(overrides: Partial<Profile> = {}): Profile {
     showEmail: true,
     showPhone: false,
     notificationPrefs: { events: true, announcements: true, social: true, tasks: false },
+    guidelinesAccepted: true,
     ...overrides,
   };
 }
@@ -94,6 +95,11 @@ export const setNotificationPref = jest.fn(
   async (_uid: string, _key: string, _value: boolean) => {},
 );
 
+/** Accepting updates the mock profile, like the real listener would. */
+export const acceptGuidelines = jest.fn(async (_uid: string) => {
+  if (profile) setMockProfile({ ...profile, guidelinesAccepted: true });
+});
+
 export function resetProfileMock(initial: Profile | null = sampleProfile()) {
   profile = initial;
   stats = { posts: 0, eventsAttended: 0, serviceHours: 0 };
@@ -115,6 +121,7 @@ export function resetProfileMock(initial: Profile | null = sampleProfile()) {
   uploadAvatar.mockReset().mockResolvedValue('https://example.test/avatar.jpg');
   removeAvatar.mockReset().mockResolvedValue(undefined);
   setNotificationPref.mockReset().mockResolvedValue(undefined);
+  acceptGuidelines.mockClear();
 }
 
 resetProfileMock();

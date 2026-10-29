@@ -114,7 +114,10 @@ service cloud.firestore {
       // Members edit their own profile fields, never their status.
       allow update: if isSelf(memberId)
         && changed().hasOnly(memberEditableFields())
-        && memberProfileValid(incoming());
+        && memberProfileValid(incoming())
+        // Guidelines acceptance (#38) records the real time; it can't be backdated or cleared.
+        && (!changed().hasAny(['guidelinesAcceptedAt'])
+            || incoming().guidelinesAcceptedAt == request.time);
 
       // Officers approve or decline other people.
       allow update: if isOfficer()

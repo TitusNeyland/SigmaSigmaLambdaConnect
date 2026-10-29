@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Linking, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { COMMUNITY_GUIDELINES_URL, PRIVACY_URL, SUPPORT_EMAIL, TERMS_URL } from '@/config/app';
+import { PRIVACY_URL, SUPPORT_EMAIL, TERMS_URL } from '@/config/app';
 import { AccountDeletionError, deleteAccount, type DeleteAccountError } from '@/data/account';
 import { sendPasswordReset } from '@/data/auth';
 import { signOutHere } from '@/features/auth/signOut';
@@ -219,7 +219,7 @@ export function SettingsScreen() {
         <ListSection header="Help">
           <ListRow
             title="Community guidelines"
-            onPress={() => open(COMMUNITY_GUIDELINES_URL)}
+            onPress={() => router.push('/guidelines')}
             showChevron
             testID="row-guidelines"
           />

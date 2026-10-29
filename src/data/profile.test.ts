@@ -16,6 +16,7 @@ import {
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 
 import {
+  acceptGuidelines,
   fetchActivity,
   fetchProfilePosts,
   fetchProfileStats,
@@ -73,6 +74,7 @@ describe('toProfile', () => {
         interests: ['Tech', 'Mentoring'],
         photoURL: 'https://cdn.test/a.jpg',
         status: 'approved',
+        guidelinesAcceptedAt: { seconds: 1 },
       }),
     ).toEqual({
       displayName: 'Marcus Reed',
@@ -86,6 +88,7 @@ describe('toProfile', () => {
       showEmail: false,
       showPhone: false,
       notificationPrefs: { events: true, announcements: true, social: true, tasks: false },
+      guidelinesAccepted: true,
     });
   });
 
@@ -104,6 +107,7 @@ describe('toProfile', () => {
       showEmail: false,
       showPhone: false,
       notificationPrefs: { events: true, announcements: true, social: true, tasks: false },
+      guidelinesAccepted: false,
     });
   });
 
@@ -324,6 +328,16 @@ describe('photoUrl', () => {
     await expect(photoUrl('posts/u1/p1/a.jpg')).resolves.toBe('https://cdn.test/posts/u1/p1/a.jpg');
     expect(ref).toHaveBeenCalledWith({ name: 'storage' }, 'posts/u1/p1/a.jpg');
     expect(getDownloadURL).toHaveBeenCalled();
+  });
+});
+
+describe('acceptGuidelines', () => {
+  it('stores the acceptance with the server’s time', async () => {
+    await acceptGuidelines('u1');
+    expect(updateDoc).toHaveBeenCalledWith(
+      { path: 'members/u1' },
+      { guidelinesAcceptedAt: 'SERVER_TIMESTAMP', updatedAt: 'SERVER_TIMESTAMP' },
+    );
   });
 });
 
