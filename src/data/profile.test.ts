@@ -20,6 +20,7 @@ import {
   fetchProfileStats,
   photoUrl,
   removeAvatar,
+  setNotificationPref,
   subscribeToProfile,
   toProfile,
   updateOwnProfile,
@@ -79,6 +80,7 @@ describe('toProfile', () => {
       phone: '',
       showEmail: false,
       showPhone: false,
+      notificationPrefs: { events: true, announcements: true, social: true, tasks: false },
     });
   });
 
@@ -96,7 +98,15 @@ describe('toProfile', () => {
       phone: '',
       showEmail: false,
       showPhone: false,
+      notificationPrefs: { events: true, announcements: true, social: true, tasks: false },
     });
+  });
+
+  it('reads stored notification preferences over the defaults', () => {
+    expect(
+      toProfile({ notificationPrefs: { events: false, tasks: true, social: 'no', junk: true } })
+        .notificationPrefs,
+    ).toEqual({ events: false, announcements: true, social: true, tasks: true });
   });
 
   it('reads contact fields and treats anything but true as hidden', () => {
@@ -318,6 +328,16 @@ describe('removeAvatar', () => {
     expect(updateDoc).toHaveBeenCalledWith(
       { path: 'members/u1' },
       { photoURL: null, updatedAt: 'SERVER_TIMESTAMP' },
+    );
+  });
+});
+
+describe('setNotificationPref', () => {
+  it('updates just that preference', async () => {
+    await setNotificationPref('u1', 'social', false);
+    expect(updateDoc).toHaveBeenCalledWith(
+      { path: 'members/u1' },
+      { 'notificationPrefs.social': false, updatedAt: 'SERVER_TIMESTAMP' },
     );
   });
 });

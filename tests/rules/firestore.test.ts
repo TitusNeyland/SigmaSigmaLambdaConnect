@@ -182,6 +182,38 @@ describe('members', () => {
     );
   });
 
+  it('members can save notification preferences one switch at a time (Settings)', async () => {
+    await assertSucceeds(
+      updateDoc(doc(as(USERS.alice), 'members/alice'), {
+        'notificationPrefs.social': false,
+        updatedAt: serverTimestamp(),
+      }),
+    );
+    await assertSucceeds(
+      updateDoc(doc(as(USERS.alice), 'members/alice'), {
+        notificationPrefs: { events: true, announcements: false, social: true, tasks: true },
+      }),
+    );
+  });
+
+  it('rejects unknown notification keys and non-boolean values', async () => {
+    await assertFails(
+      updateDoc(doc(as(USERS.alice), 'members/alice'), { 'notificationPrefs.marketing': true }),
+    );
+    await assertFails(
+      updateDoc(doc(as(USERS.alice), 'members/alice'), { 'notificationPrefs.events': 'yes' }),
+    );
+    await assertFails(
+      updateDoc(doc(as(USERS.alice), 'members/alice'), { notificationPrefs: 'all' }),
+    );
+  });
+
+  it("members cannot change someone else's notification preferences", async () => {
+    await assertFails(
+      updateDoc(doc(as(USERS.alice), 'members/bob'), { 'notificationPrefs.events': false }),
+    );
+  });
+
   it('rejects more than 10 interests', async () => {
     await assertFails(
       updateDoc(doc(as(USERS.alice), 'members/alice'), {
@@ -753,6 +785,15 @@ describe('blocks', () => {
     await assertFails(
       setDoc(doc(as(USERS.bob), 'blocks/bob/blocked/bob'), { createdAt: serverTimestamp() }),
     );
+  });
+
+  it('members can list their own blocked accounts (Settings), not someone else’s', async () => {
+    await assertSucceeds(getDocs(collection(as(USERS.alice), 'blocks/alice/blocked')));
+    await assertFails(getDocs(collection(as(USERS.bob), 'blocks/alice/blocked')));
+  });
+
+  it('members cannot unblock on someone else’s behalf', async () => {
+    await assertFails(deleteDoc(doc(as(USERS.bob), 'blocks/alice/blocked/bob')));
   });
 });
 

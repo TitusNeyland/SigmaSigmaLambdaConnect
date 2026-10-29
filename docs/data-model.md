@@ -68,5 +68,6 @@ Anything not listed is denied.
 - RSVP `status`: `going`, `maybe` or `not_going`
 - Report `reason`: `spam`, `harassment`, `inappropriate` or `other`. Report `status`: `open`, `kept`, `removed` or `restricted`
 - Program and goal `status`: `not_started`, `in_progress`, `at_risk` or `completed`
+- Member `notificationPrefs`: optional map of `events`, `announcements`, `social`, `tasks` (true or false). Missing keys use the defaults in `src/data/types.ts`. Cloud Functions read it before sending push (#25)
 - Bio up to 150 characters, caption up to 2,200, comment up to 1,000, up to 10 photos per post
 - Timestamps use Firestore server timestamps

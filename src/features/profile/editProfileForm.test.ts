@@ -27,6 +27,7 @@ describe('formFromProfile', () => {
         ...form(),
         photoURL: 'https://cdn.test/a.jpg',
         email: 'm@example.com',
+        notificationPrefs: { events: true, announcements: true, social: true, tasks: false },
       }),
     ).toEqual(form());
   });

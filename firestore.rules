@@ -80,12 +80,24 @@ service cloud.firestore {
         && optionalBool(data, 'showEmail')
         && optionalBool(data, 'showPhone')
         && (!('interests' in data) || (data.interests is list && data.interests.size() <= 10))
-        && (!('photoURL' in data) || data.photoURL == null || data.photoURL is string);
+        && (!('photoURL' in data) || data.photoURL == null || data.photoURL is string)
+        && (!('notificationPrefs' in data) || notificationPrefsValid(data.notificationPrefs));
+    }
+
+    // Push preferences from Settings (#15). Every key is optional; values must be true/false.
+    function notificationPrefsValid(prefs) {
+      return prefs is map
+        && prefs.keys().hasOnly(['events', 'announcements', 'social', 'tasks'])
+        && prefs.get('events', true) is bool
+        && prefs.get('announcements', true) is bool
+        && prefs.get('social', true) is bool
+        && prefs.get('tasks', true) is bool;
     }
 
     function memberEditableFields() {
       return ['displayName', 'initiationTerm', 'headline', 'bio', 'interests', 'photoURL',
-              'email', 'phone', 'showEmail', 'showPhone', 'guidelinesAcceptedAt', 'updatedAt'];
+              'email', 'phone', 'showEmail', 'showPhone', 'notificationPrefs',
+              'guidelinesAcceptedAt', 'updatedAt'];
     }
 
     match /members/{memberId} {

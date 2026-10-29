@@ -17,6 +17,21 @@ export const LIMITS = {
 export type MemberStatus = 'pending' | 'approved' | 'declined';
 export type Role = 'officer' | 'admin';
 
+/** Which push notifications a member wants. Missing keys use the defaults. */
+export type NotificationPrefs = {
+  events: boolean;
+  announcements: boolean;
+  social: boolean;
+  tasks: boolean;
+};
+
+export const DEFAULT_NOTIFICATION_PREFS: NotificationPrefs = {
+  events: true,
+  announcements: true,
+  social: true,
+  tasks: false,
+};
+
 /** members/{uid} */
 export type Member = {
   displayName: string;
@@ -29,6 +44,7 @@ export type Member = {
   phone?: string;
   showEmail?: boolean;
   showPhone?: boolean;
+  notificationPrefs?: Partial<NotificationPrefs>;
   status: MemberStatus;
   guidelinesAcceptedAt?: Timestamp | null;
   createdAt: Timestamp;
@@ -50,6 +66,7 @@ export const MEMBER_EDITABLE_FIELDS = [
   'phone',
   'showEmail',
   'showPhone',
+  'notificationPrefs',
   'guidelinesAcceptedAt',
   'updatedAt',
 ] as const satisfies readonly (keyof Member)[];

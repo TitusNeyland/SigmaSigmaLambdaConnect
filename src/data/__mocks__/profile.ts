@@ -23,6 +23,7 @@ export function sampleProfile(overrides: Partial<Profile> = {}): Profile {
     phone: '',
     showEmail: true,
     showPhone: false,
+    notificationPrefs: { events: true, announcements: true, social: true, tasks: false },
     ...overrides,
   };
 }
@@ -71,6 +72,9 @@ export const uploadAvatar = jest.fn(
   async (_uid: string, _uri: string) => 'https://example.test/avatar.jpg',
 );
 export const removeAvatar = jest.fn(async (_uid: string) => {});
+export const setNotificationPref = jest.fn(
+  async (_uid: string, _key: string, _value: boolean) => {},
+);
 
 export function resetProfileMock(initial: Profile | null = sampleProfile()) {
   profile = initial;
@@ -91,6 +95,7 @@ export function resetProfileMock(initial: Profile | null = sampleProfile()) {
   updateOwnProfile.mockReset().mockResolvedValue(undefined);
   uploadAvatar.mockReset().mockResolvedValue('https://example.test/avatar.jpg');
   removeAvatar.mockReset().mockResolvedValue(undefined);
+  setNotificationPref.mockReset().mockResolvedValue(undefined);
 }
 
 resetProfileMock();
