@@ -728,6 +728,40 @@ describe('posts', () => {
     await assertSucceeds(setDoc(doc(as(USERS.alice), 'posts/new'), newPost(USERS.alice)));
   });
 
+  it('accepts the exact posts the compose screen shares (src/data/posts.ts)', async () => {
+    const shared = (extra: object) => ({
+      authorId: USERS.alice,
+      caption: '',
+      photoPaths: ['posts/alice/p/0.jpg', 'posts/alice/p/1.jpg'],
+      eventId: null,
+      taggedMemberIds: [],
+      allowComments: true,
+      official: false,
+      removed: false,
+      likeCount: 0,
+      commentCount: 0,
+      createdAt: serverTimestamp(),
+      ...extra,
+    });
+    const db = as(USERS.alice);
+    await assertSucceeds(setDoc(doc(db, 'posts/photos'), shared({})));
+    await assertSucceeds(
+      setDoc(
+        doc(db, 'posts/textOnly'),
+        shared({
+          photoPaths: [],
+          caption: 'Meeting moved',
+          eventId: 'open',
+          taggedMemberIds: ['bob'],
+        }),
+      ),
+    );
+    await assertFails(setDoc(doc(db, 'posts/empty'), shared({ photoPaths: [], caption: '' })));
+    await assertFails(
+      setDoc(doc(db, 'posts/tooMany'), shared({ taggedMemberIds: Array(21).fill('bob') })),
+    );
+  });
+
   it('members must accept the guidelines before posting', async () => {
     await assertFails(setDoc(doc(as(USERS.bob), 'posts/new'), newPost(USERS.bob)));
   });
