@@ -54,3 +54,8 @@ ui-debug.log
 .env
 .env.*
 !.env.example
+
+# Test results
+jest-results.json
+rules-results.json
+coverage/

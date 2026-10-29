@@ -25,7 +25,10 @@ jobs:
       - run: npm ci
       - run: npm ci --prefix functions
       - run: npm run check
-      - run: npm test -- --ci
+      - run: npm test -- --ci --json --outputFile=jest-results.json
+      - name: Report unit test counts
+        if: always()
+        run: node scripts/report-tests.js jest-results.json "Unit tests"
 
   rules:
     name: Security rules tests
@@ -46,4 +49,7 @@ jobs:
           path: ~/.cache/firebase/emulators
           key: firebase-emulators-${{ hashFiles('package-lock.json') }}
       - run: npm ci
-      - run: npm run test:rules
+      - run: npm run test:rules:ci
+      - name: Report rules test counts
+        if: always()
+        run: node scripts/report-tests.js rules-results.json "Rules tests"

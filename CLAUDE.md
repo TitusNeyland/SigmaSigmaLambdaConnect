@@ -85,4 +85,6 @@ Tokens:
 - TypeScript strict mode. No `any` without a comment explaining why.
 - Feature folders: `src/app/` for routes only (every file there is a screen), `src/features/<area>/` for screens, hooks and logic, `src/ui/` for shared components, `src/theme/` for tokens.
 - Firestore access goes through typed helpers in `src/data/`, not inline in screens.
+- Build screens from `src/ui` components and `src/theme` tokens. Never hardcode a color, font size or spacing value in a screen.
+- Tests: `npm test` (Jest, app code, next to the file as `*.test.ts(x)`) and `npm run test:rules` (security rules on the emulators). Every PR adds tests for what it builds. CI runs both.
 - Keep user-facing copy short and plain.
