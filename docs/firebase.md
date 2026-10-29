@@ -62,3 +62,19 @@ npx firebase deploy --only firestore:rules,storage --project dev
 ```
 
 The rules in the repo are fully locked until #3 adds the real ones.
+
+## Sample data
+
+`tools/seed/` fills a project with made-up members, events, posts, programs, goals and announcements. Every ID starts with `sample-`, emails use example.com and phone numbers use 555-01xx. The seed always refuses the production project.
+
+```bash
+npm run emulators                        # terminal 1
+npm run seed:emulators                   # terminal 2: seeds the emulators
+npm run start:emulators                  # terminal 3: the app, using the emulators
+
+gcloud auth application-default login    # once, for a real project
+npm run seed:dev -- --yes                # seeds the real dev project
+SEED_PASSWORD=... npm run seed:dev -- --yes   # also creates sample sign-in accounts
+```
+
+On the emulators, every sample account signs in with its `@example.com` email and the password `sample-password`. Useful ones: `sample-andre@example.com` (admin, President), `sample-jordan@example.com` (officer, Service Chair), `sample-marcus@example.com` (member), `sample-isaiah@example.com` (pending). Running the seed again overwrites the same documents.

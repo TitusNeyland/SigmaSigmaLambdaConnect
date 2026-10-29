@@ -6,7 +6,7 @@ import { defineConfig } from 'vitest/config';
  */
 export default defineConfig({
   test: {
-    include: ['tests/rules/**/*.test.ts'],
+    include: ['tests/rules/**/*.test.ts', 'tests/**/*.emulator.test.ts'],
     environment: 'node',
     // Both files share one emulator, so run them one at a time.
     fileParallelism: false,
