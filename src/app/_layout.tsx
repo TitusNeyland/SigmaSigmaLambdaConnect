@@ -5,6 +5,7 @@ import { useEffect } from 'react';
 
 import { AuthProvider } from '@/features/auth/AuthProvider';
 import { SessionProvider, useSession } from '@/features/auth/session';
+import { RoleProvider } from '@/features/roles/RoleProvider';
 import { colors } from '@/theme';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -58,8 +59,10 @@ export default function RootLayout() {
   return (
     <AuthProvider>
       <SessionProvider>
-        <StatusBar style="dark" />
-        <RootStack />
+        <RoleProvider>
+          <StatusBar style="dark" />
+          <RootStack />
+        </RoleProvider>
       </SessionProvider>
     </AuthProvider>
   );

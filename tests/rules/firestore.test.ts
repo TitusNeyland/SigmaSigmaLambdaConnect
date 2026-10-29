@@ -245,6 +245,37 @@ describe('roles', () => {
     await assertFails(deleteDoc(doc(as(USERS.olivia), 'roles/olivia')));
     await assertSucceeds(deleteDoc(doc(as(USERS.adam), 'roles/olivia')));
   });
+
+  it('officers cannot promote themselves to admin or change their own title', async () => {
+    await assertFails(setDoc(doc(as(USERS.olivia), 'roles/olivia'), { role: 'admin' }));
+    await assertFails(updateDoc(doc(as(USERS.olivia), 'roles/olivia'), { title: 'President' }));
+  });
+
+  it('admins can change an officer’s title or make them an admin', async () => {
+    await assertSucceeds(updateDoc(doc(as(USERS.adam), 'roles/olivia'), { title: 'President' }));
+    await assertSucceeds(setDoc(doc(as(USERS.adam), 'roles/olivia'), { role: 'admin' }));
+  });
+
+  it('rejects extra fields and titles over 40 characters', async () => {
+    await assertFails(
+      setDoc(doc(as(USERS.adam), 'roles/alice'), { role: 'officer', canDelete: true }),
+    );
+    await assertFails(
+      setDoc(doc(as(USERS.adam), 'roles/alice'), { role: 'officer', title: 'a'.repeat(41) }),
+    );
+  });
+
+  it('approved members can see role badges; strangers cannot', async () => {
+    await assertSucceeds(getDoc(doc(as(USERS.alice), 'roles/olivia')));
+    await assertFails(getDoc(doc(as(USERS.stranger), 'roles/olivia')));
+  });
+
+  it('an officer loses officer access as soon as the role is removed', async () => {
+    const newEvent = { ...eventDoc(), createdAt: serverTimestamp() };
+    await assertSucceeds(setDoc(doc(as(USERS.olivia), 'events/before'), newEvent));
+    await assertSucceeds(deleteDoc(doc(as(USERS.adam), 'roles/olivia')));
+    await assertFails(setDoc(doc(as(USERS.olivia), 'events/after'), newEvent));
+  });
 });
 
 describe('events', () => {

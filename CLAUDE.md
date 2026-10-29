@@ -28,6 +28,7 @@ Client project. Budget is lean, so keep scope tight: build what the issue asks f
 - **Private by default.** New accounts wait for officer approval before seeing any chapter data. Enforce this in Firestore security rules, not just the UI.
 - **Roles:** member, officer (with a title like President or Treasurer), admin. Roles live server-side. Only admins change roles. Officers only see tools their role allows.
 - **Leadership tools** live under the Chapter tab, never in the tab bar. Members never see them.
+- **Gate officer UI by capability**, never by checking titles: `useCan('reports.review')` or `<RequireCapability capability="...">` from `src/features/roles`. Capabilities in `permissions.ts` mirror what the security rules allow; add a rules test whenever you add one. The UI fails closed: no role loaded means regular member.
 - **RSVP and attendance are separate.** RSVP is intent. Attendance is an officer check-in. Participation metrics use attendance, never RSVPs.
 - **Metrics are computed** by Cloud Functions from real activity (check-ins, service hours, milestones), not typed in by hand.
 - **Goals and KPIs are chapter-defined.** Never present a number as an official national requirement or score.
