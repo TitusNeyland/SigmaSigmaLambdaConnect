@@ -14,6 +14,7 @@ jest.mock('@/data/auth');
 const { resetAuthMock, sampleUser, setMockUser } =
   jest.requireMock<typeof import('@/data/__mocks__/auth')>('@/data/auth');
 jest.mock('@/data/members');
+jest.mock('@/data/roles');
 const members = jest.requireMock<typeof import('@/data/__mocks__/members')>('@/data/members');
 
 beforeEach(() => {
