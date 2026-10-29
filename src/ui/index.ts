@@ -7,3 +7,4 @@ export * from './ListSection';
 export * from './Progress';
 export * from './SegmentedControl';
 export * from './StatusChip';
+export * from './TextField';
