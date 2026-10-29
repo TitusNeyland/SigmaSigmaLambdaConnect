@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 
 import type { FeedPost } from '@/data/feed';
 import { colors, MIN_TOUCH, spacing } from '@/theme';
@@ -8,6 +9,34 @@ import { AppText, Avatar } from '@/ui';
 
 import { authorLine, captionPreview, commentsLabel, likesLabel, timeAgo } from './feedLogic';
 import { PhotoCarousel } from './PhotoCarousel';
+import { useLike } from './useLike';
+
+function HeartIcon({ filled }: { filled: boolean }) {
+  return (
+    <Svg width={26} height={26} viewBox="0 0 24 24" accessibilityElementsHidden>
+      <Path
+        d="M12 20.5s-7.5-4.6-9.3-9.2C1.5 8.2 3.4 4.5 7 4.5c2 0 3.3 1.1 5 3 1.7-1.9 3-3 5-3 3.6 0 5.5 3.7 4.3 6.8-1.8 4.6-9.3 9.2-9.3 9.2z"
+        fill={filled ? colors.text : 'none'}
+        stroke={colors.text}
+        strokeWidth={1.8}
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
+function CommentIcon() {
+  return (
+    <Svg width={25} height={25} viewBox="0 0 24 24" fill="none" accessibilityElementsHidden>
+      <Path
+        d="M20.5 11.5a8.5 8.5 0 0 1-12.6 7.4L3.5 20l1.2-4.1A8.5 8.5 0 1 1 20.5 11.5z"
+        stroke={colors.text}
+        strokeWidth={1.8}
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
 
 export type PostCardProps = {
   post: FeedPost;
@@ -31,6 +60,7 @@ export function PostCard({ post, now, me }: PostCardProps) {
   const name = post.author?.displayName ?? 'Former member';
   const line = post.author ? authorLine(post.author) : '';
   const caption = captionPreview(post.caption);
+  const like = useLike(post.id, me, { liked: post.likedByMe, count: post.likeCount });
 
   return (
     <View style={styles.card} testID={`post-${post.id}`}>
@@ -58,12 +88,41 @@ export function PostCard({ post, now, me }: PostCardProps) {
         </AppText>
       </Pressable>
 
-      <PhotoCarousel paths={post.photoPaths} label={`Photo from ${name}`} />
+      <PhotoCarousel paths={post.photoPaths} label={`Photo from ${name}`} onDoubleTap={like.like} />
+
+      <View style={styles.actions}>
+        <Pressable
+          onPress={like.toggle}
+          accessibilityRole="button"
+          accessibilityLabel={like.liked ? 'Unlike' : 'Like'}
+          accessibilityState={{ selected: like.liked }}
+          style={styles.action}
+          testID={`like-${post.id}`}
+        >
+          <HeartIcon filled={like.liked} />
+        </Pressable>
+        {post.allowComments ? (
+          <Pressable
+            onPress={() => openPost(post.id)}
+            accessibilityRole="button"
+            accessibilityLabel="Comment"
+            style={styles.action}
+            testID={`comment-${post.id}`}
+          >
+            <CommentIcon />
+          </Pressable>
+        ) : null}
+      </View>
 
       <View style={styles.body}>
-        {post.likeCount > 0 ? (
+        {like.count > 0 ? (
           <AppText variant="subhead" weight="600" testID={`likes-${post.id}`}>
-            {likesLabel(post.likeCount)}
+            {likesLabel(like.count)}
+          </AppText>
+        ) : null}
+        {like.failed ? (
+          <AppText variant="footnote" color={colors.destructive} testID={`like-error-${post.id}`}>
+            Couldn’t save your like. Try again.
           </AppText>
         ) : null}
         {caption.text ? (
@@ -114,6 +173,8 @@ const styles = StyleSheet.create({
     minHeight: MIN_TOUCH + spacing.sm,
   },
   flex: { flex: 1 },
-  body: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, gap: spacing.xs },
+  actions: { flexDirection: 'row', paddingHorizontal: spacing.sm, paddingTop: spacing.xs },
+  action: { width: MIN_TOUCH, height: MIN_TOUCH, alignItems: 'center', justifyContent: 'center' },
+  body: { paddingHorizontal: spacing.lg, gap: spacing.xs },
   commentsLink: { minHeight: MIN_TOUCH - spacing.md, justifyContent: 'center' },
 });
