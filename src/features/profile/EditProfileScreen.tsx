@@ -22,6 +22,7 @@ import {
   Avatar,
   BottomSheet,
   Button,
+  HeaderButton,
   ListRow,
   ListSection,
   StatusChip,
@@ -45,40 +46,6 @@ import { useProfile } from './useProfileData';
 function goBack() {
   if (router.canGoBack()) router.back();
   else router.replace('/profile');
-}
-
-function HeaderButton({
-  title,
-  onPress,
-  bold = false,
-  disabled = false,
-  testID,
-}: {
-  title: string;
-  onPress: () => void;
-  bold?: boolean;
-  disabled?: boolean;
-  testID?: string;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      disabled={disabled}
-      accessibilityRole="button"
-      accessibilityState={{ disabled }}
-      hitSlop={spacing.sm}
-      style={styles.headerButton}
-      testID={testID}
-    >
-      <AppText
-        variant="body"
-        weight={bold ? '600' : '400'}
-        color={disabled ? colors.textSecondary : bold ? colors.link : colors.text}
-      >
-        {title}
-      </AppText>
-    </Pressable>
-  );
 }
 
 function EditProfileFormView({ uid, profile }: { uid: string; profile: Profile }) {
@@ -403,7 +370,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     minHeight: MIN_TOUCH + spacing.sm,
   },
-  headerButton: { minHeight: MIN_TOUCH, paddingHorizontal: spacing.sm, justifyContent: 'center' },
   content: { padding: spacing.lg, gap: spacing.xl, paddingBottom: spacing.xxxl },
   photo: { alignItems: 'center', gap: spacing.xs },
   photoNote: { alignItems: 'center' },

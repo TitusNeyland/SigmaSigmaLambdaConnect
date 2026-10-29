@@ -63,7 +63,8 @@
           "calendarPermission": "Add chapter events to your calendar.",
           "remindersPermission": false
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true,

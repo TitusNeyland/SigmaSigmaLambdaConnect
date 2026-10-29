@@ -7,8 +7,17 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { fetchEventDetail, RsvpSaveError, setRsvp, type EventDetail } from '@/data/events';
 import type { RsvpStatus } from '@/data/types';
 import { useAuth } from '@/features/auth/AuthProvider';
+import { useCan } from '@/features/roles/RoleProvider';
 import { colors, palette, radius, spacing } from '@/theme';
-import { AppText, Avatar, Button, ListSection, NavHeader, SegmentedControl } from '@/ui';
+import {
+  AppText,
+  Avatar,
+  Button,
+  HeaderButton,
+  ListSection,
+  NavHeader,
+  SegmentedControl,
+} from '@/ui';
 
 import {
   addToCalendar,
@@ -86,6 +95,7 @@ export function EventDetailScreen({ id }: { id: string }) {
   const uid = auth.status === 'signedIn' ? auth.user.uid : '';
   const [value, setValue] = useState<{ id: string; state: State } | null>(null);
   const [attempt, setAttempt] = useState(0);
+  const canManage = useCan('events.manage');
 
   // Reload on focus so the going count stays fresh after RSVPing (#23).
   useFocusEffect(
@@ -170,7 +180,19 @@ export function EventDetailScreen({ id }: { id: string }) {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <NavHeader onBack={goBack} backTestID="event-back" />
+      <NavHeader
+        onBack={goBack}
+        backTestID="event-back"
+        trailing={
+          canManage ? (
+            <HeaderButton
+              title="Edit"
+              onPress={() => router.push({ pathname: '/events/[id]/edit', params: { id } })}
+              testID="edit-event"
+            />
+          ) : undefined
+        }
+      />
       <ScrollView contentContainerStyle={styles.content}>
         {event.photoURL ? (
           <Image

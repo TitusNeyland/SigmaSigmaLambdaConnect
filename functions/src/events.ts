@@ -1,6 +1,6 @@
 import { getFirestore, Timestamp, type Firestore } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions';
-import { onDocumentCreated } from 'firebase-functions/v2/firestore';
+import { onDocumentCreated, onDocumentUpdated } from 'firebase-functions/v2/firestore';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 
 import { sendPush, type PushDeps, type PushMessage } from './push.js';
@@ -76,6 +76,17 @@ export function deadlineNudgeMessage(id: string, event: EventData): PushMessage 
   return {
     title: `RSVP for ${title}`,
     body: `Let the chapter know if you’re coming by ${formatWhen(deadline)}.`,
+    data: { eventId: id },
+  };
+}
+
+export function cancelledMessage(id: string, event: EventData): PushMessage | null {
+  const title = text(event.title);
+  const startsAt = date(event.startsAt);
+  if (!title || !startsAt) return null;
+  return {
+    title: `Cancelled: ${title}`,
+    body: `${title} on ${formatWhen(startsAt)} has been cancelled.`,
     data: { eventId: id },
   };
 }
@@ -159,6 +170,37 @@ export async function runEventNotifications(now: Date, deps: PushDeps = {}) {
 
   return { reminders, nudges };
 }
+
+/** When an officer cancels an event (#27), tells everyone who said Going or Maybe. */
+export async function announceCancellation(
+  id: string,
+  before: EventData | undefined,
+  after: EventData | undefined,
+  deps: PushDeps = {},
+) {
+  if (!after || before?.cancelled === true || after.cancelled !== true) return { sent: 0 };
+  const message = cancelledMessage(id, after);
+  if (!message) return { sent: 0 };
+  const db = deps.db ?? getFirestore();
+  const rsvps = await db
+    .collection(`events/${id}/rsvps`)
+    .where('status', 'in', ['going', 'maybe'])
+    .get();
+  return sendPush(
+    rsvps.docs.map((r) => r.id),
+    'events',
+    message,
+    deps,
+  );
+}
+
+export const notifyEventCancelled = onDocumentUpdated('events/{eventId}', async (event) => {
+  await announceCancellation(
+    event.params.eventId,
+    event.data?.before.data() as EventData | undefined,
+    event.data?.after.data() as EventData | undefined,
+  );
+});
 
 export const notifyNewEvent = onDocumentCreated('events/{eventId}', async (event) => {
   const data = event.data?.data();

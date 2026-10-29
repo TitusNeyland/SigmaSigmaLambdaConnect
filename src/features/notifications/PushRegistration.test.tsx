@@ -11,6 +11,7 @@ jest.mock('@/data/account');
 jest.mock('@/data/directory');
 jest.mock('@/data/reports');
 jest.mock('@/data/events');
+jest.mock('@/data/eventAdmin');
 jest.mock('./registerForPush', () => ({
   registerForPush: jest.fn(async () => 'registered'),
   unregisterPush: jest.fn(async () => {}),

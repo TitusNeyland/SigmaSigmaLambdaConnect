@@ -163,7 +163,14 @@ service cloud.firestore {
         && data.startsAt is timestamp
         && data.rsvpDeadline is timestamp
         && optionalText(data, 'description', 2000)
-        && (!('feeCents' in data) || (data.feeCents is int && data.feeCents >= 0));
+        && optionalText(data, 'address', 200)
+        && (!('feeCents' in data) || (data.feeCents is int && data.feeCents >= 0))
+        // From the create and edit form (#27): an end after the start, a deadline by the start.
+        && (!('endsAt' in data) || data.endsAt == null
+            || (data.endsAt is timestamp && data.endsAt > data.startsAt))
+        && data.rsvpDeadline <= data.startsAt
+        && (!('photoURL' in data) || data.photoURL == null || data.photoURL is string)
+        && (!('cancelled' in data) || data.cancelled is bool);
     }
 
     function eventPath(eventId) {
@@ -181,7 +188,10 @@ service cloud.firestore {
         && eventValid(incoming())
         && incoming().createdBy == request.auth.uid
         && isNow(incoming().createdAt);
-      allow update: if isOfficer() && eventValid(incoming());
+      // Officers edit or cancel. Who made it and when never change.
+      allow update: if isOfficer()
+        && eventValid(incoming())
+        && !changed().hasAny(['createdBy', 'createdAt']);
       allow delete: if isOfficer();
 
       match /rsvps/{userId} {

@@ -15,17 +15,9 @@ import {
 } from 'firebase/firestore';
 
 import { db } from './firebase';
-import type { EventCategory, RsvpStatus } from './types';
+import { EVENT_CATEGORIES, type EventCategory, type RsvpStatus } from './types';
 
-export const EVENT_CATEGORIES: readonly EventCategory[] = [
-  'meeting',
-  'service',
-  'learning',
-  'brotherhood',
-  'fundraiser',
-  'social',
-  'public',
-];
+export { EVENT_CATEGORIES };
 
 /** An event as the Events tab shows it, with the signed-in member's own RSVP. */
 export type EventSummary = {

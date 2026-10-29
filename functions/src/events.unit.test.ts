@@ -1,7 +1,13 @@
 import { Timestamp } from 'firebase-admin/firestore';
 import { describe, expect, it } from 'vitest';
 
-import { deadlineNudgeMessage, formatWhen, newEventMessage, reminderMessage } from './events';
+import {
+  cancelledMessage,
+  deadlineNudgeMessage,
+  formatWhen,
+  newEventMessage,
+  reminderMessage,
+} from './events';
 
 // 7:00 PM Central on Sat, Nov 7 2026 (CST, UTC-6).
 const SEVEN_PM = new Date('2026-11-08T01:00:00Z');
@@ -49,5 +55,15 @@ describe('messages', () => {
       data: { eventId: 'gala' },
     });
     expect(deadlineNudgeMessage('gala', { ...event, rsvpDeadline: null })).toBeNull();
+  });
+});
+
+describe('cancelledMessage', () => {
+  it('says which event and when', () => {
+    expect(cancelledMessage('gala', event)).toEqual({
+      title: 'Cancelled: Scholarship gala',
+      body: 'Scholarship gala on Sat, Nov 7 at 7:00 PM has been cancelled.',
+      data: { eventId: 'gala' },
+    });
   });
 });

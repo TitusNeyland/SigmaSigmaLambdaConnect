@@ -28,7 +28,7 @@ export const USERS = {
 } as const;
 
 const now = () => Timestamp.now();
-const hoursFromNow = (h: number) => Timestamp.fromMillis(Date.now() + h * 3600_000);
+export const hoursFromNow = (h: number) => Timestamp.fromMillis(Date.now() + h * 3600_000);
 
 export function member(status: 'pending' | 'approved' | 'declined', extra: object = {}) {
   return {
