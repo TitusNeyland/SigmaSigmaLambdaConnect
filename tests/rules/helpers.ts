@@ -95,7 +95,7 @@ export async function seedBase(env: RulesTestEnvironment) {
         text: 'First',
         createdAt: now(),
       }),
-      put('posts/alicePost/likes/alice', { createdAt: now() }),
+      put('posts/alicePost/likes/alice', { memberId: USERS.alice, createdAt: now() }),
       put('events/open/attendance/alice', {
         memberId: USERS.alice,
         checkedInBy: USERS.olivia,

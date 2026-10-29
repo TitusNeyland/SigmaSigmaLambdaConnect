@@ -84,7 +84,7 @@ export function buildSeedDocs(now: Date = new Date()): SeedDoc[] {
     for (const [uid, status] of Object.entries(event.rsvps)) {
       docs.push({
         path: `events/${event.id}/rsvps/${uid}`,
-        data: { status, updatedAt: at(now, -2 * DAY) },
+        data: { memberId: uid, status, updatedAt: at(now, -2 * DAY) },
       });
     }
     for (const [uid, record] of Object.entries(event.attendance ?? {})) {
@@ -123,7 +123,7 @@ export function buildSeedDocs(now: Date = new Date()): SeedDoc[] {
       },
     });
     for (const uid of post.likes) {
-      docs.push({ path: `posts/${post.id}/likes/${uid}`, data: { createdAt } });
+      docs.push({ path: `posts/${post.id}/likes/${uid}`, data: { memberId: uid, createdAt } });
     }
     post.comments.forEach((comment, i) => {
       docs.push({

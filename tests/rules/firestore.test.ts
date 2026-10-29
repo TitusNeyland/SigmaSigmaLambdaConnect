@@ -383,7 +383,11 @@ describe('events', () => {
 });
 
 describe('RSVPs', () => {
-  const rsvp = (status: string) => ({ status, updatedAt: serverTimestamp() });
+  const rsvp = (status: string, memberId: string = USERS.alice) => ({
+    memberId,
+    status,
+    updatedAt: serverTimestamp(),
+  });
 
   it.each(['going', 'maybe', 'not_going'])('members can RSVP %s for themselves', async (s) => {
     await assertSucceeds(setDoc(doc(as(USERS.alice), 'events/open/rsvps/alice'), rsvp(s)));
@@ -394,7 +398,9 @@ describe('RSVPs', () => {
   });
 
   it('members cannot RSVP for someone else', async () => {
-    await assertFails(setDoc(doc(as(USERS.alice), 'events/open/rsvps/bob'), rsvp('going')));
+    await assertFails(
+      setDoc(doc(as(USERS.alice), 'events/open/rsvps/bob'), rsvp('going', USERS.bob)),
+    );
   });
 
   it('RSVPs lock after the deadline', async () => {
@@ -410,7 +416,21 @@ describe('RSVPs', () => {
   });
 
   it('pending members cannot RSVP', async () => {
-    await assertFails(setDoc(doc(as(USERS.pete), 'events/open/rsvps/pete'), rsvp('going')));
+    await assertFails(
+      setDoc(doc(as(USERS.pete), 'events/open/rsvps/pete'), rsvp('going', USERS.pete)),
+    );
+  });
+
+  it('requires memberId to match the person RSVPing', async () => {
+    await assertFails(
+      setDoc(doc(as(USERS.alice), 'events/open/rsvps/alice'), rsvp('going', USERS.bob)),
+    );
+    await assertFails(
+      setDoc(doc(as(USERS.alice), 'events/open/rsvps/alice'), {
+        status: 'going',
+        updatedAt: serverTimestamp(),
+      }),
+    );
   });
 
   it('members can change their RSVP before the deadline', async () => {
@@ -674,25 +694,41 @@ describe('comments', () => {
 describe('likes', () => {
   it('members can like and unlike as themselves', async () => {
     const ref = doc(as(USERS.bob), 'posts/alicePost/likes/bob');
-    await assertSucceeds(setDoc(ref, { createdAt: serverTimestamp() }));
+    await assertSucceeds(setDoc(ref, { memberId: USERS.bob, createdAt: serverTimestamp() }));
     await assertSucceeds(deleteDoc(ref));
   });
 
   it('cannot like as someone else or add extra fields', async () => {
     await assertFails(
-      setDoc(doc(as(USERS.bob), 'posts/alicePost/likes/olivia'), { createdAt: serverTimestamp() }),
+      setDoc(doc(as(USERS.bob), 'posts/alicePost/likes/olivia'), {
+        memberId: USERS.olivia,
+        createdAt: serverTimestamp(),
+      }),
     );
     await assertFails(
       setDoc(doc(as(USERS.bob), 'posts/alicePost/likes/bob'), {
+        memberId: USERS.bob,
         createdAt: serverTimestamp(),
         weight: 100,
       }),
+    );
+    await assertFails(
+      setDoc(doc(as(USERS.bob), 'posts/alicePost/likes/bob'), {
+        memberId: USERS.alice,
+        createdAt: serverTimestamp(),
+      }),
+    );
+    await assertFails(
+      setDoc(doc(as(USERS.bob), 'posts/alicePost/likes/bob'), { createdAt: serverTimestamp() }),
     );
   });
 
   it('cannot like a post that does not exist', async () => {
     await assertFails(
-      setDoc(doc(as(USERS.bob), 'posts/missing/likes/bob'), { createdAt: serverTimestamp() }),
+      setDoc(doc(as(USERS.bob), 'posts/missing/likes/bob'), {
+        memberId: USERS.bob,
+        createdAt: serverTimestamp(),
+      }),
     );
   });
 

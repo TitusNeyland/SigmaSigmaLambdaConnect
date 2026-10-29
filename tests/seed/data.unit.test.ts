@@ -194,6 +194,17 @@ describe('buildSeedDocs', () => {
     expect(b.startsAt.toMillis() - a.startsAt.toMillis()).toBe(30 * 24 * 3600_000);
   });
 
+  it('RSVPs, attendance and likes carry memberId matching their document ID', () => {
+    let checked = 0;
+    for (const [path, data] of byPath) {
+      const match = path.match(/\/(rsvps|attendance|likes)\/([^/]+)$/);
+      if (!match) continue;
+      expect(data.memberId).toBe(match[2]);
+      checked++;
+    }
+    expect(checked).toBeGreaterThan(0);
+  });
+
   it('marks attendees who did not RSVP as walk-ins', () => {
     expect(byPath.get('events/sample-meeting-past/attendance/sample-darius')?.walkIn).toBe(true);
     expect(byPath.get('events/sample-meeting-past/attendance/sample-marcus')?.walkIn).toBe(false);

@@ -102,6 +102,8 @@ export type RsvpStatus = 'going' | 'maybe' | 'not_going';
 
 /** events/{eventId}/rsvps/{uid} */
 export type Rsvp = {
+  /** Same as the document ID. Lets a member's RSVPs be found across events. */
+  memberId: string;
   status: RsvpStatus;
   updatedAt: Timestamp;
 };
@@ -141,6 +143,8 @@ export type Comment = {
 
 /** posts/{postId}/likes/{uid} */
 export type Like = {
+  /** Same as the document ID. Lets a member's likes be found across posts. */
+  memberId: string;
   createdAt: Timestamp;
 };
 

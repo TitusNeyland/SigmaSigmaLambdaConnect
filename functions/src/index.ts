@@ -14,6 +14,8 @@ initializeApp();
 // Small chapter app: cap instances to keep costs predictable.
 setGlobalOptions({ region: 'us-central1', maxInstances: 10 });
 
+export { deleteAccount } from './account.js';
+
 /** Confirms deploys work. Returns the project the function is running in. */
 export const health = onRequest((_req, res) => {
   res.json({ ok: true, project: process.env.GCLOUD_PROJECT ?? 'unknown' });

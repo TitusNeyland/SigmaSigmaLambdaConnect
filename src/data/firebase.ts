@@ -8,6 +8,7 @@ import {
   type Auth,
 } from 'firebase/auth';
 import { connectFirestoreEmulator, getFirestore, type Firestore } from 'firebase/firestore';
+import { connectFunctionsEmulator, getFunctions, type Functions } from 'firebase/functions';
 import { connectStorageEmulator, getStorage, type FirebaseStorage } from 'firebase/storage';
 import { Platform } from 'react-native';
 
@@ -33,9 +34,12 @@ function createAuth(): Auth {
 export const auth: Auth = createAuth();
 export const db: Firestore = getFirestore(app);
 export const storage: FirebaseStorage = getStorage(app);
+/** Same region as functions/src/index.ts. */
+export const functions: Functions = getFunctions(app, 'us-central1');
 
 if (USE_EMULATORS && isFirstInit) {
   connectAuthEmulator(auth, `http://${EMULATOR_HOST}:9099`, { disableWarnings: true });
   connectFirestoreEmulator(db, EMULATOR_HOST, 8080);
   connectStorageEmulator(storage, EMULATOR_HOST, 9199);
+  connectFunctionsEmulator(functions, EMULATOR_HOST, 5001);
 }

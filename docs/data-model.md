@@ -71,3 +71,16 @@ Anything not listed is denied.
 - Member `notificationPrefs`: optional map of `events`, `announcements`, `social`, `tasks` (true or false). Missing keys use the defaults in `src/data/types.ts`. Cloud Functions read it before sending push (#25)
 - Bio up to 150 characters, caption up to 2,200, comment up to 1,000, up to 10 photos per post
 - Timestamps use Firestore server timestamps
+
+## Account deletion (#16)
+
+Members delete their account from Settings. The app confirms their password, then calls the `deleteAccount` Cloud Function, which only accepts a sign-in from the last five minutes. It removes:
+
+- `members/{uid}`, `roles/{uid}` and `blocks/{uid}/blocked/*`
+- Their posts, including every comment and like on them
+- Their comments and likes on other posts (those posts' counts are lowered to match)
+- Their RSVPs
+- `avatars/{uid}/` and `posts/{uid}/` in Storage
+- Their sign-in
+
+It keeps attendance records, which hold only `memberId`, so chapter metrics stay accurate with no name attached. Reports already filed stay for officers' records. RSVPs and likes carry `memberId` (equal to the document ID) so they can be found across events and posts.
