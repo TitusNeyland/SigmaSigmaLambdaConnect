@@ -153,3 +153,106 @@ it('goes back to the Events list', async () => {
   await press(screen.getByTestId('event-back'));
   await waitFor(() => expect(screen).toHavePathname('/events'));
 });
+
+describe('RSVP', () => {
+  const control = (label: string) => screen.getByRole('tab', { name: label });
+  const selected = () =>
+    screen
+      .getAllByRole('tab')
+      .filter((t) => t.props.accessibilityState?.selected)
+      .map((t) => t.props.accessibilityLabel);
+
+  it('starts with no answer and asks', async () => {
+    await openEvent();
+    expect(selected()).toEqual([]);
+    expect(screen.getByTestId('rsvp-message')).toHaveTextContent(
+      'Let the chapter know if you’re coming.',
+    );
+  });
+
+  it('saves in one tap, confirms, and updates who’s going', async () => {
+    await openEvent();
+    await press(control('Going'));
+    expect(events.setRsvp).toHaveBeenCalledWith('gala', auth.sampleUser().uid, 'going');
+    expect(selected()).toEqual(['Going']);
+    expect(screen.getByTestId('rsvp-message')).toHaveTextContent(
+      /^You’re going\. See you there! You can change it until /,
+    );
+    await waitFor(() =>
+      expect(screen.getByText('Marcus Reed, Chris Baptiste and 11 others are going')).toBeTruthy(),
+    );
+  });
+
+  it('can change before the deadline', async () => {
+    events.setMockDetails({ gala: { ...GALA, myRsvp: 'going' } });
+    await openEvent();
+    expect(selected()).toEqual(['Going']);
+    await press(control('Can’t go'));
+    expect(events.setRsvp).toHaveBeenLastCalledWith('gala', auth.sampleUser().uid, 'not_going');
+    expect(selected()).toEqual(['Can’t go']);
+    expect(screen.getByTestId('rsvp-message')).toHaveTextContent(
+      /^Thanks for letting the chapter know\./,
+    );
+  });
+
+  it('is locked after the deadline', async () => {
+    events.setMockDetails({ gala: { ...GALA, myRsvp: 'maybe', rsvpDeadline: inDays(-1, 9) } });
+    await openEvent();
+    expect(control('Going').props.accessibilityState).toMatchObject({ disabled: true });
+    await press(control('Going'));
+    expect(events.setRsvp).not.toHaveBeenCalled();
+    expect(selected()).toEqual(['Maybe']);
+    expect(screen.getByTestId('rsvp-message')).toHaveTextContent(
+      /^RSVPs closed on .+\. You said maybe\.$/,
+    );
+  });
+
+  it('is locked when the event is cancelled', async () => {
+    events.setMockDetails({ gala: { ...GALA, cancelled: true } });
+    await openEvent();
+    expect(control('Maybe').props.accessibilityState).toMatchObject({ disabled: true });
+    expect(screen.getByTestId('rsvp-message')).toHaveTextContent(
+      'This event was cancelled, so RSVPs are closed.',
+    );
+  });
+
+  it('puts the old answer back and says so when saving fails', async () => {
+    events.setMockDetails({ gala: { ...GALA, myRsvp: 'maybe' } });
+    events.setRsvp.mockRejectedValueOnce(new events.RsvpSaveError('failed'));
+    await openEvent();
+    await press(control('Going'));
+    await waitFor(() => expect(selected()).toEqual(['Maybe']));
+    expect(screen.getByTestId('rsvp-error')).toHaveTextContent(
+      'Couldn’t save your RSVP. Check your connection and try again.',
+    );
+  });
+
+  it('explains when RSVPs closed while the screen was open', async () => {
+    events.setRsvp.mockRejectedValueOnce(new events.RsvpSaveError('closed'));
+    await openEvent();
+    await press(control('Going'));
+    await waitFor(() =>
+      expect(screen.getByTestId('rsvp-error')).toHaveTextContent(
+        'RSVPs just closed for this event.',
+      ),
+    );
+    expect(selected()).toEqual([]);
+  });
+
+  it('shows on the Events list when you go back', async () => {
+    events.resetEventsMock([events.sampleEvent({ id: 'gala', title: 'Sample scholarship gala' })]);
+    events.setMockDetails({ gala: GALA });
+    await renderRouter('src/app', { initialUrl: '/events' });
+    await waitFor(() => expect(screen.getByTestId('featured-event')).toBeTruthy());
+    await press(screen.getByTestId('featured-event'));
+    await waitFor(() => expect(screen.getByTestId('rsvp-control')).toBeTruthy());
+    events.setMockEvents([
+      events.sampleEvent({ id: 'gala', title: 'Sample scholarship gala', myRsvp: 'going' }),
+    ]);
+    await press(control('Going'));
+    await press(screen.getByTestId('event-back'));
+    await waitFor(() =>
+      expect(screen.getByTestId('featured-event').props.accessibilityLabel).toMatch(/Going$/),
+    );
+  });
+});

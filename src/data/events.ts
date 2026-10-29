@@ -8,6 +8,8 @@ import {
   limit,
   orderBy,
   query,
+  serverTimestamp,
+  setDoc,
   Timestamp,
   where,
 } from 'firebase/firestore';
@@ -172,4 +174,31 @@ export async function fetchEventDetail(eventId: string, uid: string): Promise<Ev
       preview: preview.filter((a): a is Attendee => a !== null),
     },
   };
+}
+
+export type RsvpError = 'closed' | 'failed';
+
+/** Why an RSVP couldn't be saved: closed means the deadline passed or the event was cancelled. */
+export class RsvpSaveError extends Error {
+  constructor(readonly reason: RsvpError) {
+    super(reason === 'closed' ? 'RSVPs are closed.' : 'Couldn’t save your RSVP.');
+  }
+}
+
+/**
+ * Saves the member's RSVP. This is intent only: attendance is a separate officer check-in
+ * (#49) and is what participation metrics count. The rules reject changes after the
+ * deadline or on a cancelled event.
+ */
+export async function setRsvp(eventId: string, uid: string, status: RsvpStatus): Promise<void> {
+  try {
+    await setDoc(doc(db, 'events', eventId, 'rsvps', uid), {
+      memberId: uid,
+      status,
+      updatedAt: serverTimestamp(),
+    });
+  } catch (error) {
+    const code = (error as { code?: string }).code;
+    throw new RsvpSaveError(code === 'permission-denied' ? 'closed' : 'failed');
+  }
 }

@@ -3,6 +3,7 @@
  * events with `resetEventsMock`.
  */
 import type { EventDetail, EventSummary } from '../events';
+import type { RsvpStatus } from '../types';
 
 let events: EventSummary[] = [];
 let failing = false;
@@ -76,6 +77,25 @@ export const fetchEventDetail = jest.fn(async (id: string, _uid: string) => {
   return details[id] ?? null;
 });
 
+export class RsvpSaveError extends Error {
+  constructor(readonly reason: 'closed' | 'failed') {
+    super(reason);
+  }
+}
+
+/** Saves into the mock detail so a reload shows the new RSVP and going count. */
+export const setRsvp = jest.fn(async (eventId: string, _uid: string, status: RsvpStatus) => {
+  const detail = details[eventId];
+  if (!detail) return;
+  const wasGoing = detail.myRsvp === 'going';
+  const isGoing = status === 'going';
+  details[eventId] = {
+    ...detail,
+    myRsvp: status,
+    going: { ...detail.going, count: detail.going.count + (isGoing ? 1 : 0) - (wasGoing ? 1 : 0) },
+  };
+});
+
 export function resetEventsMock(initial: EventSummary[] = []) {
   events = initial;
   failing = false;
@@ -83,4 +103,5 @@ export function resetEventsMock(initial: EventSummary[] = []) {
   fetchEventsBetween.mockClear();
   details = {};
   fetchEventDetail.mockClear();
+  setRsvp.mockClear();
 }

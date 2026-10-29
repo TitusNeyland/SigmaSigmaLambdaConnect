@@ -127,3 +127,50 @@ export function goingSummary(count: number, names: string[]): string {
   }
   return `${shown.join(', ')} and ${others} ${others === 1 ? 'other' : 'others'} are going`;
 }
+
+export const RSVP_SEGMENTS: readonly { value: RsvpStatus; label: string }[] = [
+  { value: 'going', label: 'Going' },
+  { value: 'maybe', label: 'Maybe' },
+  { value: 'not_going', label: 'Can’t go' },
+];
+
+/** RSVPs lock at the deadline and when an event is cancelled. The rules enforce the same. */
+export function rsvpLocked(
+  event: { cancelled: boolean; rsvpDeadline: Date | null },
+  now: Date,
+): boolean {
+  if (event.cancelled) return true;
+  return event.rsvpDeadline !== null && event.rsvpDeadline.getTime() <= now.getTime();
+}
+
+/** The line under the RSVP control. */
+export function rsvpMessage(
+  status: RsvpStatus | null,
+  event: { cancelled: boolean; rsvpDeadline: Date | null },
+  now: Date,
+): string {
+  if (event.cancelled) return 'This event was cancelled, so RSVPs are closed.';
+  const deadline = event.rsvpDeadline;
+  if (rsvpLocked(event, now)) {
+    const when = deadline ? ` on ${formatDay(deadline, now)}` : '';
+    const said: Record<RsvpStatus, string> = {
+      going: 'You said you’re going.',
+      maybe: 'You said maybe.',
+      not_going: 'You said you can’t go.',
+    };
+    return status ? `RSVPs closed${when}. ${said[status]}` : `RSVPs closed${when}.`;
+  }
+  const until = deadline
+    ? ` You can change it until ${formatDay(deadline, now)}, ${formatTime(deadline)}.`
+    : '';
+  switch (status) {
+    case 'going':
+      return `You’re going. See you there!${until}`;
+    case 'maybe':
+      return `Marked as maybe.${until}`;
+    case 'not_going':
+      return `Thanks for letting the chapter know.${until}`;
+    default:
+      return 'Let the chapter know if you’re coming.';
+  }
+}

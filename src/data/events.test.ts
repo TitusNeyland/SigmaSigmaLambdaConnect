@@ -3,6 +3,7 @@ import {
   getDoc,
   getDocs,
   orderBy,
+  setDoc,
   Timestamp,
   where,
 } from 'firebase/firestore';
@@ -11,6 +12,8 @@ import {
   fetchEventDetail,
   fetchEventsBetween,
   fetchUpcomingEvents,
+  RsvpSaveError,
+  setRsvp,
   toEventSummary,
 } from './events';
 
@@ -49,6 +52,8 @@ jest.mock('firebase/firestore', () => {
     getDocs: jest.fn(),
     getDoc: jest.fn(),
     count: jest.fn(() => 'COUNT'),
+    setDoc: jest.fn(),
+    serverTimestamp: jest.fn(() => 'NOW'),
     getAggregateFromServer: jest.fn(),
   };
 });
@@ -252,5 +257,24 @@ describe('fetchEventDetail', () => {
       myRsvp: null,
       going: { count: 0, preview: [] },
     });
+  });
+});
+
+describe('setRsvp', () => {
+  it('writes only the member’s own RSVP doc, never attendance', async () => {
+    jest.mocked(setDoc).mockResolvedValue(undefined);
+    await setRsvp('gala', 'me', 'maybe');
+    expect(setDoc).toHaveBeenCalledTimes(1);
+    expect(setDoc).toHaveBeenCalledWith(
+      { path: 'events/gala/rsvps/me' },
+      { memberId: 'me', status: 'maybe', updatedAt: 'NOW' },
+    );
+  });
+
+  it('reports a rules rejection as closed and anything else as failed', async () => {
+    jest.mocked(setDoc).mockRejectedValueOnce({ code: 'permission-denied' });
+    await expect(setRsvp('gala', 'me', 'going')).rejects.toMatchObject({ reason: 'closed' });
+    jest.mocked(setDoc).mockRejectedValueOnce({ code: 'unavailable' });
+    await expect(setRsvp('gala', 'me', 'going')).rejects.toBeInstanceOf(RsvpSaveError);
   });
 });

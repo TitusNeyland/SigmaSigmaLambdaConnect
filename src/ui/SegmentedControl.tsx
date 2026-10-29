@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { colors, palette, radius } from '@/theme';
+import { colors, MIN_TOUCH, palette, radius } from '@/theme';
 
 import { AppText } from './AppText';
 
@@ -8,9 +8,12 @@ export type Segment<T extends string> = { value: T; label: string };
 
 export type SegmentedControlProps<T extends string> = {
   segments: readonly Segment<T>[];
-  value: T;
+  /** Null when nothing is chosen yet, like an RSVP not given. */
+  value: T | null;
   onChange: (value: T) => void;
   accessibilityLabel: string;
+  /** Shows the current choice but can't be changed, like an RSVP after its deadline. */
+  disabled?: boolean;
   testID?: string;
 };
 
@@ -20,6 +23,7 @@ export function SegmentedControl<T extends string>({
   value,
   onChange,
   accessibilityLabel,
+  disabled = false,
   testID,
 }: SegmentedControlProps<T>) {
   return (
@@ -35,15 +39,21 @@ export function SegmentedControl<T extends string>({
           <Pressable
             key={segment.value}
             accessibilityRole="tab"
-            accessibilityState={{ selected }}
+            accessibilityState={{ selected, disabled }}
             accessibilityLabel={segment.label}
+            disabled={disabled}
             onPress={() => {
               if (!selected) onChange(segment.value);
             }}
+            hitSlop={{ top: 2, bottom: 2 }}
             style={[styles.segment, selected && styles.selected]}
             testID={testID ? `${testID}-${segment.value}` : undefined}
           >
-            <AppText variant="subhead" weight={selected ? '600' : '500'} color={colors.text}>
+            <AppText
+              variant="subhead"
+              weight={selected ? '600' : '500'}
+              color={disabled && !selected ? colors.textSecondary : colors.text}
+            >
               {segment.label}
             </AppText>
           </Pressable>
@@ -62,7 +72,8 @@ const styles = StyleSheet.create({
   },
   segment: {
     flex: 1,
-    minHeight: 32,
+    // With the track's padding and hitSlop, each segment is a 44 point touch target.
+    minHeight: MIN_TOUCH - 4,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 7,
