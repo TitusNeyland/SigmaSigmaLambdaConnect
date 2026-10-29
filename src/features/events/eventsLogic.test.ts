@@ -12,6 +12,8 @@ import {
   formatTimeRange,
   goingSummary,
   matchesSearch,
+  rsvpLocked,
+  rsvpMessage,
 } from './eventsLogic';
 
 const NOW = new Date(2026, 9, 29, 12, 0); // Thu, Oct 29 2026, noon
@@ -152,4 +154,40 @@ describe('detail formatting', () => {
   ])('goingSummary(%i) reads naturally', (count, names, expected) =>
     expect(goingSummary(count, names)).toBe(expected),
   );
+});
+
+describe('RSVP state', () => {
+  const open = { cancelled: false, rsvpDeadline: new Date(2026, 10, 6, 19) };
+  const closed = { cancelled: false, rsvpDeadline: new Date(2026, 9, 28, 19) };
+  const cancelled = { cancelled: true, rsvpDeadline: new Date(2026, 10, 6, 19) };
+
+  it('locks at the deadline and when cancelled', () => {
+    expect(rsvpLocked(open, NOW)).toBe(false);
+    expect(rsvpLocked(closed, NOW)).toBe(true);
+    expect(rsvpLocked({ ...open, rsvpDeadline: NOW }, NOW)).toBe(true);
+    expect(rsvpLocked(cancelled, NOW)).toBe(true);
+    expect(rsvpLocked({ cancelled: false, rsvpDeadline: null }, NOW)).toBe(false);
+  });
+
+  it('confirms each choice and says until when it can change', () => {
+    expect(rsvpMessage(null, open, NOW)).toBe('Let the chapter know if you’re coming.');
+    expect(rsvpMessage('going', open, NOW)).toBe(
+      'You’re going. See you there! You can change it until Fri, Nov 6, 7:00 PM.',
+    );
+    expect(rsvpMessage('maybe', open, NOW)).toMatch(/^Marked as maybe\. You can change it/);
+    expect(rsvpMessage('not_going', open, NOW)).toMatch(/^Thanks for letting the chapter know\./);
+    expect(rsvpMessage('going', { cancelled: false, rsvpDeadline: null }, NOW)).toBe(
+      'You’re going. See you there!',
+    );
+  });
+
+  it('explains a locked RSVP', () => {
+    expect(rsvpMessage('not_going', closed, NOW)).toBe(
+      'RSVPs closed on Wed, Oct 28. You said you can’t go.',
+    );
+    expect(rsvpMessage(null, closed, NOW)).toBe('RSVPs closed on Wed, Oct 28.');
+    expect(rsvpMessage('going', cancelled, NOW)).toBe(
+      'This event was cancelled, so RSVPs are closed.',
+    );
+  });
 });

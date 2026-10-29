@@ -4,10 +4,11 @@ import { useCallback, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { fetchEventDetail, type EventDetail } from '@/data/events';
+import { fetchEventDetail, RsvpSaveError, setRsvp, type EventDetail } from '@/data/events';
+import type { RsvpStatus } from '@/data/types';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { colors, palette, radius, spacing } from '@/theme';
-import { AppText, Avatar, Button, ListSection, NavHeader } from '@/ui';
+import { AppText, Avatar, Button, ListSection, NavHeader, SegmentedControl } from '@/ui';
 
 import {
   CATEGORY_LABELS,
@@ -16,6 +17,9 @@ import {
   formatFee,
   formatTimeRange,
   goingSummary,
+  RSVP_SEGMENTS,
+  rsvpLocked,
+  rsvpMessage,
 } from './eventsLogic';
 
 type State =
@@ -88,7 +92,29 @@ export function EventDetailScreen({ id }: { id: string }) {
     }, [id, uid, attempt]),
   );
 
+  // The member's choice while it saves, so the control answers at once.
+  const [choice, setChoice] = useState<{ id: string; status: RsvpStatus } | null>(null);
+  const [rsvpError, setRsvpError] = useState<string | null>(null);
+
   const current: State = value?.id === id ? value.state : { state: 'loading' };
+
+  async function rsvp(status: RsvpStatus, previous: RsvpStatus | null) {
+    setChoice({ id, status });
+    setRsvpError(null);
+    try {
+      await setRsvp(id, uid, status);
+    } catch (error) {
+      setChoice(previous ? { id, status: previous } : null);
+      setRsvpError(
+        error instanceof RsvpSaveError && error.reason === 'closed'
+          ? 'RSVPs just closed for this event.'
+          : 'Couldn’t save your RSVP. Check your connection and try again.',
+      );
+    } finally {
+      // Refresh the going count and, if RSVPs closed meanwhile, the locked state.
+      setAttempt((n) => n + 1);
+    }
+  }
 
   if (current.state !== 'ready' || !current.event) {
     return (
@@ -120,6 +146,8 @@ export function EventDetailScreen({ id }: { id: string }) {
 
   const { event, at } = current;
   const names = event.going.preview.map((a) => a.displayName);
+  const myRsvp = choice?.id === id ? choice.status : event.myRsvp;
+  const locked = rsvpLocked(event, new Date());
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -165,6 +193,31 @@ export function EventDetailScreen({ id }: { id: string }) {
             </AppText>
           </View>
         ) : null}
+
+        <View style={styles.rsvp} testID="rsvp">
+          <AppText variant="headline">Your RSVP</AppText>
+          <SegmentedControl
+            segments={RSVP_SEGMENTS}
+            value={myRsvp}
+            onChange={(status) => rsvp(status, myRsvp)}
+            accessibilityLabel="Your RSVP"
+            disabled={locked}
+            testID="rsvp-control"
+          />
+          <AppText
+            variant="subhead"
+            color={colors.textSecondary}
+            accessibilityLiveRegion="polite"
+            testID="rsvp-message"
+          >
+            {rsvpMessage(myRsvp, event, new Date())}
+          </AppText>
+          {rsvpError ? (
+            <AppText variant="footnote" color={colors.destructive} testID="rsvp-error">
+              {rsvpError}
+            </AppText>
+          ) : null}
+        </View>
 
         <ListSection>
           <DetailRow
@@ -226,6 +279,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   heading: { gap: spacing.xs },
+  rsvp: {
+    padding: spacing.lg,
+    gap: spacing.sm,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
+  },
   host: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.xs },
   cancelled: {
     padding: spacing.md,
