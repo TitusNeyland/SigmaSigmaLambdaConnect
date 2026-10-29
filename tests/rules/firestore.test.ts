@@ -347,6 +347,19 @@ describe('roles', () => {
     await assertFails(getDoc(doc(as(USERS.stranger), 'roles/olivia')));
   });
 
+  it('the directory reads (src/data/directory.ts) work for approved members only', async () => {
+    const directoryReads = (db: Firestore) =>
+      Promise.all([
+        getDocs(query(collection(db, 'members'), where('status', '==', 'approved'))),
+        getDocs(collection(db, 'roles')),
+      ]);
+    await assertSucceeds(directoryReads(as(USERS.alice)));
+    for (const uid of [USERS.pete, USERS.dee, USERS.stranger, USERS.rogue]) {
+      await assertFails(directoryReads(as(uid)));
+    }
+    await assertFails(directoryReads(anon()));
+  });
+
   it('an officer loses officer access as soon as the role is removed', async () => {
     const newEvent = { ...eventDoc(), createdAt: serverTimestamp() };
     await assertSucceeds(setDoc(doc(as(USERS.olivia), 'events/before'), newEvent));

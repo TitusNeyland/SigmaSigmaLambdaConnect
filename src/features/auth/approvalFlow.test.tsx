@@ -10,6 +10,7 @@ jest.mock('@/data/roles');
 jest.mock('@/data/profile');
 jest.mock('@/data/blocks');
 jest.mock('@/data/account');
+jest.mock('@/data/directory');
 const members = jest.requireMock<typeof import('@/data/__mocks__/members')>('@/data/members');
 
 async function press(target: Parameters<typeof fireEvent.press>[0]) {
