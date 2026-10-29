@@ -10,6 +10,8 @@ import {
   doc,
   getDoc,
   getDocs,
+  limit,
+  orderBy,
   query,
   serverTimestamp,
   setDoc,
@@ -428,6 +430,25 @@ describe('roles', () => {
 
 describe('events', () => {
   const newEvent = () => ({ ...eventDoc(), createdAt: serverTimestamp() });
+
+  it('the Events tab reads (src/data/events.ts) work for approved members only', async () => {
+    const eventsTab = (db: Firestore, uid: string) =>
+      Promise.all([
+        getDocs(
+          query(
+            collection(db, 'events'),
+            where('startsAt', '>=', new Date(Date.now() - 24 * 3600_000)),
+            orderBy('startsAt', 'asc'),
+            limit(100),
+          ),
+        ),
+        getDoc(doc(db, `events/open/rsvps/${uid}`)),
+      ]);
+    await assertSucceeds(eventsTab(as(USERS.alice), USERS.alice));
+    for (const uid of [USERS.pete, USERS.dee, USERS.stranger]) {
+      await assertFails(eventsTab(as(uid), uid));
+    }
+  });
 
   it('officers can create events', async () => {
     await assertSucceeds(setDoc(doc(as(USERS.olivia), 'events/new'), newEvent()));
