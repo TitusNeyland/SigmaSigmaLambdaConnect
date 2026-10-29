@@ -166,6 +166,48 @@ describe('members', () => {
     );
   });
 
+  it('accepts the exact save from Edit profile (src/data/profile.ts)', async () => {
+    await assertSucceeds(
+      updateDoc(doc(as(USERS.alice), 'members/alice'), {
+        displayName: 'Alice Sample',
+        initiationTerm: 'Spring 2020',
+        headline: 'Engineer',
+        bio: 'a'.repeat(150),
+        interests: Array.from({ length: 10 }, (_, i) => `Interest ${i}`),
+        phone: '(555) 123-4567',
+        showEmail: true,
+        showPhone: true,
+        updatedAt: serverTimestamp(),
+      }),
+    );
+  });
+
+  it('rejects more than 10 interests', async () => {
+    await assertFails(
+      updateDoc(doc(as(USERS.alice), 'members/alice'), {
+        interests: Array.from({ length: 11 }, (_, i) => `Interest ${i}`),
+      }),
+    );
+  });
+
+  it('members can set or clear their own photo, not someone else’s', async () => {
+    await assertSucceeds(
+      updateDoc(doc(as(USERS.alice), 'members/alice'), {
+        photoURL: 'https://cdn.test/a.jpg',
+        updatedAt: serverTimestamp(),
+      }),
+    );
+    await assertSucceeds(
+      updateDoc(doc(as(USERS.alice), 'members/alice'), {
+        photoURL: null,
+        updatedAt: serverTimestamp(),
+      }),
+    );
+    await assertFails(
+      updateDoc(doc(as(USERS.alice), 'members/bob'), { photoURL: 'https://cdn.test/x.jpg' }),
+    );
+  });
+
   it('members cannot approve themselves', async () => {
     await assertFails(updateDoc(doc(as(USERS.pete), 'members/pete'), { status: 'approved' }));
   });

@@ -9,17 +9,21 @@ import {
   onSnapshot,
   orderBy,
   query,
+  updateDoc,
   where,
 } from 'firebase/firestore';
-import { getDownloadURL, ref } from 'firebase/storage';
+import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 
 import {
   fetchActivity,
   fetchProfilePosts,
   fetchProfileStats,
   photoUrl,
+  removeAvatar,
   subscribeToProfile,
   toProfile,
+  updateOwnProfile,
+  uploadAvatar,
 } from './profile';
 
 jest.mock('./firebase', () => ({ db: { name: 'db' }, storage: { name: 'storage' } }));
@@ -37,12 +41,15 @@ jest.mock('firebase/firestore', () => ({
   getAggregateFromServer: jest.fn(),
   getDocs: jest.fn(),
   getDoc: jest.fn(),
+  updateDoc: jest.fn(),
+  serverTimestamp: jest.fn(() => 'SERVER_TIMESTAMP'),
 }));
 jest.mock('firebase/storage', () => ({
   ref: jest.fn((_s: unknown, path: string) => ({ storagePath: path })),
   getDownloadURL: jest.fn(
     async (r: { storagePath: string }) => `https://cdn.test/${r.storagePath}`,
   ),
+  uploadBytes: jest.fn(async () => ({})),
 }));
 
 beforeEach(() => jest.clearAllMocks());
@@ -68,6 +75,10 @@ describe('toProfile', () => {
       bio: 'Mentoring chair.',
       interests: ['Tech', 'Mentoring'],
       photoURL: 'https://cdn.test/a.jpg',
+      email: '',
+      phone: '',
+      showEmail: false,
+      showPhone: false,
     });
   });
 
@@ -81,6 +92,21 @@ describe('toProfile', () => {
       bio: '',
       interests: ['Tech'],
       photoURL: null,
+      email: '',
+      phone: '',
+      showEmail: false,
+      showPhone: false,
+    });
+  });
+
+  it('reads contact fields and treats anything but true as hidden', () => {
+    expect(
+      toProfile({ email: 'm@example.com', phone: '555-0100', showEmail: 'yes', showPhone: true }),
+    ).toMatchObject({
+      email: 'm@example.com',
+      phone: '555-0100',
+      showEmail: false,
+      showPhone: true,
     });
   });
 });
@@ -232,5 +258,66 @@ describe('photoUrl', () => {
     await expect(photoUrl('posts/u1/p1/a.jpg')).resolves.toBe('https://cdn.test/posts/u1/p1/a.jpg');
     expect(ref).toHaveBeenCalledWith({ name: 'storage' }, 'posts/u1/p1/a.jpg');
     expect(getDownloadURL).toHaveBeenCalled();
+  });
+});
+
+describe('updateOwnProfile', () => {
+  it('writes only the editable fields plus updatedAt', async () => {
+    const patch = {
+      displayName: 'Marcus Reed',
+      initiationTerm: 'Spring 2019',
+      headline: 'Engineer',
+      bio: 'Hi',
+      interests: ['Tech'],
+      phone: '',
+      showEmail: true,
+      showPhone: false,
+    };
+    await updateOwnProfile('u1', patch);
+    expect(updateDoc).toHaveBeenCalledWith(
+      { path: 'members/u1' },
+      { ...patch, updatedAt: 'SERVER_TIMESTAMP' },
+    );
+    const written = jest.mocked(updateDoc).mock.calls[0][1] as unknown as Record<string, unknown>;
+    expect(written).not.toHaveProperty('status');
+    expect(written).not.toHaveProperty('email');
+  });
+});
+
+describe('uploadAvatar', () => {
+  const blob = { size: 1000 };
+  beforeEach(() => {
+    global.fetch = jest.fn(async () => ({ blob: async () => blob })) as never;
+  });
+
+  it('uploads a JPEG under the member’s own avatar folder and saves the URL', async () => {
+    const url = await uploadAvatar('u1', 'file:///resized.jpg');
+    expect(global.fetch).toHaveBeenCalledWith('file:///resized.jpg');
+    const path = jest.mocked(ref).mock.calls[0][1] as string;
+    expect(path).toMatch(/^avatars\/u1\/\d+\.jpg$/);
+    expect(uploadBytes).toHaveBeenCalledWith({ storagePath: path }, blob, {
+      contentType: 'image/jpeg',
+    });
+    expect(url).toBe(`https://cdn.test/${path}`);
+    expect(updateDoc).toHaveBeenCalledWith(
+      { path: 'members/u1' },
+      { photoURL: url, updatedAt: 'SERVER_TIMESTAMP' },
+    );
+  });
+
+  it('does not touch the profile if the upload fails', async () => {
+    jest.mocked(uploadBytes).mockRejectedValueOnce(new Error('storage/unauthorized'));
+    await expect(uploadAvatar('u1', 'file:///resized.jpg')).rejects.toThrow('unauthorized');
+    expect(updateDoc).not.toHaveBeenCalled();
+  });
+});
+
+describe('removeAvatar', () => {
+  it('clears the photo URL', async () => {
+    await removeAvatar('u1');
+    expect(updateDoc).toHaveBeenCalledWith(
+      { path: 'members/u1' },
+      { photoURL: null, updatedAt: 'SERVER_TIMESTAMP' },
+    );
   });
 });

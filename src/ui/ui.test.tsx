@@ -147,6 +147,14 @@ describe('SwitchRow', () => {
     await render(<SwitchRow title="Show phone" value onValueChange={() => {}} />);
     expect(screen.getByLabelText('Show phone')).toBeTruthy();
   });
+
+  it('tells screen readers whether it is on and whether it is disabled', async () => {
+    await render(
+      <SwitchRow title="Show phone" value={false} disabled onValueChange={() => {}} testID="s" />,
+    );
+    expect(screen.getByTestId('s')).toBeDisabled();
+    expect(screen.getByTestId('s')).not.toBeChecked();
+  });
 });
 
 describe('SegmentedControl', () => {

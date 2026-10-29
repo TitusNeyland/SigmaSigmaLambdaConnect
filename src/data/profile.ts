@@ -7,6 +7,8 @@ import {
   getDoc,
   getDocs,
   limit,
+  serverTimestamp,
+  updateDoc,
   onSnapshot,
   orderBy,
   query,
@@ -14,7 +16,7 @@ import {
   where,
   type Timestamp,
 } from 'firebase/firestore';
-import { getDownloadURL, ref } from 'firebase/storage';
+import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 
 import { db, storage } from './firebase';
 
@@ -26,6 +28,10 @@ export type Profile = {
   bio: string;
   interests: string[];
   photoURL: string | null;
+  email: string;
+  phone: string;
+  showEmail: boolean;
+  showPhone: boolean;
 };
 
 export type ProfileStats = {
@@ -63,6 +69,10 @@ export function toProfile(data: Record<string, unknown>): Profile {
       ? data.interests.filter((i): i is string => typeof i === 'string' && i.trim() !== '')
       : [],
     photoURL: typeof data.photoURL === 'string' && data.photoURL ? data.photoURL : null,
+    email: text(data.email),
+    phone: text(data.phone),
+    showEmail: data.showEmail === true,
+    showPhone: data.showPhone === true,
   };
 }
 
@@ -165,4 +175,39 @@ export async function fetchActivity(uid: string, max = 50): Promise<ActivityItem
 /** Download URL for a photo in Storage. */
 export function photoUrl(path: string): Promise<string> {
   return getDownloadURL(ref(storage, path));
+}
+
+/** Fields a member edits on the Edit profile screen. Email comes from their account. */
+export type ProfilePatch = {
+  displayName: string;
+  initiationTerm: string;
+  headline: string;
+  bio: string;
+  interests: string[];
+  phone: string;
+  showEmail: boolean;
+  showPhone: boolean;
+};
+
+/** Saves the member's own profile. The rules only allow these fields, never status. */
+export async function updateOwnProfile(uid: string, patch: ProfilePatch): Promise<void> {
+  await updateDoc(doc(db, 'members', uid), { ...patch, updatedAt: serverTimestamp() });
+}
+
+/**
+ * Uploads a prepared (cropped, resized) JPEG as the member's photo and saves its URL on
+ * their profile. Returns the new URL.
+ */
+export async function uploadAvatar(uid: string, localUri: string): Promise<string> {
+  const blob = await (await fetch(localUri)).blob();
+  const fileRef = ref(storage, `avatars/${uid}/${Date.now()}.jpg`);
+  await uploadBytes(fileRef, blob, { contentType: 'image/jpeg' });
+  const url = await getDownloadURL(fileRef);
+  await updateDoc(doc(db, 'members', uid), { photoURL: url, updatedAt: serverTimestamp() });
+  return url;
+}
+
+/** Clears the member's photo. Their initials show instead. */
+export async function removeAvatar(uid: string): Promise<void> {
+  await updateDoc(doc(db, 'members', uid), { photoURL: null, updatedAt: serverTimestamp() });
 }

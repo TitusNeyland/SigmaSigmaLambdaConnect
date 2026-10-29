@@ -116,6 +116,7 @@ export function SwitchRow({
       </View>
       <Switch
         accessibilityLabel={title}
+        accessibilityState={{ disabled: !!disabled, checked: value }}
         value={value}
         onValueChange={onValueChange}
         disabled={disabled}
