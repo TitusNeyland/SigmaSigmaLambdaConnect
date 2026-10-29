@@ -12,6 +12,7 @@ export const SUPPORT_EMAIL = 'support@example.com';
  * Public pages for the policies the App Store requires. Placeholders until the chapter
  * publishes real ones (#54).
  */
+/** The in-app guidelines (src/features/guidelines) are the source; this public copy is for the App Store listing. */
 export const COMMUNITY_GUIDELINES_URL = 'https://example.com/guidelines';
 export const TERMS_URL = 'https://example.com/terms';
 export const PRIVACY_URL = 'https://example.com/privacy';

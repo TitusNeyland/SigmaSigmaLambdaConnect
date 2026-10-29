@@ -1,7 +1,7 @@
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
 import { Linking } from 'react-native';
 
-import { COMMUNITY_GUIDELINES_URL, PRIVACY_URL, SUPPORT_EMAIL, TERMS_URL } from '@/config/app';
+import { PRIVACY_URL, SUPPORT_EMAIL, TERMS_URL } from '@/config/app';
 
 jest.mock('@/data/auth');
 const auth = jest.requireMock<typeof import('@/data/__mocks__/auth')>('@/data/auth');
@@ -137,7 +137,6 @@ describe('Settings: privacy and help', () => {
   });
 
   it.each([
-    ['row-guidelines', COMMUNITY_GUIDELINES_URL],
     ['row-terms', TERMS_URL],
     ['row-privacy', PRIVACY_URL],
     ['row-support', `mailto:${SUPPORT_EMAIL}`],
@@ -145,6 +144,15 @@ describe('Settings: privacy and help', () => {
     await openSettings();
     await press(screen.getByTestId(testID));
     expect(openURL).toHaveBeenCalledWith(url);
+  });
+
+  it('opens the community guidelines in the app', async () => {
+    await openSettings();
+    await press(screen.getByTestId('row-guidelines'));
+    await waitFor(() => expect(screen).toHavePathname('/guidelines'));
+    expect(screen.getByText('1. Represent the chapter well')).toBeTruthy();
+    await press(screen.getByTestId('guidelines-done'));
+    await waitFor(() => expect(screen).toHavePathname('/profile/settings'));
   });
 
   it('shows the support contact, which the App Store requires', async () => {

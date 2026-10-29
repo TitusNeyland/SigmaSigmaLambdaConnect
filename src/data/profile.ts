@@ -40,6 +40,8 @@ export type Profile = {
   showEmail: boolean;
   showPhone: boolean;
   notificationPrefs: NotificationPrefs;
+  /** Accepted the community guidelines, which the rules require before posting (#38). */
+  guidelinesAccepted: boolean;
 };
 
 export type ProfileStats = {
@@ -83,6 +85,7 @@ export function toProfile(data: Record<string, unknown>): Profile {
     showEmail: text(data.email) !== '',
     showPhone: text(data.phone) !== '',
     notificationPrefs: toNotificationPrefs(data.notificationPrefs),
+    guidelinesAccepted: data.guidelinesAcceptedAt != null,
   };
 }
 
@@ -326,4 +329,12 @@ export async function uploadAvatar(uid: string, localUri: string): Promise<strin
 /** Clears the member's photo. Their initials show instead. */
 export async function removeAvatar(uid: string): Promise<void> {
   await updateDoc(doc(db, 'members', uid), { photoURL: null, updatedAt: serverTimestamp() });
+}
+
+/** Records that the member accepted the community guidelines, with the server's time. */
+export async function acceptGuidelines(uid: string): Promise<void> {
+  await updateDoc(doc(db, 'members', uid), {
+    guidelinesAcceptedAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
 }

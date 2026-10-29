@@ -51,6 +51,7 @@ function RootStack() {
       <Stack.Protected guard={status === 'approved'}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="new-post" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="guidelines" options={{ presentation: 'modal' }} />
       </Stack.Protected>
     </Stack>
   );

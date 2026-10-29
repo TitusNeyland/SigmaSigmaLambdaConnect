@@ -243,6 +243,28 @@ describe('members', () => {
     });
   });
 
+  it('members record guidelines acceptance with the real time only (#38)', async () => {
+    const ref = doc(as(USERS.bob), 'members/bob');
+    await assertFails(updateDoc(ref, { guidelinesAcceptedAt: new Date(0) }));
+    await assertSucceeds(
+      updateDoc(ref, { guidelinesAcceptedAt: serverTimestamp(), updatedAt: serverTimestamp() }),
+    );
+    await assertFails(updateDoc(ref, { guidelinesAcceptedAt: null }));
+  });
+
+  it('a member who has not accepted the guidelines cannot post until they do', async () => {
+    const post = () =>
+      setDoc(doc(as(USERS.bob), 'posts/firstPost'), {
+        ...postDoc(USERS.bob),
+        createdAt: serverTimestamp(),
+      });
+    await assertFails(post());
+    await assertSucceeds(
+      updateDoc(doc(as(USERS.bob), 'members/bob'), { guidelinesAcceptedAt: serverTimestamp() }),
+    );
+    await assertSucceeds(post());
+  });
+
   it('members can save notification preferences one switch at a time (Settings)', async () => {
     await assertSucceeds(
       updateDoc(doc(as(USERS.alice), 'members/alice'), {
