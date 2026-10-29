@@ -1,6 +1,6 @@
-import { collection, deleteDoc, doc, getDoc, onSnapshot } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDoc, onSnapshot, setDoc } from 'firebase/firestore';
 
-import { subscribeToBlocked, unblock } from './blocks';
+import { block, subscribeToBlocked, unblock } from './blocks';
 
 jest.mock('./firebase', () => ({ db: { name: 'db' } }));
 jest.mock('firebase/firestore', () => ({
@@ -11,6 +11,8 @@ jest.mock('firebase/firestore', () => ({
   onSnapshot: jest.fn(),
   getDoc: jest.fn(),
   deleteDoc: jest.fn(),
+  setDoc: jest.fn(),
+  serverTimestamp: jest.fn(() => 'NOW'),
 }));
 
 beforeEach(() => jest.clearAllMocks());
@@ -88,4 +90,14 @@ it('unblock deletes the block document', async () => {
   await unblock('me', 'b');
   expect(doc).toHaveBeenCalledWith({ name: 'db' }, 'blocks', 'me', 'blocked', 'b');
   expect(deleteDoc).toHaveBeenCalledWith({ path: 'blocks/me/blocked/b' });
+});
+
+it('block writes a block document with only a timestamp', async () => {
+  await block('me', 'b');
+  expect(setDoc).toHaveBeenCalledWith({ path: 'blocks/me/blocked/b' }, { createdAt: 'NOW' });
+});
+
+it('refuses to block yourself', async () => {
+  await expect(block('me', 'me')).rejects.toThrow();
+  expect(setDoc).not.toHaveBeenCalled();
 });

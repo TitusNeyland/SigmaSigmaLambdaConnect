@@ -19,7 +19,8 @@ The first admin is set by hand: create `roles/{uid}` with `{ role: 'admin' }` in
 
 ```mermaid
 flowchart TD
-members[members/uid] --> blocked[blocks/uid/blocked/otherUid]
+members[members/uid] --> contact[private/contact]
+members --> blocked[blocks/uid/blocked/otherUid]
 roles[roles/uid]
 events[events/eventId] --> rsvps[rsvps/uid]
 events --> attendance[attendance/uid]
@@ -35,6 +36,7 @@ kpis[kpis/periodId]
 | Path                                            | What it holds                               | Read                                                        | Write                                                                                                                        |
 | ----------------------------------------------- | ------------------------------------------- | ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | `members/{uid}`                                 | Profile and membership status               | Approved members; the person themself; officers             | The person creates it as `pending` and edits profile fields only. Officers change `status`. Admins can delete                |
+| `members/{uid}/private/contact`                 | Email, phone and the show switches          | The person themself only                                    | The person themself                                                                                                          |
 | `roles/{uid}`                                   | `officer` or `admin`, plus an officer title | The person themself; approved members (to show role badges) | Admins only                                                                                                                  |
 | `events/{eventId}`                              | Event details                               | Approved members                                            | Officers                                                                                                                     |
 | `events/{eventId}/rsvps/{uid}`                  | Going, maybe or not going                   | Approved members                                            | The member, for themself, until the RSVP deadline                                                                            |
@@ -42,7 +44,7 @@ kpis[kpis/periodId]
 | `posts/{postId}`                                | Photo post                                  | Approved members (removed posts: author and officers only)  | Approved members who accepted the guidelines create their own. Authors edit the caption or delete. Officers remove or delete |
 | `posts/{postId}/comments/{commentId}`           | Comment                                     | Approved members                                            | Approved members create their own if comments are on. Authors or officers delete                                             |
 | `posts/{postId}/likes/{uid}`                    | Like                                        | Approved members                                            | The member, for themself                                                                                                     |
-| `reports/{reportId}`                            | Report of a post or comment                 | Officers                                                    | Approved members create; officers resolve                                                                                    |
+| `reports/{reportId}`                            | Report of a post, comment or member         | Officers                                                    | Approved members create; officers resolve                                                                                    |
 | `blocks/{uid}/blocked/{otherUid}`               | Someone this member blocked                 | The member only                                             | The member only                                                                                                              |
 | `programs/{programId}`                          | Annual program                              | Approved members                                            | Officers                                                                                                                     |
 | `programs/{programId}/milestones/{milestoneId}` | Program milestone                           | Approved members                                            | Officers                                                                                                                     |
@@ -65,6 +67,8 @@ Anything not listed is denied.
 ## Key fields and limits
 
 - Member `status`: `pending`, `approved` or `declined`
+- Contact details (#18): the real email and phone live in `members/{uid}/private/contact`, which only that member can read. `members/{uid}` holds `email` and `phone` only while the matching show switch is on, so a hidden value never reaches other members
+- Report `targetType`: `post`, `comment` or `member`. Member reports (from a profile) have no `postId`; `targetAuthorId` is the person reported
 - RSVP `status`: `going`, `maybe` or `not_going`
 - Report `reason`: `spam`, `harassment`, `inappropriate` or `other`. Report `status`: `open`, `kept`, `removed` or `restricted`
 - Program and goal `status`: `not_started`, `in_progress`, `at_risk` or `completed`
@@ -76,7 +80,7 @@ Anything not listed is denied.
 
 Members delete their account from Settings. The app confirms their password, then calls the `deleteAccount` Cloud Function, which only accepts a sign-in from the last five minutes. It removes:
 
-- `members/{uid}`, `roles/{uid}` and `blocks/{uid}/blocked/*`
+- `members/{uid}` (with its private contact doc), `roles/{uid}` and `blocks/{uid}/blocked/*`
 - Their posts, including every comment and like on them
 - Their comments and likes on other posts (those posts' counts are lowered to match)
 - Their RSVPs

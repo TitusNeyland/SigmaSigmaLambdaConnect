@@ -7,7 +7,7 @@ import {
   signOut as firebaseSignOut,
   updateProfile,
 } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, writeBatch } from 'firebase/firestore';
 
 import { auth as firebaseAuth } from './firebase';
 import {
@@ -36,8 +36,10 @@ jest.mock('firebase/auth', () => ({
 jest.mock('firebase/firestore', () => ({
   doc: jest.fn((_db: unknown, ...segments: string[]) => ({ path: segments.join('/') })),
   serverTimestamp: jest.fn(() => 'SERVER_TIMESTAMP'),
-  setDoc: jest.fn(),
+  writeBatch: jest.fn(),
 }));
+
+const batch = { set: jest.fn(), commit: jest.fn() };
 
 const user = { uid: 'new-uid' };
 
@@ -45,7 +47,8 @@ beforeEach(() => {
   jest.clearAllMocks();
   jest.mocked(createUserWithEmailAndPassword).mockResolvedValue({ user } as never);
   jest.mocked(updateProfile).mockResolvedValue(undefined);
-  jest.mocked(setDoc).mockResolvedValue(undefined);
+  batch.commit.mockResolvedValue(undefined);
+  jest.mocked(writeBatch).mockReturnValue(batch as never);
   jest.mocked(sendEmailVerification).mockResolvedValue(undefined);
 });
 
@@ -74,14 +77,28 @@ describe('signUp', () => {
   it('writes a pending member profile with exactly the fields the rules allow', async () => {
     await signUp(input);
     expect(doc).toHaveBeenCalledWith({ name: 'db' }, 'members', 'new-uid');
-    expect(setDoc).toHaveBeenCalledWith(
+    expect(batch.set).toHaveBeenCalledWith(
       { path: 'members/new-uid' },
       {
         displayName: 'Marcus Reed',
         initiationTerm: 'Spring 2019',
-        email: 'marcus@example.com',
         status: 'pending',
         createdAt: 'SERVER_TIMESTAMP',
+      },
+    );
+    expect(batch.commit).toHaveBeenCalled();
+  });
+
+  it('keeps the email in the private contact doc, hidden by default', async () => {
+    await signUp(input);
+    expect(batch.set).toHaveBeenCalledWith(
+      { path: 'members/new-uid/private/contact' },
+      {
+        email: 'marcus@example.com',
+        phone: '',
+        showEmail: false,
+        showPhone: false,
+        updatedAt: 'SERVER_TIMESTAMP',
       },
     );
   });
@@ -101,7 +118,7 @@ describe('signUp', () => {
       .mocked(createUserWithEmailAndPassword)
       .mockRejectedValue({ code: 'auth/email-already-in-use' });
     await expect(signUp(input)).rejects.toEqual({ code: 'auth/email-already-in-use' });
-    expect(setDoc).not.toHaveBeenCalled();
+    expect(batch.commit).not.toHaveBeenCalled();
   });
 });
 

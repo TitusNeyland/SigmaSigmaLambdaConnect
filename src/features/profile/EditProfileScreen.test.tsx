@@ -11,6 +11,7 @@ jest.mock('@/data/profile');
 jest.mock('@/data/blocks');
 jest.mock('@/data/account');
 jest.mock('@/data/directory');
+jest.mock('@/data/reports');
 const profile = jest.requireMock<typeof import('@/data/__mocks__/profile')>('@/data/profile');
 jest.mock('./pickAvatar', () => ({ pickAvatar: jest.fn(), AVATAR_SIZE: 512 }));
 const { pickAvatar } = jest.requireMock<typeof import('./pickAvatar')>('./pickAvatar');
@@ -77,16 +78,20 @@ describe('Edit profile', () => {
     await type('edit-headline', '  Staff engineer ');
     await press(screen.getByTestId('edit-done'));
     await waitFor(() => expect(screen).toHavePathname('/profile'));
-    expect(profile.updateOwnProfile).toHaveBeenCalledWith(uid(), {
-      displayName: 'Marcus Reed',
-      initiationTerm: 'Spring 2019',
-      headline: 'Staff engineer',
-      bio: 'Mentoring chair. Happy to review a resume.',
-      interests: ['Tech', 'Career mentoring'],
-      phone: '',
-      showEmail: true,
-      showPhone: false,
-    });
+    expect(profile.updateOwnProfile).toHaveBeenCalledWith(
+      uid(),
+      {
+        displayName: 'Marcus Reed',
+        initiationTerm: 'Spring 2019',
+        headline: 'Staff engineer',
+        bio: 'Mentoring chair. Happy to review a resume.',
+        interests: ['Tech', 'Career mentoring'],
+        phone: '',
+        showEmail: true,
+        showPhone: false,
+      },
+      { email: 'marcus@example.com' },
+    );
   });
 
   it('shows field errors and does not save an empty name', async () => {

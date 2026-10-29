@@ -1,6 +1,6 @@
-import { deleteDoc, doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { deleteDoc, doc, getDoc, onSnapshot, setDoc } from 'firebase/firestore';
 
-import { parseRoleDoc, removeRole, setRole, subscribeToRole } from './roles';
+import { fetchRole, parseRoleDoc, removeRole, setRole, subscribeToRole } from './roles';
 
 jest.mock('./firebase', () => ({ db: { name: 'db' } }));
 jest.mock('firebase/firestore', () => ({
@@ -8,6 +8,7 @@ jest.mock('firebase/firestore', () => ({
   onSnapshot: jest.fn(),
   setDoc: jest.fn(),
   deleteDoc: jest.fn(),
+  getDoc: jest.fn(),
 }));
 
 type SnapHandler = (snap: { exists(): boolean; data(): Record<string, unknown> }) => void;
@@ -117,5 +118,25 @@ describe('removeRole', () => {
   it('deletes the roles document', async () => {
     await removeRole('u2');
     expect(deleteDoc).toHaveBeenCalledWith({ path: 'roles/u2' });
+  });
+});
+
+describe('fetchRole', () => {
+  it('reads someone’s role once', async () => {
+    jest.mocked(getDoc).mockResolvedValue({
+      exists: () => true,
+      data: () => ({ role: 'officer', title: 'Dean' }),
+    } as never);
+    expect(await fetchRole('u2')).toEqual({ role: 'officer', title: 'Dean' });
+    expect(getDoc).toHaveBeenCalledWith({ path: 'roles/u2' });
+  });
+
+  it('is null for a regular member or a malformed doc', async () => {
+    jest.mocked(getDoc).mockResolvedValueOnce({ exists: () => false, data: () => ({}) } as never);
+    expect(await fetchRole('u2')).toBeNull();
+    jest
+      .mocked(getDoc)
+      .mockResolvedValueOnce({ exists: () => true, data: () => ({ role: 'king' }) } as never);
+    expect(await fetchRole('u2')).toBeNull();
   });
 });

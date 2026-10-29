@@ -28,7 +28,7 @@ function SettingsIcon() {
 export function MyProfileScreen() {
   const auth = useAuth();
   const uid = auth.status === 'signedIn' ? auth.user.uid : '';
-  const profile = useProfile(uid);
+  const profile = useProfile(uid, { own: true });
   // Members can always see their own attendance.
   const extras = useProfileExtras(uid, true);
   const role = useRole();

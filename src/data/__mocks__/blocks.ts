@@ -39,10 +39,15 @@ export const unblock = jest.fn(async (_uid: string, otherUid: string) => {
   setMockBlocked(current.filter((a) => a.uid !== otherUid));
 });
 
+export const block = jest.fn(async (_uid: string, otherUid: string) => {
+  setMockBlocked([{ uid: otherUid, displayName: otherUid, photoURL: null }, ...current]);
+});
+
 export function resetBlocksMock(initial: BlockedAccount[] = []) {
   current = initial;
   failing = false;
   listeners.clear();
   subscribeToBlocked.mockClear();
   unblock.mockClear();
+  block.mockClear();
 }

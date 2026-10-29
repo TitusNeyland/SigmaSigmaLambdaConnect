@@ -1,4 +1,4 @@
-import { deleteDoc, doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { deleteDoc, doc, getDoc, onSnapshot, setDoc } from 'firebase/firestore';
 
 import { db } from './firebase';
 import type { Role, RoleDoc } from './types';
@@ -27,6 +27,12 @@ export function subscribeToRole(
     (snap) => onChange(snap.exists() ? parseRoleDoc(snap.data()) : null),
     onError,
   );
+}
+
+/** Someone's role, read once, for the badge on their profile. Null means a regular member. */
+export async function fetchRole(uid: string): Promise<RoleDoc | null> {
+  const snap = await getDoc(doc(db, 'roles', uid));
+  return snap.exists() ? parseRoleDoc(snap.data()) : null;
 }
 
 /**

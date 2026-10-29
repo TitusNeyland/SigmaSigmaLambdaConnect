@@ -42,10 +42,8 @@ export function buildSeedDocs(now: Date = new Date()): SeedDoc[] {
         headline: member.headline,
         bio: member.bio,
         interests: member.interests,
+        // Shown email only. Sample phones stay hidden, in the private doc below.
         email: member.email,
-        phone: member.phone,
-        showEmail: true,
-        showPhone: false,
         photoURL: null,
         status: member.status,
         guidelinesAcceptedAt: member.guidelinesAccepted ? created : null,
@@ -53,6 +51,16 @@ export function buildSeedDocs(now: Date = new Date()): SeedDoc[] {
         ...(member.status === 'approved'
           ? { reviewedBy: 'sample-andre', reviewedAt: at(now, -29 * DAY) }
           : {}),
+      },
+    });
+    docs.push({
+      path: `members/${member.uid}/private/contact`,
+      data: {
+        email: member.email,
+        phone: member.phone,
+        showEmail: true,
+        showPhone: false,
+        updatedAt: created,
       },
     });
     if (member.role) {

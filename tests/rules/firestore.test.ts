@@ -15,6 +15,8 @@ import {
   setDoc,
   updateDoc,
   where,
+  deleteField,
+  writeBatch,
   type Firestore,
 } from 'firebase/firestore';
 import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest';
@@ -102,16 +104,23 @@ describe('members', () => {
     await assertSucceeds(setDoc(doc(as(USERS.stranger), 'members/stranger'), newProfile()));
   });
 
-  it('accepts the exact profile the app writes on sign up (src/data/auth.ts)', async () => {
-    await assertSucceeds(
-      setDoc(doc(as(USERS.stranger), 'members/stranger'), {
-        displayName: 'Marcus Reed',
-        initiationTerm: 'Spring 2019',
-        email: 'marcus@example.com',
-        status: 'pending',
-        createdAt: serverTimestamp(),
-      }),
-    );
+  it('accepts the exact writes the app makes on sign up (src/data/auth.ts)', async () => {
+    const db = as(USERS.stranger);
+    const batch = writeBatch(db);
+    batch.set(doc(db, 'members/stranger'), {
+      displayName: 'Marcus Reed',
+      initiationTerm: 'Spring 2019',
+      status: 'pending',
+      createdAt: serverTimestamp(),
+    });
+    batch.set(doc(db, 'members/stranger/private/contact'), {
+      email: 'marcus@example.com',
+      phone: '',
+      showEmail: false,
+      showPhone: false,
+      updatedAt: serverTimestamp(),
+    });
+    await assertSucceeds(batch.commit());
   });
 
   it('accepts the profile written by Finish your profile, with no email (src/data/members.ts)', async () => {
@@ -162,24 +171,73 @@ describe('members', () => {
 
   it('members can edit their own profile fields', async () => {
     await assertSucceeds(
-      updateDoc(doc(as(USERS.alice), 'members/alice'), { bio: 'Mentoring chair', showPhone: true }),
+      updateDoc(doc(as(USERS.alice), 'members/alice'), {
+        bio: 'Mentoring chair',
+        phone: '555-0100',
+      }),
     );
   });
 
   it('accepts the exact save from Edit profile (src/data/profile.ts)', async () => {
-    await assertSucceeds(
-      updateDoc(doc(as(USERS.alice), 'members/alice'), {
-        displayName: 'Alice Sample',
-        initiationTerm: 'Spring 2020',
-        headline: 'Engineer',
-        bio: 'a'.repeat(150),
-        interests: Array.from({ length: 10 }, (_, i) => `Interest ${i}`),
-        phone: '(555) 123-4567',
-        showEmail: true,
-        showPhone: true,
-        updatedAt: serverTimestamp(),
-      }),
-    );
+    const db = as(USERS.alice);
+    const batch = writeBatch(db);
+    batch.set(doc(db, 'members/alice/private/contact'), {
+      email: 'alice@example.com',
+      phone: '(555) 123-4567',
+      showEmail: true,
+      showPhone: false,
+      updatedAt: serverTimestamp(),
+    });
+    batch.update(doc(db, 'members/alice'), {
+      displayName: 'Alice Sample',
+      initiationTerm: 'Spring 2020',
+      headline: 'Engineer',
+      bio: 'a'.repeat(150),
+      interests: Array.from({ length: 10 }, (_, i) => `Interest ${i}`),
+      email: 'alice@example.com',
+      phone: deleteField(),
+      updatedAt: serverTimestamp(),
+    });
+    await assertSucceeds(batch.commit());
+  });
+
+  describe('private contact settings', () => {
+    const contact = (extra: object = {}) => ({
+      email: 'alice@example.com',
+      phone: '555-0100',
+      showEmail: false,
+      showPhone: false,
+      updatedAt: serverTimestamp(),
+      ...extra,
+    });
+    const path = 'members/alice/private/contact';
+
+    it('only the member can read them, not other brothers or officers', async () => {
+      await assertSucceeds(setDoc(doc(as(USERS.alice), path), contact()));
+      await assertSucceeds(getDoc(doc(as(USERS.alice), path)));
+      for (const uid of [USERS.bob, USERS.olivia, USERS.adam, USERS.stranger]) {
+        await assertFails(getDoc(doc(as(uid), path)));
+      }
+      await assertFails(getDocs(collection(as(USERS.olivia), 'members/alice/private')));
+    });
+
+    it('only the member can write them', async () => {
+      await assertFails(setDoc(doc(as(USERS.adam), path), contact()));
+      await assertSucceeds(setDoc(doc(as(USERS.pete), 'members/pete/private/contact'), contact()));
+    });
+
+    it('rejects other fields, other doc names and bad values', async () => {
+      const db = as(USERS.alice);
+      await assertFails(setDoc(doc(db, path), contact({ status: 'approved' })));
+      await assertFails(setDoc(doc(db, 'members/alice/private/other'), contact()));
+      await assertFails(setDoc(doc(db, path), contact({ showPhone: 'yes' })));
+      await assertFails(setDoc(doc(db, path), contact({ phone: '5'.repeat(31) })));
+      await assertFails(setDoc(doc(db, path), contact({ updatedAt: new Date(0) })));
+    });
+
+    it('members can no longer store show switches on the public doc', async () => {
+      await assertFails(updateDoc(doc(as(USERS.alice), 'members/alice'), { showPhone: true }));
+    });
   });
 
   it('members can save notification preferences one switch at a time (Settings)', async () => {
@@ -776,6 +834,33 @@ describe('reports', () => {
     );
     await assertFails(
       setDoc(doc(as(USERS.bob), 'reports/b'), newReport(USERS.bob, { status: 'kept' })),
+    );
+  });
+
+  it('accepts the exact member report from a profile (src/data/reports.ts)', async () => {
+    await assertSucceeds(
+      setDoc(doc(as(USERS.bob), 'reports/member'), {
+        reporterId: USERS.bob,
+        targetType: 'member',
+        targetAuthorId: USERS.alice,
+        reason: 'spam',
+        status: 'open',
+        createdAt: serverTimestamp(),
+      }),
+    );
+  });
+
+  it('post and comment reports still need a post; nobody can report themselves', async () => {
+    const { postId: _postId, ...noPost } = newReport(USERS.bob);
+    await assertFails(setDoc(doc(as(USERS.bob), 'reports/a'), noPost));
+    await assertFails(
+      setDoc(
+        doc(as(USERS.bob), 'reports/b'),
+        newReport(USERS.bob, { targetType: 'member', targetAuthorId: USERS.bob }),
+      ),
+    );
+    await assertFails(
+      setDoc(doc(as(USERS.bob), 'reports/c'), newReport(USERS.bob, { targetType: 'event' })),
     );
   });
 

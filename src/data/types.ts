@@ -149,13 +149,23 @@ export type Like = {
 };
 
 export type ReportReason = 'spam' | 'harassment' | 'inappropriate' | 'other';
+
+/** Report reasons in the order the report sheet lists them. */
+export const REPORT_REASONS: readonly { value: ReportReason; label: string }[] = [
+  { value: 'spam', label: 'Spam' },
+  { value: 'harassment', label: 'Harassment or bullying' },
+  { value: 'inappropriate', label: 'Inappropriate' },
+  { value: 'other', label: 'Something else' },
+];
+
 export type ReportStatus = 'open' | 'kept' | 'removed' | 'restricted';
 
 /** reports/{reportId} */
 export type Report = {
   reporterId: string;
-  targetType: 'post' | 'comment';
-  postId: string;
+  /** A member report (#18) points at targetAuthorId and has no postId. */
+  targetType: 'post' | 'comment' | 'member';
+  postId?: string;
   commentId?: string | null;
   targetAuthorId: string;
   reason: ReportReason;

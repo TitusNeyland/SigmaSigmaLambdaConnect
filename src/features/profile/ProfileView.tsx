@@ -250,10 +250,14 @@ export function ProfileView({
           ) : activity.data && activity.data.length > 0 ? (
             activity.data.map((item) => <ActivityRow key={item.eventId} item={item} />)
           ) : (
-            <Message text="Events you’re checked in at will show up here." />
+            <Message
+              text={own ? 'Events you’re checked in at will show up here.' : 'No check-ins yet.'}
+            />
           )}
           <AppText variant="caption" color={colors.textSecondary} style={styles.privacy}>
-            Only you and chapter officers can see your attendance history.
+            {own
+              ? 'Only you and chapter officers can see your attendance history.'
+              : 'Only this brother and chapter officers can see his attendance history.'}
           </AppText>
         </View>
       )}

@@ -39,6 +39,15 @@ export const subscribeToRole = jest.fn(
 
 const defaultSubscribe = subscribeToRole.getMockImplementation()!;
 
+let others: Record<string, RoleDoc> = {};
+
+/** Roles of other members, as their profiles see them. */
+export function setMockRolesFor(roles: Record<string, RoleDoc>) {
+  others = roles;
+}
+
+export const fetchRole = jest.fn(async (uid: string) => others[uid] ?? null);
+
 export const setRole = jest.fn(async () => {});
 export const removeRole = jest.fn(async () => {});
 
@@ -48,6 +57,8 @@ export function resetRolesMock(initial: RoleDoc | null = null) {
   listeners.clear();
   subscribeToRole.mockClear();
   subscribeToRole.mockImplementation(defaultSubscribe);
+  others = {};
+  fetchRole.mockClear();
   setRole.mockReset().mockResolvedValue(undefined);
   removeRole.mockReset().mockResolvedValue(undefined);
 }

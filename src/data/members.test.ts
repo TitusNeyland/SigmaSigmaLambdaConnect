@@ -1,4 +1,4 @@
-import { doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { doc, onSnapshot, writeBatch } from 'firebase/firestore';
 
 import { createPendingProfile, subscribeToOwnMember } from './members';
 
@@ -7,8 +7,10 @@ jest.mock('firebase/firestore', () => ({
   doc: jest.fn((_db: unknown, ...segments: string[]) => ({ path: segments.join('/') })),
   onSnapshot: jest.fn(),
   serverTimestamp: jest.fn(() => 'SERVER_TIMESTAMP'),
-  setDoc: jest.fn(),
+  writeBatch: jest.fn(),
 }));
+
+const batch = { set: jest.fn(), commit: jest.fn(async () => {}) };
 
 type SnapHandler = (snap: { exists(): boolean; data(): Record<string, unknown> }) => void;
 
@@ -26,7 +28,10 @@ function captureSnapshot() {
   return { ref, next, error, onChange, onError, stop, unsubscribe };
 }
 
-beforeEach(() => jest.clearAllMocks());
+beforeEach(() => {
+  jest.clearAllMocks();
+  jest.mocked(writeBatch).mockReturnValue(batch as never);
+});
 
 describe('subscribeToOwnMember', () => {
   it('listens to the member’s own profile document', () => {
@@ -81,20 +86,31 @@ describe('createPendingProfile', () => {
       initiationTerm: ' Spring 2019 ',
       email: 'marcus@example.com',
     });
-    expect(setDoc).toHaveBeenCalledWith(
+    expect(batch.set).toHaveBeenCalledWith(
       { path: 'members/u1' },
       {
         displayName: 'Marcus Reed',
         initiationTerm: 'Spring 2019',
-        email: 'marcus@example.com',
         status: 'pending',
         createdAt: 'SERVER_TIMESTAMP',
       },
     );
+    expect(batch.commit).toHaveBeenCalled();
   });
 
-  it('leaves out the email when the account has none', async () => {
+  it('keeps the email private and hidden', async () => {
+    await createPendingProfile('u1', { displayName: 'A', initiationTerm: 'B', email: 'a@b.co' });
+    expect(batch.set).toHaveBeenCalledWith(
+      { path: 'members/u1/private/contact' },
+      expect.objectContaining({ email: 'a@b.co', showEmail: false, showPhone: false }),
+    );
+  });
+
+  it('stores an empty email when the account has none', async () => {
     await createPendingProfile('u1', { displayName: 'A', initiationTerm: 'B', email: null });
-    expect(jest.mocked(setDoc).mock.calls[0][1]).not.toHaveProperty('email');
+    expect(batch.set).toHaveBeenCalledWith(
+      { path: 'members/u1/private/contact' },
+      expect.objectContaining({ email: '' }),
+    );
   });
 });
