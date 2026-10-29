@@ -15,7 +15,9 @@ Client project. Budget is lean, so keep scope tight: build what the issue asks f
 
 ## Stack
 
-- Expo + React Native + TypeScript, Expo Router for navigation
+- Expo SDK 58 + React Native + TypeScript (strict), Expo Router for navigation. Expo changes a lot between SDKs: follow `AGENTS.md` and check the versioned Expo docs instead of relying on memory.
+- Add packages with `npx expo install <package>` so versions match the SDK.
+- `npm run check` runs lint, typecheck and the Prettier check. Run it before every PR.
 - Firebase: Auth (email and password), Firestore, Storage, Cloud Messaging, Cloud Functions (TypeScript)
 - Two Firebase projects: dev and prod. No secrets in the repo.
 - EAS for builds, GitHub Actions for lint, typecheck and tests
@@ -35,6 +37,7 @@ Client project. Budget is lean, so keep scope tight: build what the issue asks f
 ## App Store and Play must-haves
 
 Anything labeled `app-store` blocks launch. Apple requires all of these for an app with user posts:
+
 - Report a post or comment (#36)
 - Block a user (#37)
 - Accept community guidelines before posting (#38)
@@ -50,19 +53,19 @@ Apple Human Interface Guidelines feel: clean, white, lots of space, system font,
 
 Tokens:
 
-| Token | Value | Use |
-|---|---|---|
-| ink | #111111 | Text, primary buttons, selected states |
-| gold | #C5A253 | Fills only: progress rings and bars, dots, badges, icons |
-| goldText | #8A6A1F | Any gold-colored text or links |
-| goldSoft | #F5EDD9 | Soft highlight backgrounds |
-| bg | #FFFFFF | Screen background |
-| grouped | #F2F2F7 | Grouped list and settings backgrounds |
-| secondary | #6E6E73 | Secondary text |
-| separator | #E5E5EA | Dividers |
-| success | #1F6B42 | On track |
-| warning | #9A4210 | Behind, at risk |
-| destructive | #B42318 | Delete, remove, block |
+| Token       | Value   | Use                                                      |
+| ----------- | ------- | -------------------------------------------------------- |
+| ink         | #111111 | Text, primary buttons, selected states                   |
+| gold        | #C5A253 | Fills only: progress rings and bars, dots, badges, icons |
+| goldText    | #8A6A1F | Any gold-colored text or links                           |
+| goldSoft    | #F5EDD9 | Soft highlight backgrounds                               |
+| bg          | #FFFFFF | Screen background                                        |
+| grouped     | #F2F2F7 | Grouped list and settings backgrounds                    |
+| secondary   | #6E6E73 | Secondary text                                           |
+| separator   | #E5E5EA | Dividers                                                 |
+| success     | #1F6B42 | On track                                                 |
+| warning     | #9A4210 | Behind, at risk                                          |
+| destructive | #B42318 | Delete, remove, block                                    |
 
 - Never put #C5A253 text on a light background. It fails contrast.
 - Meet WCAG AA contrast. Touch targets are at least 44 points.
@@ -80,6 +83,6 @@ Tokens:
 ## Conventions
 
 - TypeScript strict mode. No `any` without a comment explaining why.
-- Feature folders: `app/` for routes, `src/features/<area>/` for screens, hooks and logic, `src/ui/` for shared components, `src/theme/` for tokens.
+- Feature folders: `src/app/` for routes only (every file there is a screen), `src/features/<area>/` for screens, hooks and logic, `src/ui/` for shared components, `src/theme/` for tokens.
 - Firestore access goes through typed helpers in `src/data/`, not inline in screens.
 - Keep user-facing copy short and plain.
