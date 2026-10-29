@@ -1,4 +1,12 @@
-import { collection, deleteDoc, doc, getDoc, onSnapshot } from 'firebase/firestore';
+import {
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  onSnapshot,
+  serverTimestamp,
+  setDoc,
+} from 'firebase/firestore';
 
 import { db } from './firebase';
 
@@ -50,4 +58,10 @@ export function subscribeToBlocked(
 /** Unblocks someone. Their posts and comments show again. */
 export async function unblock(uid: string, otherUid: string): Promise<void> {
   await deleteDoc(doc(db, 'blocks', uid, 'blocked', otherUid));
+}
+
+/** Blocks someone. They aren't told. Hiding their posts and comments is #37. */
+export async function block(uid: string, otherUid: string): Promise<void> {
+  if (uid === otherUid) throw new Error('You can’t block yourself.');
+  await setDoc(doc(db, 'blocks', uid, 'blocked', otherUid), { createdAt: serverTimestamp() });
 }

@@ -106,7 +106,7 @@ function EditProfileFormView({ uid, profile }: { uid: string; profile: Profile }
     if (hasErrors(next)) return;
     setSaving(true);
     try {
-      await updateOwnProfile(uid, normalizeForm(form));
+      await updateOwnProfile(uid, normalizeForm(form), { email: profile.email });
       goBack();
     } catch {
       setSaveError('Couldn’t save your profile. Check your connection and try again.');
@@ -376,7 +376,7 @@ function EditProfileFormView({ uid, profile }: { uid: string; profile: Profile }
 export function EditProfileScreen() {
   const auth = useAuth();
   const uid = auth.status === 'signedIn' ? auth.user.uid : '';
-  const profile = useProfile(uid);
+  const profile = useProfile(uid, { own: true });
 
   if (profile.state !== 'ready' || !profile.data) {
     return (

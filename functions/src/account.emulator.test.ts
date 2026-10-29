@@ -50,6 +50,7 @@ async function seed() {
         createdAt: now(),
       },
     ],
+    ['members/gone/private/contact', { email: 'gone@example.com', phone: '555-0101' }],
     ['roles/gone', { role: 'officer', title: 'Secretary' }],
     ['blocks/gone/blocked/stays', { createdAt: now() }],
     // A post by the leaving member, with someone else's comment and like on it.
@@ -142,9 +143,10 @@ describe('deleteUserData', () => {
     return deleteUserData('gone', { db, bucket: bucket as unknown as BucketLike, auth });
   }
 
-  it('removes the profile, role, block list and sign-in', async () => {
+  it('removes the profile, private contact doc, role, block list and sign-in', async () => {
     await run();
     expect(await exists('members/gone')).toBe(false);
+    expect(await exists('members/gone/private/contact')).toBe(false);
     expect(await exists('roles/gone')).toBe(false);
     expect(await exists('blocks/gone/blocked/stays')).toBe(false);
     await expect(auth.getUser('gone')).rejects.toMatchObject({ code: 'auth/user-not-found' });

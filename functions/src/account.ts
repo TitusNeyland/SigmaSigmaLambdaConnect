@@ -67,10 +67,10 @@ export async function deleteUserData(
     await batch.commit();
   }
 
-  // Their block list, role and profile.
+  // Their block list, role and profile, including the private contact doc under it.
   await db.recursiveDelete(db.doc(`blocks/${uid}`));
   await db.doc(`roles/${uid}`).delete();
-  await db.doc(`members/${uid}`).delete();
+  await db.recursiveDelete(db.doc(`members/${uid}`));
 
   // Their photos.
   await bucket.deleteFiles({ prefix: `avatars/${uid}/` });

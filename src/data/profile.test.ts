@@ -11,6 +11,7 @@ import {
   query,
   updateDoc,
   where,
+  writeBatch,
 } from 'firebase/firestore';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 
@@ -22,8 +23,10 @@ import {
   removeAvatar,
   setNotificationPref,
   subscribeToProfile,
+  toContact,
   toProfile,
   updateOwnProfile,
+  withContact,
   uploadAvatar,
 } from './profile';
 
@@ -44,6 +47,8 @@ jest.mock('firebase/firestore', () => ({
   getDoc: jest.fn(),
   updateDoc: jest.fn(),
   serverTimestamp: jest.fn(() => 'SERVER_TIMESTAMP'),
+  deleteField: jest.fn(() => 'DELETE'),
+  writeBatch: jest.fn(),
 }));
 jest.mock('firebase/storage', () => ({
   ref: jest.fn((_s: unknown, path: string) => ({ storagePath: path })),
@@ -109,15 +114,35 @@ describe('toProfile', () => {
     ).toEqual({ events: false, announcements: true, social: true, tasks: true });
   });
 
-  it('reads contact fields and treats anything but true as hidden', () => {
-    expect(
-      toProfile({ email: 'm@example.com', phone: '555-0100', showEmail: 'yes', showPhone: true }),
-    ).toMatchObject({
+  it('treats contact details on the public doc as shown, and missing ones as hidden', () => {
+    expect(toProfile({ email: 'm@example.com', showEmail: false })).toMatchObject({
       email: 'm@example.com',
+      phone: '',
+      showEmail: true,
+      showPhone: false,
+    });
+  });
+});
+
+describe('private contact settings', () => {
+  it('reads the contact doc and treats anything but true as hidden', () => {
+    expect(
+      toContact({ email: 'm@example.com', phone: '555-0100', showEmail: 'yes', showPhone: true }),
+    ).toEqual({ email: 'm@example.com', phone: '555-0100', showEmail: false, showPhone: true });
+  });
+
+  it('layers the private values over the public profile', () => {
+    const shown = toProfile({ displayName: 'Marcus Reed' });
+    expect(
+      withContact(shown, { email: 'm@x.co', phone: '555-0100', showEmail: false, showPhone: true }),
+    ).toMatchObject({
+      displayName: 'Marcus Reed',
+      email: 'm@x.co',
       phone: '555-0100',
       showEmail: false,
       showPhone: true,
     });
+    expect(withContact(shown, null)).toBe(shown);
   });
 });
 
@@ -133,6 +158,37 @@ describe('subscribeToProfile', () => {
     );
     next({ exists: () => false, data: () => ({}) });
     expect(onChange).toHaveBeenLastCalledWith(null);
+  });
+
+  it('does not read the private contact doc for someone else', () => {
+    subscribeToProfile('u1', jest.fn(), jest.fn());
+    expect(onSnapshot).toHaveBeenCalledTimes(1);
+  });
+
+  it('for the member’s own profile, waits for both docs and merges them', () => {
+    const onChange = jest.fn();
+    const stops = [jest.fn(), jest.fn()];
+    jest
+      .mocked(onSnapshot)
+      .mockReturnValueOnce(stops[0] as never)
+      .mockReturnValueOnce(stops[1] as never);
+    const stop = subscribeToProfile('u1', onChange, jest.fn(), { own: true });
+    expect(doc).toHaveBeenCalledWith({ name: 'db' }, 'members/u1/private/contact');
+    const [member, contact] = jest
+      .mocked(onSnapshot)
+      .mock.calls.map((c) => c[1] as unknown as (s: object) => void);
+    member({ exists: () => true, data: () => ({ displayName: 'Marcus Reed' }) });
+    expect(onChange).not.toHaveBeenCalled();
+    contact({
+      exists: () => true,
+      data: () => ({ email: 'm@x.co', phone: '555-0100', showEmail: true, showPhone: false }),
+    });
+    expect(onChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ displayName: 'Marcus Reed', phone: '555-0100', showEmail: true }),
+    );
+    stop();
+    expect(stops[0]).toHaveBeenCalled();
+    expect(stops[1]).toHaveBeenCalled();
   });
 });
 
@@ -272,25 +328,55 @@ describe('photoUrl', () => {
 });
 
 describe('updateOwnProfile', () => {
-  it('writes only the editable fields plus updatedAt', async () => {
-    const patch = {
-      displayName: 'Marcus Reed',
-      initiationTerm: 'Spring 2019',
-      headline: 'Engineer',
-      bio: 'Hi',
-      interests: ['Tech'],
-      phone: '',
-      showEmail: true,
-      showPhone: false,
-    };
-    await updateOwnProfile('u1', patch);
-    expect(updateDoc).toHaveBeenCalledWith(
-      { path: 'members/u1' },
-      { ...patch, updatedAt: 'SERVER_TIMESTAMP' },
+  const batch = { set: jest.fn(), update: jest.fn(), commit: jest.fn(async () => {}) };
+  beforeEach(() => jest.mocked(writeBatch).mockReturnValue(batch as never));
+
+  const patch = {
+    displayName: 'Marcus Reed',
+    initiationTerm: 'Spring 2019',
+    headline: 'Engineer',
+    bio: 'Hi',
+    interests: ['Tech'],
+    phone: '555-0100',
+    showEmail: true,
+    showPhone: false,
+  };
+
+  it('keeps the real contact details in the private doc', async () => {
+    await updateOwnProfile('u1', patch, { email: ' m@x.co ' });
+    expect(batch.set).toHaveBeenCalledWith(
+      { path: 'members/u1/private/contact' },
+      {
+        email: 'm@x.co',
+        phone: '555-0100',
+        showEmail: true,
+        showPhone: false,
+        updatedAt: 'SERVER_TIMESTAMP',
+      },
     );
-    const written = jest.mocked(updateDoc).mock.calls[0][1] as unknown as Record<string, unknown>;
-    expect(written).not.toHaveProperty('status');
-    expect(written).not.toHaveProperty('email');
+    expect(batch.commit).toHaveBeenCalled();
+  });
+
+  it('puts only shown contact details on the public doc, never status', async () => {
+    await updateOwnProfile('u1', patch, { email: 'm@x.co' });
+    expect(batch.update).toHaveBeenCalledWith(
+      { path: 'members/u1' },
+      {
+        displayName: 'Marcus Reed',
+        initiationTerm: 'Spring 2019',
+        headline: 'Engineer',
+        bio: 'Hi',
+        interests: ['Tech'],
+        email: 'm@x.co',
+        phone: 'DELETE',
+        updatedAt: 'SERVER_TIMESTAMP',
+      },
+    );
+  });
+
+  it('removes both from the public doc when both are hidden', async () => {
+    await updateOwnProfile('u1', { ...patch, showEmail: false }, { email: 'm@x.co' });
+    expect(batch.update.mock.calls[0][1]).toMatchObject({ email: 'DELETE', phone: 'DELETE' });
   });
 });
 

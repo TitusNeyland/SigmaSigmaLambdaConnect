@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
@@ -10,6 +11,8 @@ export type NavHeaderProps = {
   title?: string;
   onBack: () => void;
   backTestID?: string;
+  /** A button on the right, at least 44 points square, e.g. a More menu. */
+  trailing?: ReactNode;
 };
 
 function BackIcon() {
@@ -21,7 +24,7 @@ function BackIcon() {
 }
 
 /** iOS navigation bar for pushed screens: back chevron and an optional centered title. */
-export function NavHeader({ title, onBack, backTestID }: NavHeaderProps) {
+export function NavHeader({ title, onBack, backTestID, trailing }: NavHeaderProps) {
   return (
     <View style={styles.header}>
       <Pressable
@@ -39,7 +42,7 @@ export function NavHeader({ title, onBack, backTestID }: NavHeaderProps) {
           {title}
         </AppText>
       ) : null}
-      <View style={styles.back} />
+      {trailing ?? <View style={styles.back} />}
     </View>
   );
 }

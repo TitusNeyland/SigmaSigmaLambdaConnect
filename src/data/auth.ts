@@ -9,11 +9,12 @@ import {
   updateProfile,
   type User,
 } from 'firebase/auth';
-import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { doc, serverTimestamp, writeBatch } from 'firebase/firestore';
 
 import { normalizeEmail, type SignUpInput } from '@/features/auth/validation';
 
 import { auth, db } from './firebase';
+import { newContact } from './members';
 
 /**
  * Account actions. Screens call these instead of firebase/auth directly, which keeps the
@@ -35,13 +36,17 @@ export async function signUp(input: SignUpInput): Promise<void> {
   const { user } = await createUserWithEmailAndPassword(auth, email, input.password);
   const displayName = input.displayName.trim();
   await updateProfile(user, { displayName });
-  await setDoc(doc(db, 'members', user.uid), {
+  // The email goes in the member's private contact doc. It stays hidden until they choose
+  // to show it in Edit profile.
+  const batch = writeBatch(db);
+  batch.set(doc(db, 'members', user.uid), {
     displayName,
     initiationTerm: input.initiationTerm.trim(),
-    email,
     status: 'pending',
     createdAt: serverTimestamp(),
   });
+  batch.set(doc(db, 'members', user.uid, 'private', 'contact'), newContact(email));
+  await batch.commit();
   await sendEmailVerification(user).catch(() => {
     // Sign up still worked; the verify screen (#10) lets them resend.
   });

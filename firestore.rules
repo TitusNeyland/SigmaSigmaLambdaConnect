@@ -96,7 +96,7 @@ service cloud.firestore {
 
     function memberEditableFields() {
       return ['displayName', 'initiationTerm', 'headline', 'bio', 'interests', 'photoURL',
-              'email', 'phone', 'showEmail', 'showPhone', 'notificationPrefs',
+              'email', 'phone', 'notificationPrefs',
               'guidelinesAcceptedAt', 'updatedAt'];
     }
 
@@ -126,6 +126,20 @@ service cloud.firestore {
 
       // Account deletion (#16), or an admin removing someone.
       allow delete: if isSelf(memberId) || isAdmin();
+
+      // Private contact settings (#18). Only the member can read them, so a hidden email or
+      // phone never reaches anyone else. The member doc above copies just the shown values.
+      match /private/{docId} {
+        allow read, delete: if isSelf(memberId);
+        allow create, update: if isSelf(memberId)
+          && docId == 'contact'
+          && incoming().keys().hasOnly(['email', 'phone', 'showEmail', 'showPhone', 'updatedAt'])
+          && optionalText(incoming(), 'email', 254)
+          && optionalText(incoming(), 'phone', 30)
+          && optionalBool(incoming(), 'showEmail')
+          && optionalBool(incoming(), 'showPhone')
+          && isNow(incoming().updatedAt);
+      }
     }
 
     // ---------- Roles ----------
@@ -293,9 +307,11 @@ service cloud.firestore {
                                       'targetAuthorId', 'reason', 'details', 'status',
                                       'createdAt'])
         && incoming().reporterId == request.auth.uid
-        && incoming().targetType in ['post', 'comment']
-        && incoming().postId is string
+        && incoming().targetType in ['post', 'comment', 'member']
+        // A member report (from their profile, #18) points at the person, not a post.
+        && (incoming().targetType == 'member' || incoming().postId is string)
         && incoming().targetAuthorId is string
+        && incoming().targetAuthorId != request.auth.uid
         && incoming().reason in ['spam', 'harassment', 'inappropriate', 'other']
         && optionalText(incoming(), 'details', 500)
         && incoming().status == 'open'

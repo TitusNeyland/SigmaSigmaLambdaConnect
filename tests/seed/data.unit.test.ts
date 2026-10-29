@@ -150,6 +150,17 @@ describe('buildSeedDocs', () => {
     );
   });
 
+  it('keeps contact details private, with only shown ones on the public doc', () => {
+    for (const m of MEMBERS) {
+      const contact = byPath.get(`members/${m.uid}/private/contact`)!;
+      expect(contact).toMatchObject({ phone: m.phone, showPhone: false, showEmail: true });
+      const pub = byPath.get(`members/${m.uid}`)!;
+      expect(pub).not.toHaveProperty('phone');
+      expect(pub).not.toHaveProperty('showPhone');
+      expect(pub.email).toBe(m.email);
+    }
+  });
+
   it('only approved members get a reviewer', () => {
     for (const m of MEMBERS) {
       const data = byPath.get(`members/${m.uid}`)!;

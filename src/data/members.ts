@@ -1,4 +1,4 @@
-import { doc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore';
+import { doc, onSnapshot, serverTimestamp, writeBatch } from 'firebase/firestore';
 
 import { db } from './firebase';
 import type { MemberStatus } from './types';
@@ -37,16 +37,23 @@ export function subscribeToOwnMember(
   );
 }
 
+/** A new member's private contact doc: everything hidden until they choose to show it. */
+export function newContact(email: string) {
+  return { email, phone: '', showEmail: false, showPhone: false, updatedAt: serverTimestamp() };
+}
+
 /** Writes a pending profile for someone whose sign up didn't finish. */
 export async function createPendingProfile(
   uid: string,
   input: { displayName: string; initiationTerm: string; email: string | null },
 ): Promise<void> {
-  await setDoc(doc(db, 'members', uid), {
+  const batch = writeBatch(db);
+  batch.set(doc(db, 'members', uid), {
     displayName: input.displayName.trim(),
     initiationTerm: input.initiationTerm.trim(),
-    ...(input.email ? { email: input.email } : {}),
     status: 'pending',
     createdAt: serverTimestamp(),
   });
+  batch.set(doc(db, 'members', uid, 'private', 'contact'), newContact(input.email ?? ''));
+  await batch.commit();
 }

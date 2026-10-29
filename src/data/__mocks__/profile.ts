@@ -45,8 +45,24 @@ export function setMockExtras(next: {
   if (next.fail !== undefined) failExtras = next.fail;
 }
 
+let others: Record<string, Profile | null> = {};
+
+/** Profiles of other members. Anyone not listed gets the signed-in member's profile. */
+export function setMockProfilesFor(profiles: Record<string, Profile | null>) {
+  others = profiles;
+}
+
 export const subscribeToProfile = jest.fn(
-  (_uid: string, onChange: (p: Profile | null) => void, _onError: (e: unknown) => void) => {
+  (
+    uid: string,
+    onChange: (p: Profile | null) => void,
+    _onError: (e: unknown) => void,
+    _options?: { own?: boolean },
+  ) => {
+    if (uid in others) {
+      onChange(others[uid]);
+      return () => {};
+    }
     listeners.add(onChange);
     onChange(profile);
     return () => {
@@ -67,7 +83,9 @@ export const fetchProfileStats = jest.fn(
 export const fetchProfilePosts = jest.fn(async () => rejectIfFailing(posts));
 export const fetchActivity = jest.fn(async () => rejectIfFailing(activity));
 export const photoUrl = jest.fn(async (path: string) => `https://example.test/${path}`);
-export const updateOwnProfile = jest.fn(async (_uid: string, _patch: unknown) => {});
+export const updateOwnProfile = jest.fn(
+  async (_uid: string, _patch: unknown, _account: { email: string }) => {},
+);
 export const uploadAvatar = jest.fn(
   async (_uid: string, _uri: string) => 'https://example.test/avatar.jpg',
 );
@@ -82,6 +100,7 @@ export function resetProfileMock(initial: Profile | null = sampleProfile()) {
   posts = [];
   activity = [];
   failExtras = false;
+  others = {};
   listeners.clear();
   for (const fn of [
     subscribeToProfile,

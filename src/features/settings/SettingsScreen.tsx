@@ -76,7 +76,7 @@ export function SettingsScreen() {
   const session = useSession();
   const uid = auth.status === 'signedIn' ? auth.user.uid : '';
   const email = auth.status === 'signedIn' ? (auth.user.email ?? '') : '';
-  const profile = useProfile(uid);
+  const profile = useProfile(uid, { own: true });
   const blockedCount = useBlockedCount(uid);
 
   // Switches flip right away and roll back if the save fails.

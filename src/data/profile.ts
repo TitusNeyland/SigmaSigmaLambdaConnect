@@ -9,7 +9,9 @@ import {
   limit,
   serverTimestamp,
   updateDoc,
+  deleteField,
   onSnapshot,
+  writeBatch,
   orderBy,
   query,
   sum,
@@ -21,7 +23,11 @@ import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { db, storage } from './firebase';
 import { DEFAULT_NOTIFICATION_PREFS, type NotificationPrefs } from './types';
 
-/** What a profile screen shows about someone. */
+/**
+ * What a profile screen shows about someone. For other members, email and phone are only
+ * filled in when that member chose to show them. On the member's own profile they hold the
+ * real values from their private contact doc, with the show switches.
+ */
 export type Profile = {
   displayName: string;
   initiationTerm: string;
@@ -73,8 +79,9 @@ export function toProfile(data: Record<string, unknown>): Profile {
     photoURL: typeof data.photoURL === 'string' && data.photoURL ? data.photoURL : null,
     email: text(data.email),
     phone: text(data.phone),
-    showEmail: data.showEmail === true,
-    showPhone: data.showPhone === true,
+    // The public doc only carries contact details the member chose to show.
+    showEmail: text(data.email) !== '',
+    showPhone: text(data.phone) !== '',
     notificationPrefs: toNotificationPrefs(data.notificationPrefs),
   };
 }
@@ -101,17 +108,78 @@ export async function setNotificationPref(
   });
 }
 
-/** Live profile for one member. Null if the profile doesn't exist. */
+/**
+ * The member's private contact settings. Only they can read it, so a hidden phone number or
+ * email never reaches other members. The public member doc copies just the shown values.
+ */
+export type ContactSettings = {
+  email: string;
+  phone: string;
+  showEmail: boolean;
+  showPhone: boolean;
+};
+
+export const contactDocPath = (uid: string) => `members/${uid}/private/contact`;
+
+export function toContact(data: Record<string, unknown>): ContactSettings {
+  return {
+    email: text(data.email),
+    phone: text(data.phone),
+    showEmail: data.showEmail === true,
+    showPhone: data.showPhone === true,
+  };
+}
+
+/** The member's own profile with their real contact details layered on. */
+export function withContact(profile: Profile, contact: ContactSettings | null): Profile {
+  if (!contact) return profile;
+  return { ...profile, ...contact, email: contact.email || profile.email };
+}
+
+/**
+ * Live profile for one member. Null if the profile doesn't exist. Pass own for the
+ * signed-in member's own profile to include their private contact settings.
+ */
 export function subscribeToProfile(
   uid: string,
   onChange: (profile: Profile | null) => void,
   onError: (error: unknown) => void,
+  options: { own?: boolean } = {},
 ): () => void {
-  return onSnapshot(
+  if (!options.own) {
+    return onSnapshot(
+      doc(db, 'members', uid),
+      (snap) => onChange(snap.exists() ? toProfile(snap.data()) : null),
+      onError,
+    );
+  }
+
+  let profile: Profile | null | undefined;
+  let contact: ContactSettings | null | undefined;
+  const emit = () => {
+    if (profile === undefined || contact === undefined) return;
+    onChange(profile && withContact(profile, contact));
+  };
+  const stopProfile = onSnapshot(
     doc(db, 'members', uid),
-    (snap) => onChange(snap.exists() ? toProfile(snap.data()) : null),
+    (snap) => {
+      profile = snap.exists() ? toProfile(snap.data()) : null;
+      emit();
+    },
     onError,
   );
+  const stopContact = onSnapshot(
+    doc(db, contactDocPath(uid)),
+    (snap) => {
+      contact = snap.exists() ? toContact(snap.data()) : null;
+      emit();
+    },
+    onError,
+  );
+  return () => {
+    stopProfile();
+    stopContact();
+  };
 }
 
 function visiblePostsQuery(uid: string) {
@@ -214,9 +282,32 @@ export type ProfilePatch = {
   showPhone: boolean;
 };
 
-/** Saves the member's own profile. The rules only allow these fields, never status. */
-export async function updateOwnProfile(uid: string, patch: ProfilePatch): Promise<void> {
-  await updateDoc(doc(db, 'members', uid), { ...patch, updatedAt: serverTimestamp() });
+/**
+ * Saves the member's own profile. Contact details go to their private doc; the public
+ * member doc gets the email and phone only when the matching switch is on.
+ */
+export async function updateOwnProfile(
+  uid: string,
+  patch: ProfilePatch,
+  account: { email: string },
+): Promise<void> {
+  const { phone, showEmail, showPhone, ...fields } = patch;
+  const email = account.email.trim();
+  const batch = writeBatch(db);
+  batch.set(doc(db, contactDocPath(uid)), {
+    email,
+    phone,
+    showEmail,
+    showPhone,
+    updatedAt: serverTimestamp(),
+  });
+  batch.update(doc(db, 'members', uid), {
+    ...fields,
+    email: showEmail && email ? email : deleteField(),
+    phone: showPhone && phone ? phone : deleteField(),
+    updatedAt: serverTimestamp(),
+  });
+  await batch.commit();
 }
 
 /**

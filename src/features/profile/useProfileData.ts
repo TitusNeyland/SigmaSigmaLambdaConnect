@@ -13,8 +13,9 @@ import {
 
 export type Loadable<T> = { state: 'loading' } | { state: 'ready'; data: T } | { state: 'error' };
 
-/** Live profile document. */
-export function useProfile(uid: string): Loadable<Profile | null> {
+/** Live profile document. Pass own for the signed-in member, to include contact settings. */
+export function useProfile(uid: string, options: { own?: boolean } = {}): Loadable<Profile | null> {
+  const own = options.own === true;
   const [result, setResult] = useState<{ uid: string; value: Loadable<Profile | null> } | null>(
     null,
   );
@@ -24,8 +25,9 @@ export function useProfile(uid: string): Loadable<Profile | null> {
         uid,
         (profile) => setResult({ uid, value: { state: 'ready', data: profile } }),
         () => setResult({ uid, value: { state: 'error' } }),
+        { own },
       ),
-    [uid],
+    [uid, own],
   );
   return result && result.uid === uid ? result.value : { state: 'loading' };
 }
