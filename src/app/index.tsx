@@ -1,22 +1,27 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { APP_ENV } from '@/config/env';
 import { app } from '@/data/firebase';
+import { colors, palette, spacing } from '@/theme';
+import { AppText } from '@/ui';
 
-// Placeholder home screen. The tab bar shell (#5) and design tokens (#4) replace this.
+// Placeholder home screen. The tab bar shell (#5) replaces this.
 export default function Index() {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.center}>
         <View style={styles.monogram}>
-          <Text style={styles.monogramText}>ΣΣΛ</Text>
+          <AppText variant="title2" color={palette.gold}>
+            ΣΣΛ
+          </AppText>
         </View>
-        <Text style={styles.title}>Sigma Sigma Lambda Connect</Text>
-        <Text style={styles.subtitle}>Project setup complete.</Text>
-        <Text style={styles.subtitle}>
+        <AppText variant="title2" align="center">
+          Sigma Sigma Lambda Connect
+        </AppText>
+        <AppText variant="callout" color={colors.textSecondary}>
           Firebase: {app.options.projectId} ({APP_ENV})
-        </Text>
+        </AppText>
       </View>
     </SafeAreaView>
   );
@@ -25,36 +30,21 @@ export default function Index() {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.background,
   },
   center: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 12,
-    padding: 24,
+    gap: spacing.md,
+    padding: spacing.xxl,
   },
   monogram: {
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: '#111111',
+    backgroundColor: palette.ink,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  monogramText: {
-    color: '#C5A253',
-    fontSize: 22,
-    fontWeight: '700',
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#111111',
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: 15,
-    color: '#6E6E73',
   },
 });
