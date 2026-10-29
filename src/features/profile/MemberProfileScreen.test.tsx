@@ -17,6 +17,7 @@ const directory = jest.requireMock<typeof import('@/data/__mocks__/directory')>(
 jest.mock('@/data/reports');
 jest.mock('@/data/events');
 jest.mock('@/data/eventAdmin');
+jest.mock('@/data/feed');
 const reports = jest.requireMock<typeof import('@/data/__mocks__/reports')>('@/data/reports');
 
 const OTHER = 'sample-chris';

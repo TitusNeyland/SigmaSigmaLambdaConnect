@@ -793,6 +793,24 @@ describe('posts', () => {
     await assertSucceeds(getDoc(doc(as(USERS.olivia), 'posts/removedPost')));
   });
 
+  it('the feed query (src/data/feed.ts) works for approved members only', async () => {
+    const feed = (db: Firestore) =>
+      getDocs(
+        query(
+          collection(db, 'posts'),
+          where('removed', '==', false),
+          orderBy('createdAt', 'desc'),
+          limit(10),
+        ),
+      );
+    await assertSucceeds(feed(as(USERS.bob)));
+    for (const uid of [USERS.pete, USERS.dee, USERS.stranger]) await assertFails(feed(as(uid)));
+    // Without the removed filter, a member's query could include removed posts, so it's denied.
+    await assertFails(
+      getDocs(query(collection(as(USERS.bob), 'posts'), orderBy('createdAt', 'desc'), limit(10))),
+    );
+  });
+
   it('authors and officers can delete posts; others cannot', async () => {
     await assertFails(deleteDoc(doc(as(USERS.bob), 'posts/alicePost')));
     await assertSucceeds(deleteDoc(doc(as(USERS.alice), 'posts/alicePost')));
