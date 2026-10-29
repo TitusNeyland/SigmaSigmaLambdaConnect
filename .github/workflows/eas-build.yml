@@ -1,0 +1,53 @@
+name: EAS build
+
+# Run from the Actions tab: pick a profile and platform. "preview" with submit on sends the
+# build to TestFlight and Google Play internal testing. Needs the EXPO_TOKEN repo secret and
+# the one-time setup in docs/builds.md.
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: Build profile
+        type: choice
+        options: [preview, development-device, development, production]
+        default: preview
+      platform:
+        description: Platform
+        type: choice
+        options: [all, ios, android]
+        default: all
+      submit:
+        description: Send to TestFlight / Play testing when the build finishes
+        type: boolean
+        default: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for EXPO_TOKEN
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "::error title=Missing secret::Add EXPO_TOKEN under Settings > Secrets and variables > Actions. See docs/builds.md."
+            exit 1
+          fi
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      - run: npm ci
+      - name: Build
+        run: >-
+          eas build
+          --profile ${{ inputs.profile }}
+          --platform ${{ inputs.platform }}
+          --non-interactive
+          --no-wait
+          ${{ inputs.submit && (inputs.profile == 'preview' || inputs.profile == 'production') && '--auto-submit' || '' }}
