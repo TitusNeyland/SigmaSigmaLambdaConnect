@@ -4,6 +4,7 @@ import { CalendarView } from './CalendarView';
 
 jest.mock('@/data/events');
 jest.mock('@/data/eventAdmin');
+jest.mock('@/data/feed');
 const events = jest.requireMock<typeof import('@/data/__mocks__/events')>('@/data/events');
 
 const TODAY = new Date(2026, 9, 29, 12); // Thu, Oct 29 2026
