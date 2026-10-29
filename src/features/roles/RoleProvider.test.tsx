@@ -11,6 +11,7 @@ jest.mock('@/data/roles');
 jest.mock('@/data/profile');
 jest.mock('@/data/blocks');
 jest.mock('@/data/account');
+jest.mock('@/data/directory');
 const roles = jest.requireMock<typeof import('@/data/__mocks__/roles')>('@/data/roles');
 
 function signIn(status: 'approved' | 'pending', role: Parameters<typeof roles.resetRolesMock>[0]) {

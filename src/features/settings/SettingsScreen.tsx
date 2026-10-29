@@ -1,9 +1,8 @@
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Linking, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Path } from 'react-native-svg';
 
 import { COMMUNITY_GUIDELINES_URL, PRIVACY_URL, SUPPORT_EMAIL, TERMS_URL } from '@/config/app';
 import { AccountDeletionError, deleteAccount, type DeleteAccountError } from '@/data/account';
@@ -14,13 +13,14 @@ import type { NotificationPrefs } from '@/data/types';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { useSession } from '@/features/auth/session';
 import { useProfile } from '@/features/profile/useProfileData';
-import { colors, MIN_TOUCH, spacing } from '@/theme';
+import { colors, spacing } from '@/theme';
 import {
   AppText,
   BottomSheet,
   Button,
   ListRow,
   ListSection,
+  NavHeader,
   StatusChip,
   SwitchRow,
   TextField,
@@ -37,14 +37,6 @@ const NOTIFICATIONS: { key: keyof NotificationPrefs; title: string; subtitle: st
   { key: 'tasks', title: 'Program tasks', subtitle: 'Milestones and deadlines you’re assigned' },
 ];
 
-function BackIcon() {
-  return (
-    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" accessibilityElementsHidden>
-      <Path d="m15 18-6-6 6-6" stroke={colors.text} strokeWidth={2.2} strokeLinecap="round" />
-    </Svg>
-  );
-}
-
 export function goBackToProfile() {
   if (router.canGoBack()) router.back();
   else router.replace('/profile');
@@ -52,24 +44,7 @@ export function goBackToProfile() {
 
 /** Header used by Settings and its sub-screens. */
 export function SettingsHeader({ title }: { title: string }) {
-  return (
-    <View style={styles.header}>
-      <Pressable
-        onPress={goBackToProfile}
-        accessibilityRole="button"
-        accessibilityLabel="Back"
-        hitSlop={spacing.sm}
-        style={styles.back}
-        testID="settings-back"
-      >
-        <BackIcon />
-      </Pressable>
-      <AppText variant="headline" accessibilityRole="header">
-        {title}
-      </AppText>
-      <View style={styles.back} />
-    </View>
-  );
+  return <NavHeader title={title} onBack={goBackToProfile} backTestID="settings-back" />;
 }
 
 function open(url: string) {
@@ -371,13 +346,5 @@ export function SettingsScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.backgroundGrouped },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.sm,
-    minHeight: MIN_TOUCH + spacing.sm,
-  },
-  back: { width: MIN_TOUCH, height: MIN_TOUCH, alignItems: 'center', justifyContent: 'center' },
   content: { padding: spacing.lg, gap: spacing.xl, paddingBottom: spacing.xxxl },
 });
