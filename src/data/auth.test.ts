@@ -1,19 +1,34 @@
 import {
   createUserWithEmailAndPassword,
+  reload,
   sendEmailVerification,
+  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signOut as firebaseSignOut,
   updateProfile,
 } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 
-import { signIn, signOut, signUp } from './auth';
+import { auth as firebaseAuth } from './firebase';
+import {
+  refreshUser,
+  resendVerificationEmail,
+  sendPasswordReset,
+  signIn,
+  signOut,
+  signUp,
+} from './auth';
 
-jest.mock('./firebase', () => ({ auth: { name: 'auth' }, db: { name: 'db' } }));
+jest.mock('./firebase', () => ({
+  auth: { name: 'auth', currentUser: null as unknown },
+  db: { name: 'db' },
+}));
 jest.mock('firebase/auth', () => ({
   createUserWithEmailAndPassword: jest.fn(),
   onAuthStateChanged: jest.fn(),
+  reload: jest.fn(),
   sendEmailVerification: jest.fn(),
+  sendPasswordResetEmail: jest.fn(),
   signInWithEmailAndPassword: jest.fn(),
   signOut: jest.fn(),
   updateProfile: jest.fn(),
@@ -45,7 +60,7 @@ describe('signUp', () => {
   it('creates the account with a normalized email', async () => {
     await signUp(input);
     expect(createUserWithEmailAndPassword).toHaveBeenCalledWith(
-      { name: 'auth' },
+      firebaseAuth,
       'marcus@example.com',
       'brother2019',
     );
@@ -94,7 +109,7 @@ describe('signIn and signOut', () => {
   it('signs in with a normalized email', async () => {
     await signIn(' Marcus@Example.com', 'pw');
     expect(signInWithEmailAndPassword).toHaveBeenCalledWith(
-      { name: 'auth' },
+      firebaseAuth,
       'marcus@example.com',
       'pw',
     );
@@ -102,6 +117,76 @@ describe('signIn and signOut', () => {
 
   it('signs out', async () => {
     await signOut();
-    expect(firebaseSignOut).toHaveBeenCalledWith({ name: 'auth' });
+    expect(firebaseSignOut).toHaveBeenCalledWith(firebaseAuth);
+  });
+});
+
+type MutableAuth = { currentUser: unknown };
+const setCurrentUser = (u: unknown) => {
+  (firebaseAuth as unknown as MutableAuth).currentUser = u;
+};
+
+describe('resendVerificationEmail', () => {
+  afterEach(() => setCurrentUser(null));
+
+  it('sends to the signed-in user', async () => {
+    const current = { uid: 'u1' };
+    setCurrentUser(current);
+    await resendVerificationEmail();
+    expect(sendEmailVerification).toHaveBeenCalledWith(current);
+  });
+
+  it('fails when nobody is signed in', async () => {
+    setCurrentUser(null);
+    await expect(resendVerificationEmail()).rejects.toThrow('Not signed in');
+  });
+});
+
+describe('refreshUser', () => {
+  afterEach(() => setCurrentUser(null));
+
+  it('reloads and returns the fresh verified state', async () => {
+    const current = { uid: 'u1', email: 'a@example.com', emailVerified: false, displayName: 'A' };
+    setCurrentUser(current);
+    jest.mocked(reload).mockImplementation(async () => {
+      current.emailVerified = true;
+    });
+    await expect(refreshUser()).resolves.toEqual({
+      uid: 'u1',
+      email: 'a@example.com',
+      emailVerified: true,
+      displayName: 'A',
+    });
+    expect(reload).toHaveBeenCalledWith(current);
+  });
+
+  it('returns null when signed out', async () => {
+    setCurrentUser(null);
+    await expect(refreshUser()).resolves.toBeNull();
+    expect(reload).not.toHaveBeenCalled();
+  });
+});
+
+describe('sendPasswordReset', () => {
+  it('sends to the normalized email', async () => {
+    await sendPasswordReset(' Marcus@Example.com ');
+    expect(sendPasswordResetEmail).toHaveBeenCalledWith(firebaseAuth, 'marcus@example.com');
+  });
+
+  it.each(['auth/user-not-found', 'auth/invalid-email'])(
+    'treats %s as success so accounts stay private',
+    async (code) => {
+      jest.mocked(sendPasswordResetEmail).mockRejectedValueOnce({ code });
+      await expect(sendPasswordReset('nobody@example.com')).resolves.toBeUndefined();
+    },
+  );
+
+  it('passes other errors through so the screen can explain them', async () => {
+    jest
+      .mocked(sendPasswordResetEmail)
+      .mockRejectedValueOnce({ code: 'auth/network-request-failed' });
+    await expect(sendPasswordReset('a@example.com')).rejects.toEqual({
+      code: 'auth/network-request-failed',
+    });
   });
 });
