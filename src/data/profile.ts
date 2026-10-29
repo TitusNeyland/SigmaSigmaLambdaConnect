@@ -19,6 +19,7 @@ import {
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 
 import { db, storage } from './firebase';
+import { DEFAULT_NOTIFICATION_PREFS, type NotificationPrefs } from './types';
 
 /** What a profile screen shows about someone. */
 export type Profile = {
@@ -32,6 +33,7 @@ export type Profile = {
   phone: string;
   showEmail: boolean;
   showPhone: boolean;
+  notificationPrefs: NotificationPrefs;
 };
 
 export type ProfileStats = {
@@ -73,7 +75,30 @@ export function toProfile(data: Record<string, unknown>): Profile {
     phone: text(data.phone),
     showEmail: data.showEmail === true,
     showPhone: data.showPhone === true,
+    notificationPrefs: toNotificationPrefs(data.notificationPrefs),
   };
+}
+
+/** Reads stored preferences, using the defaults for anything missing or malformed. */
+export function toNotificationPrefs(value: unknown): NotificationPrefs {
+  const stored = value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
+  const prefs = { ...DEFAULT_NOTIFICATION_PREFS };
+  for (const key of Object.keys(prefs) as (keyof NotificationPrefs)[]) {
+    if (typeof stored[key] === 'boolean') prefs[key] = stored[key] as boolean;
+  }
+  return prefs;
+}
+
+/** Turns one kind of push notification on or off for the member. */
+export async function setNotificationPref(
+  uid: string,
+  key: keyof NotificationPrefs,
+  value: boolean,
+): Promise<void> {
+  await updateDoc(doc(db, 'members', uid), {
+    [`notificationPrefs.${key}`]: value,
+    updatedAt: serverTimestamp(),
+  });
 }
 
 /** Live profile for one member. Null if the profile doesn't exist. */
