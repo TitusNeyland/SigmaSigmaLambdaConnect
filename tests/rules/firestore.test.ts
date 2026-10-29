@@ -99,6 +99,18 @@ describe('members', () => {
     await assertSucceeds(setDoc(doc(as(USERS.stranger), 'members/stranger'), newProfile()));
   });
 
+  it('accepts the exact profile the app writes on sign up (src/data/auth.ts)', async () => {
+    await assertSucceeds(
+      setDoc(doc(as(USERS.stranger), 'members/stranger'), {
+        displayName: 'Marcus Reed',
+        initiationTerm: 'Spring 2019',
+        email: 'marcus@example.com',
+        status: 'pending',
+        createdAt: serverTimestamp(),
+      }),
+    );
+  });
+
   it('a new user cannot create a profile that is already approved', async () => {
     await assertFails(
       setDoc(doc(as(USERS.stranger), 'members/stranger'), newProfile({ status: 'approved' })),

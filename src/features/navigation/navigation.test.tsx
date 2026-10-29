@@ -10,6 +10,15 @@ import { Text } from 'react-native';
 
 import { TABS } from './TabLayout';
 
+jest.mock('@/data/auth');
+const { resetAuthMock, sampleUser, setMockUser } =
+  jest.requireMock<typeof import('@/data/__mocks__/auth')>('@/data/auth');
+
+beforeEach(() => {
+  resetAuthMock();
+  setMockUser(sampleUser());
+});
+
 // The real app routes, plus one extra screen inside the Home tab to prove each tab keeps
 // its own stack.
 const APP = {
