@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { AppState, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { resendVerificationEmail, signOut } from '@/data/auth';
+import { resendVerificationEmail } from '@/data/auth';
+import { signOutHere } from './signOut';
 import { colors, palette, spacing } from '@/theme';
 import { AppText, Button } from '@/ui';
 
@@ -102,7 +103,7 @@ export function VerifyEmailScreen() {
           fullWidth
           testID="verify-resend"
         />
-        <Button title="Use a different account" variant="plain" onPress={() => signOut()} />
+        <Button title="Use a different account" variant="plain" onPress={() => signOutHere()} />
       </View>
     </SafeAreaView>
   );

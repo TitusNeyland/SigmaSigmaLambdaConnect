@@ -950,6 +950,40 @@ describe('reports', () => {
   });
 });
 
+describe('push tokens', () => {
+  const token = (extra: object = {}) => ({
+    token: 'ExponentPushToken[abc]',
+    platform: 'ios',
+    updatedAt: serverTimestamp(),
+    ...extra,
+  });
+  const path = (uid: string) => `pushTokens/${uid}/tokens/ExponentPushToken_abc_`;
+
+  it('members save their own phone, including while pending (src/data/push.ts)', async () => {
+    await assertSucceeds(setDoc(doc(as(USERS.alice), path('alice')), token()));
+    await assertSucceeds(setDoc(doc(as(USERS.pete), path('pete')), token({ platform: 'android' })));
+  });
+
+  it('nobody else can read, write or remove them, not even officers', async () => {
+    await assertSucceeds(setDoc(doc(as(USERS.alice), path('alice')), token()));
+    for (const uid of [USERS.bob, USERS.olivia, USERS.adam]) {
+      await assertFails(getDoc(doc(as(uid), path('alice'))));
+      await assertFails(setDoc(doc(as(uid), path('alice')), token()));
+      await assertFails(deleteDoc(doc(as(uid), path('alice'))));
+    }
+    await assertFails(getDocs(collection(as(USERS.olivia), 'pushTokens/alice/tokens')));
+    await assertSucceeds(deleteDoc(doc(as(USERS.alice), path('alice'))));
+  });
+
+  it('rejects other fields, platforms and oversized tokens', async () => {
+    const db = as(USERS.alice);
+    await assertFails(setDoc(doc(db, path('alice')), token({ uid: 'bob' })));
+    await assertFails(setDoc(doc(db, path('alice')), token({ platform: 'web' })));
+    await assertFails(setDoc(doc(db, path('alice')), token({ token: 'x'.repeat(201) })));
+    await assertFails(setDoc(doc(db, path('alice')), token({ updatedAt: new Date(0) })));
+  });
+});
+
 describe('blocks', () => {
   it('members manage only their own block list', async () => {
     await assertSucceeds(getDoc(doc(as(USERS.alice), 'blocks/alice/blocked/bob')));

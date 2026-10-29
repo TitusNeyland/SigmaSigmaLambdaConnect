@@ -334,6 +334,20 @@ service cloud.firestore {
         && isNow(incoming().createdAt);
     }
 
+    // ---------- Push tokens (#25) ----------
+
+    // Each phone a member signs in on. Only they can see or change theirs; Cloud Functions
+    // read them with admin access to send. Pending members register too, so they hear
+    // when they're approved.
+    match /pushTokens/{userId}/tokens/{tokenId} {
+      allow read, delete: if isSelf(userId);
+      allow create, update: if isSelf(userId)
+        && incoming().keys().hasOnly(['token', 'platform', 'updatedAt'])
+        && isText(incoming().token, 1, 200)
+        && incoming().platform in ['ios', 'android']
+        && isNow(incoming().updatedAt);
+    }
+
     // ---------- Chapter content officers manage ----------
 
     match /programs/{programId} {

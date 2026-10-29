@@ -3,7 +3,7 @@ import { Linking, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { SUPPORT_EMAIL } from '@/config/app';
-import { signOut } from '@/data/auth';
+import { signOutHere } from './signOut';
 import { createPendingProfile } from '@/data/members';
 import { colors, palette, spacing } from '@/theme';
 import { AppText, Button, ListRow, ListSection, TextField } from '@/ui';
@@ -60,7 +60,7 @@ export function PendingScreen() {
         <ListRow title="Name" value={member?.displayName ?? ''} />
         <ListRow title="Initiated" value={member?.initiationTerm ?? ''} />
       </ListSection>
-      <Button title="Sign out" variant="plain" onPress={() => signOut()} />
+      <Button title="Sign out" variant="plain" onPress={() => signOutHere()} />
     </StatusLayout>
   );
 }
@@ -79,7 +79,7 @@ export function DeclinedScreen() {
         onPress={() => Linking.openURL(`mailto:${SUPPORT_EMAIL}`)}
         fullWidth
       />
-      <Button title="Sign out" variant="plain" onPress={() => signOut()} />
+      <Button title="Sign out" variant="plain" onPress={() => signOutHere()} />
     </StatusLayout>
   );
 }
@@ -94,7 +94,7 @@ export function ConnectionErrorScreen() {
       body="Check your connection and try again."
     >
       <Button title="Try again" onPress={retry} fullWidth testID="session-retry" />
-      <Button title="Sign out" variant="plain" onPress={() => signOut()} />
+      <Button title="Sign out" variant="plain" onPress={() => signOutHere()} />
     </StatusLayout>
   );
 }
@@ -142,7 +142,7 @@ export function CompleteProfileScreen() {
             fullWidth
             testID="profile-submit"
           />
-          <Button title="Sign out" variant="plain" onPress={() => signOut()} />
+          <Button title="Sign out" variant="plain" onPress={() => signOutHere()} />
         </View>
       }
     >

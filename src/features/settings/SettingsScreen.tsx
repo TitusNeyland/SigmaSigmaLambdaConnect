@@ -6,7 +6,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { COMMUNITY_GUIDELINES_URL, PRIVACY_URL, SUPPORT_EMAIL, TERMS_URL } from '@/config/app';
 import { AccountDeletionError, deleteAccount, type DeleteAccountError } from '@/data/account';
-import { sendPasswordReset, signOut } from '@/data/auth';
+import { sendPasswordReset } from '@/data/auth';
+import { signOutHere } from '@/features/auth/signOut';
 import { subscribeToBlocked } from '@/data/blocks';
 import { setNotificationPref } from '@/data/profile';
 import type { NotificationPrefs } from '@/data/types';
@@ -120,7 +121,7 @@ export function SettingsScreen() {
   async function confirmSignOut() {
     setSigningOut(true);
     try {
-      await signOut();
+      await signOutHere();
     } finally {
       setSigningOut(false);
       setSheet(null);
