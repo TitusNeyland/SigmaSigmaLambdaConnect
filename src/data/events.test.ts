@@ -1,6 +1,18 @@
-import { getDoc, getDocs, orderBy, Timestamp, where } from 'firebase/firestore';
+import {
+  getAggregateFromServer,
+  getDoc,
+  getDocs,
+  orderBy,
+  Timestamp,
+  where,
+} from 'firebase/firestore';
 
-import { fetchEventsBetween, fetchUpcomingEvents, toEventSummary } from './events';
+import {
+  fetchEventDetail,
+  fetchEventsBetween,
+  fetchUpcomingEvents,
+  toEventSummary,
+} from './events';
 
 jest.mock('./firebase', () => ({ db: { name: 'db' } }));
 jest.mock('firebase/firestore', () => {
@@ -24,14 +36,20 @@ jest.mock('firebase/firestore', () => {
   }
   return {
     Timestamp: MockTimestamp,
-    collection: jest.fn((_db: unknown, name: string) => ({ collection: name })),
-    doc: jest.fn((_db: unknown, ...segments: string[]) => ({ path: segments.join('/') })),
+    collection: jest.fn((parent: { path?: string }, ...segments: string[]) => ({
+      collection: [parent.path, ...segments].filter(Boolean).join('/'),
+    })),
+    doc: jest.fn((parent: { path?: string; collection?: string }, ...segments: string[]) => ({
+      path: [parent.path ?? parent.collection, ...segments].filter(Boolean).join('/'),
+    })),
     where: jest.fn((...args: unknown[]) => ({ where: args })),
     orderBy: jest.fn((...args: unknown[]) => ({ orderBy: args })),
     limit: jest.fn((n: number) => ({ limit: n })),
     query: jest.fn((ref: object, ...parts: unknown[]) => ({ ref, parts })),
     getDocs: jest.fn(),
     getDoc: jest.fn(),
+    count: jest.fn(() => 'COUNT'),
+    getAggregateFromServer: jest.fn(),
   };
 });
 
@@ -171,5 +189,68 @@ describe('fetchEventsBetween', () => {
       ['startsAt', '<', to.getTime()],
     ]);
     expect(events.map((e) => [e.id, e.myRsvp])).toEqual([['old', 'going']]);
+  });
+});
+
+describe('fetchEventDetail', () => {
+  type Docs = Record<string, Record<string, unknown> | null>;
+  function respond(docs: Docs, goingIds: string[], goingCount = goingIds.length) {
+    jest.mocked(getDoc).mockImplementation(async (ref: unknown) => {
+      const data = docs[(ref as { path: string }).path] ?? null;
+      return { exists: () => data !== null, id: 'x', data: () => data ?? {} } as never;
+    });
+    jest.mocked(getDocs).mockResolvedValue({ docs: goingIds.map((id) => ({ id })) } as never);
+    jest
+      .mocked(getAggregateFromServer)
+      .mockResolvedValue({ data: () => ({ count: goingCount }) } as never);
+  }
+
+  const gala = {
+    title: 'Gala',
+    category: 'fundraiser',
+    startsAt: ts('2026-11-07T23:00:00Z'),
+    rsvpDeadline: ts('2026-11-05T23:00:00Z'),
+    location: 'Ballroom',
+    address: '200 Sample Ave',
+    feeCents: 2500,
+    createdBy: 'host',
+  };
+
+  it('returns the event with host, my RSVP and who’s going', async () => {
+    respond(
+      {
+        'events/gala': gala,
+        'events/gala/rsvps/me': { status: 'maybe' },
+        'members/host': { displayName: 'Jordan Hill', photoURL: 'https://cdn.test/h.jpg' },
+        'members/a': { displayName: 'Marcus Reed' },
+        'members/gone': null,
+      },
+      ['a', 'gone'],
+      14,
+    );
+    const detail = await fetchEventDetail('gala', 'me');
+    expect(detail).toMatchObject({
+      id: 'gala',
+      title: 'Gala',
+      address: '200 Sample Ave',
+      feeCents: 2500,
+      rsvpDeadline: new Date('2026-11-05T23:00:00Z'),
+      myRsvp: 'maybe',
+      host: { uid: 'host', displayName: 'Jordan Hill', photoURL: 'https://cdn.test/h.jpg' },
+      going: { count: 14, preview: [{ uid: 'a', displayName: 'Marcus Reed', photoURL: null }] },
+    });
+    expect(where).toHaveBeenCalledWith('status', '==', 'going');
+  });
+
+  it('is null for a missing event and tolerates a missing host and fee', async () => {
+    respond({}, []);
+    expect(await fetchEventDetail('nope', 'me')).toBeNull();
+    respond({ 'events/gala': { ...gala, createdBy: 'ghost', feeCents: -1 } }, []);
+    expect(await fetchEventDetail('gala', 'me')).toMatchObject({
+      host: null,
+      feeCents: 0,
+      myRsvp: null,
+      going: { count: 0, preview: [] },
+    });
   });
 });

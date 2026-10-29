@@ -9,6 +9,7 @@ import {
   deleteDoc,
   doc,
   getDoc,
+  getCountFromServer,
   getDocs,
   limit,
   orderBy,
@@ -457,6 +458,22 @@ describe('events', () => {
     await assertSucceeds(eventsTab(as(USERS.alice), USERS.alice));
     for (const uid of [USERS.pete, USERS.dee, USERS.stranger]) {
       await assertFails(eventsTab(as(uid), uid));
+    }
+  });
+
+  it('the event detail reads (src/data/events.ts) work for approved members only', async () => {
+    const detail = (db: Firestore) => {
+      const going = query(collection(db, 'events/open/rsvps'), where('status', '==', 'going'));
+      return Promise.all([
+        getDoc(doc(db, 'events/open')),
+        getCountFromServer(going),
+        getDocs(query(going, limit(5))),
+        getDoc(doc(db, 'members/olivia')),
+      ]);
+    };
+    await assertSucceeds(detail(as(USERS.alice)));
+    for (const uid of [USERS.pete, USERS.dee, USERS.stranger]) {
+      await assertFails(detail(as(uid)));
     }
   });
 

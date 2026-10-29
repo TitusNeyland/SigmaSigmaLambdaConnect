@@ -144,7 +144,7 @@ it('opens an event from the featured card and from a row', async () => {
   await openEvents();
   await press(screen.getByTestId('featured-event'));
   await waitFor(() => expect(screen).toHavePathname('/events/meeting'));
-  await press(screen.getByRole('button', { name: 'Back to events' }));
+  await press(screen.getByTestId('event-back'));
   await waitFor(() => expect(screen.getByTestId('event-gala')).toBeTruthy());
   await press(screen.getByTestId('event-gala'));
   await waitFor(() => expect(screen).toHavePathname('/events/gala'));
@@ -165,7 +165,7 @@ it('reloads when you come back to the tab, so a changed RSVP shows', async () =>
   events.setMockEvents(
     EVENTS.map((e) => (e.id === 'gala' ? { ...e, myRsvp: 'not_going' as const } : e)),
   );
-  await press(screen.getByRole('button', { name: 'Back to events' }));
+  await press(screen.getByTestId('event-back'));
   await waitFor(() => expect(screen.getByTestId('status-gala')).toHaveTextContent('Can’t go'));
 });
 

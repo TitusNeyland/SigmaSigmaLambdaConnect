@@ -2,7 +2,7 @@
  * Test double for src/data/events.ts. Use with `jest.mock('@/data/events')`, then set the
  * events with `resetEventsMock`.
  */
-import type { EventSummary } from '../events';
+import type { EventDetail, EventSummary } from '../events';
 
 let events: EventSummary[] = [];
 let failing = false;
@@ -49,9 +49,38 @@ export const fetchEventsBetween = jest.fn(async (_uid: string, from: Date, to: D
   return events.filter((e) => e.startsAt >= from && e.startsAt < to);
 });
 
+let details: Record<string, EventDetail | null> = {};
+
+export function sampleDetail(overrides: Partial<EventDetail> = {}): EventDetail {
+  return {
+    ...sampleEvent(),
+    address: '100 Sample St',
+    feeCents: 0,
+    rsvpDeadline: new Date(Date.now() + 86_400_000),
+    host: { uid: 'sample-jordan', displayName: 'Jordan Hill', photoURL: null },
+    going: { count: 0, preview: [] },
+    ...overrides,
+  };
+}
+
+/** Details by event ID. An ID that isn't listed is treated as deleted. */
+export function setMockDetails(next: Record<string, EventDetail | null>) {
+  details = next;
+}
+
+export const fetchEventDetail = jest.fn(async (id: string, _uid: string) => {
+  if (failing) {
+    failing = false;
+    throw new Error('offline');
+  }
+  return details[id] ?? null;
+});
+
 export function resetEventsMock(initial: EventSummary[] = []) {
   events = initial;
   failing = false;
   fetchUpcomingEvents.mockClear();
   fetchEventsBetween.mockClear();
+  details = {};
+  fetchEventDetail.mockClear();
 }

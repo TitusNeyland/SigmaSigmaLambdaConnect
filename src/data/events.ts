@@ -1,6 +1,8 @@
 import {
   collection,
+  count,
   doc,
+  getAggregateFromServer,
   getDoc,
   getDocs,
   limit,
@@ -105,4 +107,69 @@ export async function fetchUpcomingEvents(uid: string, now = new Date()): Promis
 /** Every event starting in [from, to), past ones included, for the calendar (#21). */
 export function fetchEventsBetween(uid: string, from: Date, to: Date): Promise<EventSummary[]> {
   return fetchEvents(uid, from, to);
+}
+
+/** Someone shown in the "who's going" summary. */
+export type Attendee = { uid: string; displayName: string; photoURL: string | null };
+
+/** Everything the event detail screen shows (#22). */
+export type EventDetail = EventSummary & {
+  address: string;
+  feeCents: number;
+  rsvpDeadline: Date | null;
+  host: Attendee | null;
+  going: { count: number; preview: Attendee[] };
+};
+
+/** How many going brothers the detail screen shows by name or photo. */
+const GOING_PREVIEW = 5;
+
+async function member(uid: string): Promise<Attendee | null> {
+  const snap = await getDoc(doc(db, 'members', uid));
+  if (!snap.exists()) return null;
+  const data = snap.data();
+  const displayName = text(data.displayName).trim();
+  if (!displayName) return null;
+  return {
+    uid,
+    displayName,
+    photoURL: typeof data.photoURL === 'string' && data.photoURL ? data.photoURL : null,
+  };
+}
+
+/**
+ * One event with its host, the member's RSVP and a summary of who's going. Null if the
+ * event doesn't exist. Hosts or attendees whose profiles are gone are left out.
+ */
+export async function fetchEventDetail(eventId: string, uid: string): Promise<EventDetail | null> {
+  const eventRef = doc(db, 'events', eventId);
+  const goingQuery = query(collection(eventRef, 'rsvps'), where('status', '==', 'going'));
+  const [eventSnap, mine, goingCount, goingSnap] = await Promise.all([
+    getDoc(eventRef),
+    getDoc(doc(eventRef, 'rsvps', uid)),
+    getAggregateFromServer(goingQuery, { count: count() }),
+    getDocs(query(goingQuery, limit(GOING_PREVIEW))),
+  ]);
+  if (!eventSnap.exists()) return null;
+  const data = eventSnap.data();
+  const status = mine.exists() ? (mine.data().status as RsvpStatus) : null;
+  const summary = toEventSummary(eventId, data, status && RSVPS.includes(status) ? status : null);
+  if (!summary) return null;
+
+  const hostId = text(data.createdBy);
+  const [host, ...preview] = await Promise.all([
+    hostId ? member(hostId) : Promise.resolve(null),
+    ...goingSnap.docs.map((d) => member(d.id)),
+  ]);
+  return {
+    ...summary,
+    address: text(data.address),
+    feeCents: typeof data.feeCents === 'number' && data.feeCents > 0 ? data.feeCents : 0,
+    rsvpDeadline: toDate(data.rsvpDeadline),
+    host,
+    going: {
+      count: goingCount.data().count,
+      preview: preview.filter((a): a is Attendee => a !== null),
+    },
+  };
 }
