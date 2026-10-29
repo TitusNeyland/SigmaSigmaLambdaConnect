@@ -15,6 +15,7 @@ initializeApp();
 setGlobalOptions({ region: 'us-central1', maxInstances: 10 });
 
 export { deleteAccount } from './account.js';
+export { eventNotifications, notifyNewEvent } from './events.js';
 export { notifyApproval } from './push.js';
 
 /** Confirms deploys work. Returns the project the function is running in. */
