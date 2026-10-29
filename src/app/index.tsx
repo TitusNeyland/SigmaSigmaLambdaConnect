@@ -5,5 +5,7 @@ import { useAuth } from '@/features/auth/AuthProvider';
 export default function Index() {
   const { status } = useAuth();
   if (status === 'loading') return null;
-  return <Redirect href={status === 'signedIn' ? '/home' : '/welcome'} />;
+  if (status === 'signedIn') return <Redirect href="/home" />;
+  if (status === 'unverified') return <Redirect href="/verify-email" />;
+  return <Redirect href="/welcome" />;
 }

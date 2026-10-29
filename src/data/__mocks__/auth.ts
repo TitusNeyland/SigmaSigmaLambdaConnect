@@ -34,6 +34,11 @@ export const signOut = jest.fn(async () => {
   setMockUser(null);
 });
 
+export const resendVerificationEmail = jest.fn(async () => {});
+export const sendPasswordReset = jest.fn(async () => {});
+/** Returns whatever setMockUser last set, like reloading from Firebase. */
+export const refreshUser = jest.fn(async () => current);
+
 export function resetAuthMock() {
   current = null;
   listeners.clear();
@@ -41,4 +46,12 @@ export function resetAuthMock() {
   signUp.mockReset().mockResolvedValue(undefined);
   signIn.mockReset().mockResolvedValue(undefined);
   signOut.mockClear();
+  resendVerificationEmail.mockReset().mockResolvedValue(undefined);
+  sendPasswordReset.mockReset().mockResolvedValue(undefined);
+  refreshUser.mockReset().mockImplementation(async () => current);
+}
+
+/** Changes the user without notifying listeners, like verifying in another app. */
+export function setMockUserQuietly(user: AuthUser | null) {
+  current = user;
 }

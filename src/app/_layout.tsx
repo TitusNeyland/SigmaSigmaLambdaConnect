@@ -19,6 +19,7 @@ function RootStack() {
   if (status === 'loading') return null;
 
   const signedIn = status === 'signedIn';
+  const unverified = status === 'unverified';
 
   return (
     <Stack
@@ -28,8 +29,11 @@ function RootStack() {
       }}
     >
       <Stack.Screen name="index" />
-      <Stack.Protected guard={!signedIn}>
+      <Stack.Protected guard={status === 'signedOut'}>
         <Stack.Screen name="(auth)" />
+      </Stack.Protected>
+      <Stack.Protected guard={unverified}>
+        <Stack.Screen name="verify-email" />
       </Stack.Protected>
       <Stack.Protected guard={signedIn}>
         <Stack.Screen name="(tabs)" />

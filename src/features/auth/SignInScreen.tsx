@@ -47,6 +47,14 @@ export function SignInScreen() {
             fullWidth
             testID="sign-in-submit"
           />
+          <Link
+            href={{ pathname: '/forgot-password', params: email ? { email } : {} }}
+            style={styles.link}
+          >
+            <AppText variant="callout" color={colors.link}>
+              Forgot password?
+            </AppText>
+          </Link>
           <Link href="/sign-up" replace style={styles.link}>
             <AppText variant="callout" color={colors.textSecondary}>
               New here?{' '}
