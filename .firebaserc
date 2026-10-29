@@ -1,0 +1,7 @@
+{
+  "projects": {
+    "default": "sigmasigmalambdadev",
+    "dev": "sigmasigmalambdadev",
+    "prod": "sigmasigmalambdaproduction"
+  }
+}

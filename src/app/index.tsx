@@ -1,6 +1,9 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { APP_ENV } from '@/config/env';
+import { app } from '@/data/firebase';
+
 // Placeholder home screen. The tab bar shell (#5) and design tokens (#4) replace this.
 export default function Index() {
   return (
@@ -11,6 +14,9 @@ export default function Index() {
         </View>
         <Text style={styles.title}>Sigma Sigma Lambda Connect</Text>
         <Text style={styles.subtitle}>Project setup complete.</Text>
+        <Text style={styles.subtitle}>
+          Firebase: {app.options.projectId} ({APP_ENV})
+        </Text>
       </View>
     </SafeAreaView>
   );

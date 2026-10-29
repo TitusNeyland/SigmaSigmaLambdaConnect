@@ -8,3 +8,5 @@ package-lock.json
 assets
 scripts
 docs/design-brief.md
+functions/lib
+functions/node_modules

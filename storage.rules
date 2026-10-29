@@ -1,0 +1,10 @@
+rules_version = '2';
+
+// Locked down until #3 adds the real rules. Nothing is readable or writable from the app.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
