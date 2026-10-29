@@ -17,6 +17,7 @@ jest.mock('@/data/events');
 const events = jest.requireMock<typeof import('@/data/__mocks__/events')>('@/data/events');
 jest.mock('@/data/eventAdmin');
 jest.mock('@/data/feed');
+jest.mock('@/data/likes');
 const feed = jest.requireMock<typeof import('@/data/__mocks__/feed')>('@/data/feed');
 
 const hoursAgo = (h: number) => new Date(Date.now() - h * 3600_000);
