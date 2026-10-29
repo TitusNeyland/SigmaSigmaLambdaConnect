@@ -13,9 +13,12 @@ import { TABS } from './TabLayout';
 jest.mock('@/data/auth');
 const { resetAuthMock, sampleUser, setMockUser } =
   jest.requireMock<typeof import('@/data/__mocks__/auth')>('@/data/auth');
+jest.mock('@/data/members');
+const members = jest.requireMock<typeof import('@/data/__mocks__/members')>('@/data/members');
 
 beforeEach(() => {
   resetAuthMock();
+  members.resetMembersMock();
   setMockUser(sampleUser());
 });
 

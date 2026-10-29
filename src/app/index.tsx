@@ -1,11 +1,10 @@
 import { Redirect } from 'expo-router';
 
-import { useAuth } from '@/features/auth/AuthProvider';
+import { routeForStatus } from '@/features/auth/routes';
+import { useSession } from '@/features/auth/session';
 
 export default function Index() {
-  const { status } = useAuth();
+  const { status } = useSession();
   if (status === 'loading') return null;
-  if (status === 'signedIn') return <Redirect href="/home" />;
-  if (status === 'unverified') return <Redirect href="/verify-email" />;
-  return <Redirect href="/welcome" />;
+  return <Redirect href={routeForStatus(status)} />;
 }

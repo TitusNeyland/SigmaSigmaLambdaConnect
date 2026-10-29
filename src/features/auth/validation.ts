@@ -35,14 +35,22 @@ export type SignUpInput = {
   password: string;
 };
 
-export function validateSignUp(input: SignUpInput): FieldErrors<keyof SignUpInput> {
-  const errors: FieldErrors<keyof SignUpInput> = {};
+export type ProfileInput = Pick<SignUpInput, 'displayName' | 'initiationTerm'>;
+
+/** Name and initiation term, with the same limits as the security rules. */
+export function validateProfile(input: ProfileInput): FieldErrors<keyof ProfileInput> {
+  const errors: FieldErrors<keyof ProfileInput> = {};
   const name = input.displayName.trim();
   if (!name) errors.displayName = 'Enter your name.';
   else if (name.length > 60) errors.displayName = 'Use 60 characters or fewer.';
   const term = input.initiationTerm.trim();
   if (!term) errors.initiationTerm = 'Enter when you were initiated, like Spring 2019.';
   else if (term.length > 40) errors.initiationTerm = 'Use 40 characters or fewer.';
+  return errors;
+}
+
+export function validateSignUp(input: SignUpInput): FieldErrors<keyof SignUpInput> {
+  const errors: FieldErrors<keyof SignUpInput> = { ...validateProfile(input) };
   const email = validateEmail(input.email);
   if (email) errors.email = email;
   const password = validatePassword(input.password);

@@ -3,23 +3,21 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
-import { AuthProvider, useAuth } from '@/features/auth/AuthProvider';
+import { AuthProvider } from '@/features/auth/AuthProvider';
+import { SessionProvider, useSession } from '@/features/auth/session';
 import { colors } from '@/theme';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
 function RootStack() {
-  const { status } = useAuth();
+  const { status } = useSession();
 
   useEffect(() => {
     if (status !== 'loading') SplashScreen.hideAsync().catch(() => {});
   }, [status]);
 
-  // Keep the splash screen up until we know whether someone is signed in.
+  // Keep the splash screen up until we know who this is and whether they're approved.
   if (status === 'loading') return null;
-
-  const signedIn = status === 'signedIn';
-  const unverified = status === 'unverified';
 
   return (
     <Stack
@@ -32,10 +30,23 @@ function RootStack() {
       <Stack.Protected guard={status === 'signedOut'}>
         <Stack.Screen name="(auth)" />
       </Stack.Protected>
-      <Stack.Protected guard={unverified}>
+      <Stack.Protected guard={status === 'unverified'}>
         <Stack.Screen name="verify-email" />
       </Stack.Protected>
-      <Stack.Protected guard={signedIn}>
+      <Stack.Protected guard={status === 'needsProfile'}>
+        <Stack.Screen name="complete-profile" />
+      </Stack.Protected>
+      <Stack.Protected guard={status === 'pending'}>
+        <Stack.Screen name="pending" />
+      </Stack.Protected>
+      <Stack.Protected guard={status === 'declined'}>
+        <Stack.Screen name="declined" />
+      </Stack.Protected>
+      <Stack.Protected guard={status === 'error'}>
+        <Stack.Screen name="offline" />
+      </Stack.Protected>
+      {/* Only approved members ever reach chapter content. The security rules enforce the same. */}
+      <Stack.Protected guard={status === 'approved'}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="new-post" options={{ presentation: 'modal' }} />
       </Stack.Protected>
@@ -46,8 +57,10 @@ function RootStack() {
 export default function RootLayout() {
   return (
     <AuthProvider>
-      <StatusBar style="dark" />
-      <RootStack />
+      <SessionProvider>
+        <StatusBar style="dark" />
+        <RootStack />
+      </SessionProvider>
     </AuthProvider>
   );
 }
