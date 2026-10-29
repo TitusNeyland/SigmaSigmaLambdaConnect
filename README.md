@@ -2,7 +2,7 @@
 
 Private mobile app for the Sigma Sigma Lambda chapter: a photo feed, events and RSVPs, the brotherhood directory, and chapter progress, with leadership tools for officers.
 
-Built with Expo SDK 58, React Native, TypeScript and Expo Router. Firebase is added in #2.
+Built with Expo SDK 58, React Native, TypeScript and Expo Router, on Firebase (Auth, Firestore, Storage, Cloud Functions). See `docs/firebase.md` for projects, console setup and emulators.
 
 ## Requirements
 
@@ -17,6 +17,7 @@ Built with Expo SDK 58, React Native, TypeScript and Expo Router. Firebase is ad
 git clone https://github.com/TitusNeyland/sigmasigmalambdaconnect
 cd sigmasigmalambdaconnect
 npm install
+npm --prefix functions install
 npm start
 ```
 
