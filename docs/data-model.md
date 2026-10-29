@@ -37,6 +37,7 @@ kpis[kpis/periodId]
 | ----------------------------------------------- | ------------------------------------------- | ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | `members/{uid}`                                 | Profile and membership status               | Approved members; the person themself; officers             | The person creates it as `pending` and edits profile fields only. Officers change `status`. Admins can delete                |
 | `members/{uid}/private/contact`                 | Email, phone and the show switches          | The person themself only                                    | The person themself                                                                                                          |
+| `pushTokens/{uid}/tokens/{tokenId}`             | One per phone the member signs in on        | The person themself only                                    | The person themself. Cloud Functions read them to send push                                                                  |
 | `roles/{uid}`                                   | `officer` or `admin`, plus an officer title | The person themself; approved members (to show role badges) | Admins only                                                                                                                  |
 | `events/{eventId}`                              | Event details                               | Approved members                                            | Officers                                                                                                                     |
 | `events/{eventId}/rsvps/{uid}`                  | Going, maybe or not going                   | Approved members                                            | The member, for themself, until the RSVP deadline                                                                            |
@@ -80,7 +81,7 @@ Anything not listed is denied.
 
 Members delete their account from Settings. The app confirms their password, then calls the `deleteAccount` Cloud Function, which only accepts a sign-in from the last five minutes. It removes:
 
-- `members/{uid}` (with its private contact doc), `roles/{uid}` and `blocks/{uid}/blocked/*`
+- `members/{uid}` (with its private contact doc), `roles/{uid}`, `blocks/{uid}/blocked/*` and `pushTokens/{uid}/tokens/*`
 - Their posts, including every comment and like on them
 - Their comments and likes on other posts (those posts' counts are lowered to match)
 - Their RSVPs

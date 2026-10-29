@@ -67,8 +67,9 @@ export async function deleteUserData(
     await batch.commit();
   }
 
-  // Their block list, role and profile, including the private contact doc under it.
+  // Their block list, push tokens, role and profile (with its private contact doc).
   await db.recursiveDelete(db.doc(`blocks/${uid}`));
+  await db.recursiveDelete(db.doc(`pushTokens/${uid}`));
   await db.doc(`roles/${uid}`).delete();
   await db.recursiveDelete(db.doc(`members/${uid}`));
 

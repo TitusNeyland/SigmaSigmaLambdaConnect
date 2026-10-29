@@ -5,6 +5,7 @@ import { useEffect } from 'react';
 
 import { AuthProvider } from '@/features/auth/AuthProvider';
 import { SessionProvider, useSession } from '@/features/auth/session';
+import { PushRegistration } from '@/features/notifications/PushRegistration';
 import { RoleProvider } from '@/features/roles/RoleProvider';
 import { colors } from '@/theme';
 
@@ -61,6 +62,7 @@ export default function RootLayout() {
       <SessionProvider>
         <RoleProvider>
           <StatusBar style="dark" />
+          <PushRegistration />
           <RootStack />
         </RoleProvider>
       </SessionProvider>

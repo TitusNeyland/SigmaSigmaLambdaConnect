@@ -28,8 +28,8 @@ Do this in **both** projects. Steps marked "later" can wait until the issue that
 - [ ] **Firestore**: Build > Firestore Database > Create database > **Production mode**, location `nam5 (United States)`. Production mode starts locked; the rules in this repo replace the defaults on deploy.
 - [ ] **Storage**: Build > Storage > Get started > Production mode, same location
 - [ ] **Blaze plan** (needed for Cloud Functions, push notifications and Storage on new projects). It's pay as you go, but at chapter scale it should stay within the free monthly allowance. Set a budget alert of $5 to $10 under Billing so nothing surprises you.
-- [ ] **Cloud Messaging**: on by default. iOS push keys get added with #25.
-- [ ] Later: iOS and Android apps (only if we move to native Firebase SDKs, or for push in #25)
+- [ ] **Cloud Messaging**: on by default. Push credentials go into EAS, not Firebase. See [notifications.md](notifications.md).
+- [ ] Later: iOS and Android apps (only if we move to native Firebase SDKs)
 
 Analytics was left out on purpose. Firebase's web Analytics SDK doesn't run in React Native.
 

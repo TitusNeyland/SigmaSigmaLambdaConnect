@@ -51,6 +51,13 @@
         }
       ],
       [
+        "expo-notifications",
+        {
+          "color": "#111111",
+          "defaultChannel": "default"
+        }
+      ],
+      [
         "expo-calendar",
         {
           "calendarPermission": "Add chapter events to your calendar.",

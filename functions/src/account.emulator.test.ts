@@ -51,6 +51,8 @@ async function seed() {
       },
     ],
     ['members/gone/private/contact', { email: 'gone@example.com', phone: '555-0101' }],
+    ['pushTokens/gone/tokens/t1', { token: 'ExponentPushToken[gone]', platform: 'ios' }],
+    ['pushTokens/stays/tokens/t2', { token: 'ExponentPushToken[stays]', platform: 'ios' }],
     ['roles/gone', { role: 'officer', title: 'Secretary' }],
     ['blocks/gone/blocked/stays', { createdAt: now() }],
     // A post by the leaving member, with someone else's comment and like on it.
@@ -147,6 +149,8 @@ describe('deleteUserData', () => {
     await run();
     expect(await exists('members/gone')).toBe(false);
     expect(await exists('members/gone/private/contact')).toBe(false);
+    expect(await exists('pushTokens/gone/tokens/t1')).toBe(false);
+    expect(await exists('pushTokens/stays/tokens/t2')).toBe(true);
     expect(await exists('roles/gone')).toBe(false);
     expect(await exists('blocks/gone/blocked/stays')).toBe(false);
     await expect(auth.getUser('gone')).rejects.toMatchObject({ code: 'auth/user-not-found' });
