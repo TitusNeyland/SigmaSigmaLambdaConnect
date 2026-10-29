@@ -1,6 +1,6 @@
 import { getDoc, getDocs, orderBy, Timestamp, where } from 'firebase/firestore';
 
-import { fetchUpcomingEvents, toEventSummary } from './events';
+import { fetchEventsBetween, fetchUpcomingEvents, toEventSummary } from './events';
 
 jest.mock('./firebase', () => ({ db: { name: 'db' } }));
 jest.mock('firebase/firestore', () => {
@@ -151,5 +151,25 @@ describe('fetchUpcomingEvents', () => {
   it('fails when Firestore fails', async () => {
     jest.mocked(getDocs).mockRejectedValue(new Error('permission-denied'));
     await expect(fetchUpcomingEvents('me', NOW)).rejects.toThrow('permission-denied');
+  });
+});
+
+describe('fetchEventsBetween', () => {
+  it('asks for events starting in the range, past ones included', async () => {
+    jest.mocked(getDocs).mockResolvedValue({
+      docs: [{ id: 'old', data: () => ({ title: 'Old', startsAt: ts('2026-10-02T00:00:00Z') }) }],
+    } as never);
+    jest
+      .mocked(getDoc)
+      .mockResolvedValue({ exists: () => true, data: () => ({ status: 'going' }) } as never);
+    const from = new Date('2026-10-01T00:00:00Z');
+    const to = new Date('2026-11-01T00:00:00Z');
+    const events = await fetchEventsBetween('me', from, to);
+    const calls = jest.mocked(where).mock.calls as unknown as [string, string, Timestamp][];
+    expect(calls.map(([f, op, v]) => [f, op, v.toMillis()])).toEqual([
+      ['startsAt', '>=', from.getTime()],
+      ['startsAt', '<', to.getTime()],
+    ]);
+    expect(events.map((e) => [e.id, e.myRsvp])).toEqual([['old', 'going']]);
   });
 });

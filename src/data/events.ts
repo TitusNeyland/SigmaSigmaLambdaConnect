@@ -67,19 +67,15 @@ export function toEventSummary(
   };
 }
 
-/** A chapter's upcoming calendar is small, so one page covers it. */
+/** A chapter's calendar is small, so one page covers any range we ask for. */
 const MAX_EVENTS = 100;
 
-/**
- * Events that haven't ended yet, soonest first, each with the member's RSVP. An event that
- * started earlier today stays listed until it's over (or for 3 hours if it has no end time).
- */
-export async function fetchUpcomingEvents(uid: string, now = new Date()): Promise<EventSummary[]> {
-  const since = Timestamp.fromMillis(now.getTime() - 24 * 3600_000);
+async function fetchEvents(uid: string, from: Date, to: Date | null): Promise<EventSummary[]> {
   const snap = await getDocs(
     query(
       collection(db, 'events'),
-      where('startsAt', '>=', since),
+      where('startsAt', '>=', Timestamp.fromDate(from)),
+      ...(to ? [where('startsAt', '<', Timestamp.fromDate(to))] : []),
       orderBy('startsAt', 'asc'),
       limit(MAX_EVENTS),
     ),
@@ -91,9 +87,22 @@ export async function fetchUpcomingEvents(uid: string, now = new Date()): Promis
       return toEventSummary(d.id, d.data(), status && RSVPS.includes(status) ? status : null);
     }),
   );
-  return events.filter((e): e is EventSummary => {
-    if (!e) return false;
+  return events.filter((e): e is EventSummary => e !== null);
+}
+
+/**
+ * Events that haven't ended yet, soonest first, each with the member's RSVP. An event that
+ * started earlier today stays listed until it's over (or for 3 hours if it has no end time).
+ */
+export async function fetchUpcomingEvents(uid: string, now = new Date()): Promise<EventSummary[]> {
+  const events = await fetchEvents(uid, new Date(now.getTime() - 24 * 3600_000), null);
+  return events.filter((e) => {
     const end = e.endsAt ?? new Date(e.startsAt.getTime() + 3 * 3600_000);
     return end.getTime() > now.getTime();
   });
+}
+
+/** Every event starting in [from, to), past ones included, for the calendar (#21). */
+export function fetchEventsBetween(uid: string, from: Date, to: Date): Promise<EventSummary[]> {
+  return fetchEvents(uid, from, to);
 }

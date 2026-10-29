@@ -40,8 +40,18 @@ export const fetchUpcomingEvents = jest.fn(async (_uid: string, _now?: Date) => 
   return events;
 });
 
+/** Every mock event starting in [from, to), like the real range query. */
+export const fetchEventsBetween = jest.fn(async (_uid: string, from: Date, to: Date) => {
+  if (failing) {
+    failing = false;
+    throw new Error('offline');
+  }
+  return events.filter((e) => e.startsAt >= from && e.startsAt < to);
+});
+
 export function resetEventsMock(initial: EventSummary[] = []) {
   events = initial;
   failing = false;
   fetchUpcomingEvents.mockClear();
+  fetchEventsBetween.mockClear();
 }

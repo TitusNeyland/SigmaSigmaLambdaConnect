@@ -168,3 +168,22 @@ it('reloads when you come back to the tab, so a changed RSVP shows', async () =>
   await press(screen.getByRole('button', { name: 'Back to events' }));
   await waitFor(() => expect(screen.getByTestId('status-gala')).toHaveTextContent('Can’t go'));
 });
+
+describe('Upcoming and Calendar', () => {
+  it('switches between the list and the calendar', async () => {
+    await openEvents();
+    expect(screen.getByRole('tab', { name: 'Upcoming' }).props.accessibilityState).toMatchObject({
+      selected: true,
+    });
+    await press(screen.getByRole('tab', { name: 'Calendar' }));
+    await waitFor(() => expect(screen.getByTestId('calendar')).toBeTruthy());
+    expect(screen.queryByTestId('featured-event')).toBeNull();
+    expect(events.fetchEventsBetween).toHaveBeenCalledWith(
+      auth.sampleUser().uid,
+      expect.any(Date),
+      expect.any(Date),
+    );
+    await press(screen.getByRole('tab', { name: 'Upcoming' }));
+    expect(screen.getByTestId('featured-event')).toBeTruthy();
+  });
+});
