@@ -91,6 +91,8 @@ export type Rsvp = {
 
 /** events/{eventId}/attendance/{uid}. Written by officers only. */
 export type Attendance = {
+  /** Same as the document ID. Lets a member's attendance be queried across events. */
+  memberId: string;
   checkedInBy: string;
   checkedInAt: Timestamp;
   serviceHours?: number;

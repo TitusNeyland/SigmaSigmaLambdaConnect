@@ -174,7 +174,9 @@ service cloud.firestore {
       match /attendance/{userId} {
         allow read: if isOfficer() || (isApproved() && isSelf(userId));
         allow create, update: if isOfficer()
-          && incoming().keys().hasOnly(['checkedInBy', 'checkedInAt', 'serviceHours', 'walkIn'])
+          && incoming().keys().hasOnly(['memberId', 'checkedInBy', 'checkedInAt', 'serviceHours',
+                                        'walkIn'])
+          && incoming().memberId == userId
           && incoming().checkedInBy == request.auth.uid
           && isNow(incoming().checkedInAt)
           && (!('serviceHours' in incoming())
@@ -184,6 +186,13 @@ service cloud.firestore {
           && optionalBool(incoming(), 'walkIn');
         allow delete: if isOfficer();
       }
+    }
+
+    // A member's attendance across all events (profile Activity tab, #13). Collection group
+    // queries must filter on memberId == their own uid; officers can query everyone.
+    match /{path=**}/attendance/{userId} {
+      allow read: if isOfficer()
+        || (isApproved() && resource.data.memberId == request.auth.uid);
     }
 
     // ---------- Posts ----------

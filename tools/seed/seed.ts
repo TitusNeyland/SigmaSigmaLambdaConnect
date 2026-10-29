@@ -91,6 +91,7 @@ export function buildSeedDocs(now: Date = new Date()): SeedDoc[] {
       docs.push({
         path: `events/${event.id}/attendance/${uid}`,
         data: {
+          memberId: uid,
           checkedInBy: 'sample-jordan',
           checkedInAt: startsAt,
           walkIn: !(uid in event.rsvps),
