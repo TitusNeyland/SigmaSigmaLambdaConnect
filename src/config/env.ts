@@ -35,16 +35,26 @@ export function parseAppEnv(value: string | undefined): AppEnv {
   return value === 'production' ? 'production' : 'development';
 }
 
-export const APP_ENV: AppEnv = parseAppEnv(process.env.EXPO_PUBLIC_APP_ENV);
-
-export const firebaseConfig: FirebaseOptions = FIREBASE_CONFIGS[APP_ENV];
+export function getFirebaseConfig(env: AppEnv): FirebaseOptions {
+  return FIREBASE_CONFIGS[env];
+}
 
 /**
  * Point the app at the local Firebase emulators instead of the dev project.
- * Only ever allowed in development.
+ * Never allowed in production, whatever the flag says.
  */
-export const USE_EMULATORS: boolean =
-  APP_ENV === 'development' && process.env.EXPO_PUBLIC_USE_EMULATORS === 'true';
+export function shouldUseEmulators(env: AppEnv, flag: string | undefined): boolean {
+  return env === 'development' && flag === 'true';
+}
+
+export const APP_ENV: AppEnv = parseAppEnv(process.env.EXPO_PUBLIC_APP_ENV);
+
+export const firebaseConfig: FirebaseOptions = getFirebaseConfig(APP_ENV);
+
+export const USE_EMULATORS: boolean = shouldUseEmulators(
+  APP_ENV,
+  process.env.EXPO_PUBLIC_USE_EMULATORS,
+);
 
 /** Host for the emulators. Android emulators reach the host machine at 10.0.2.2. */
 export const EMULATOR_HOST: string = process.env.EXPO_PUBLIC_EMULATOR_HOST ?? '127.0.0.1';

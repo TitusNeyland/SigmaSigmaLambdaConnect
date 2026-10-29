@@ -1,10 +1,326 @@
 rules_version = '2';
 
-// Locked down until #3 adds the real rules. Nothing is readable or writable from the app.
+// Security rules for Sigma Sigma Lambda Connect. See docs/data-model.md for the model and
+// tests/rules/firestore.test.ts for the expected behavior. Anything not matched is denied.
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if false;
+
+    // ---------- Who is asking ----------
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    function memberPath(userId) {
+      return /databases/$(database)/documents/members/$(userId);
+    }
+
+    function rolePath(userId) {
+      return /databases/$(database)/documents/roles/$(userId);
+    }
+
+    function isApproved() {
+      return signedIn()
+        && exists(memberPath(request.auth.uid))
+        && get(memberPath(request.auth.uid)).data.status == 'approved';
+    }
+
+    function roleIn(roles) {
+      return exists(rolePath(request.auth.uid))
+        && get(rolePath(request.auth.uid)).data.role in roles;
+    }
+
+    function isOfficer() {
+      return isApproved() && roleIn(['officer', 'admin']);
+    }
+
+    function isAdmin() {
+      return isApproved() && roleIn(['admin']);
+    }
+
+    // ---------- Validation helpers ----------
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function changed() {
+      return incoming().diff(resource.data).affectedKeys();
+    }
+
+    function isText(value, minLen, maxLen) {
+      return value is string && value.size() >= minLen && value.size() <= maxLen;
+    }
+
+    function optionalText(data, field, maxLen) {
+      return !(field in data) || isText(data[field], 0, maxLen);
+    }
+
+    function optionalBool(data, field) {
+      return !(field in data) || data[field] is bool;
+    }
+
+    function isNow(value) {
+      return value == request.time;
+    }
+
+    // ---------- Members ----------
+
+    function memberProfileValid(data) {
+      return isText(data.displayName, 1, 60)
+        && isText(data.initiationTerm, 1, 40)
+        && optionalText(data, 'headline', 80)
+        && optionalText(data, 'bio', 150)
+        && optionalText(data, 'email', 254)
+        && optionalText(data, 'phone', 30)
+        && optionalBool(data, 'showEmail')
+        && optionalBool(data, 'showPhone')
+        && (!('interests' in data) || (data.interests is list && data.interests.size() <= 10))
+        && (!('photoURL' in data) || data.photoURL == null || data.photoURL is string);
+    }
+
+    function memberEditableFields() {
+      return ['displayName', 'initiationTerm', 'headline', 'bio', 'interests', 'photoURL',
+              'email', 'phone', 'showEmail', 'showPhone', 'guidelinesAcceptedAt', 'updatedAt'];
+    }
+
+    match /members/{memberId} {
+      allow read: if isSelf(memberId) || isApproved();
+
+      // A new account creates its own pending profile. It can't approve itself.
+      allow create: if isSelf(memberId)
+        && incoming().keys().hasAll(['displayName', 'initiationTerm', 'status', 'createdAt'])
+        && incoming().keys().hasOnly(memberEditableFields().concat(['status', 'createdAt']))
+        && incoming().status == 'pending'
+        && isNow(incoming().createdAt)
+        && memberProfileValid(incoming());
+
+      // Members edit their own profile fields, never their status.
+      allow update: if isSelf(memberId)
+        && changed().hasOnly(memberEditableFields())
+        && memberProfileValid(incoming());
+
+      // Officers approve or decline other people.
+      allow update: if isOfficer()
+        && !isSelf(memberId)
+        && changed().hasOnly(['status', 'reviewedBy', 'reviewedAt'])
+        && incoming().status in ['approved', 'declined']
+        && incoming().reviewedBy == request.auth.uid
+        && isNow(incoming().reviewedAt);
+
+      // Account deletion (#16), or an admin removing someone.
+      allow delete: if isSelf(memberId) || isAdmin();
+    }
+
+    // ---------- Roles ----------
+
+    match /roles/{userId} {
+      allow read: if isSelf(userId) || isApproved();
+      allow create, update: if isAdmin()
+        && incoming().keys().hasOnly(['role', 'title'])
+        && incoming().role in ['officer', 'admin']
+        && optionalText(incoming(), 'title', 40);
+      allow delete: if isAdmin();
+    }
+
+    // ---------- Events ----------
+
+    function eventValid(data) {
+      return isText(data.title, 1, 100)
+        && data.category in ['meeting', 'service', 'learning', 'brotherhood', 'fundraiser',
+                             'social', 'public']
+        && isText(data.location, 1, 120)
+        && data.startsAt is timestamp
+        && data.rsvpDeadline is timestamp
+        && optionalText(data, 'description', 2000)
+        && (!('feeCents' in data) || (data.feeCents is int && data.feeCents >= 0));
+    }
+
+    function eventPath(eventId) {
+      return /databases/$(database)/documents/events/$(eventId);
+    }
+
+    function rsvpOpen(eventId) {
+      let event = get(eventPath(eventId)).data;
+      return request.time < event.rsvpDeadline && event.get('cancelled', false) == false;
+    }
+
+    match /events/{eventId} {
+      allow read: if isApproved();
+      allow create: if isOfficer()
+        && eventValid(incoming())
+        && incoming().createdBy == request.auth.uid
+        && isNow(incoming().createdAt);
+      allow update: if isOfficer() && eventValid(incoming());
+      allow delete: if isOfficer();
+
+      match /rsvps/{userId} {
+        allow read: if isApproved();
+        allow create, update: if isApproved()
+          && isSelf(userId)
+          && exists(eventPath(eventId))
+          && rsvpOpen(eventId)
+          && incoming().keys().hasOnly(['status', 'updatedAt'])
+          && incoming().status in ['going', 'maybe', 'not_going']
+          && isNow(incoming().updatedAt);
+        allow delete: if isApproved() && isSelf(userId) && rsvpOpen(eventId);
+      }
+
+      // Attendance is an officer check-in, separate from RSVPs.
+      match /attendance/{userId} {
+        allow read: if isOfficer() || (isApproved() && isSelf(userId));
+        allow create, update: if isOfficer()
+          && incoming().keys().hasOnly(['checkedInBy', 'checkedInAt', 'serviceHours', 'walkIn'])
+          && incoming().checkedInBy == request.auth.uid
+          && isNow(incoming().checkedInAt)
+          && (!('serviceHours' in incoming())
+              || (incoming().serviceHours is number
+                  && incoming().serviceHours >= 0
+                  && incoming().serviceHours <= 24))
+          && optionalBool(incoming(), 'walkIn');
+        allow delete: if isOfficer();
+      }
+    }
+
+    // ---------- Posts ----------
+
+    function postPath(postId) {
+      return /databases/$(database)/documents/posts/$(postId);
+    }
+
+    function acceptedGuidelines() {
+      return get(memberPath(request.auth.uid)).data.get('guidelinesAcceptedAt', null) != null;
+    }
+
+    match /posts/{postId} {
+      allow read: if isApproved()
+        && (resource.data.removed == false
+            || resource.data.authorId == request.auth.uid
+            || isOfficer());
+
+      allow create: if isApproved()
+        && acceptedGuidelines()
+        && incoming().keys().hasOnly(['authorId', 'caption', 'photoPaths', 'eventId',
+                                      'taggedMemberIds', 'allowComments', 'official',
+                                      'removed', 'likeCount', 'commentCount', 'createdAt'])
+        && incoming().authorId == request.auth.uid
+        && isText(incoming().caption, 0, 2200)
+        && incoming().photoPaths is list
+        && incoming().photoPaths.size() <= 10
+        && (incoming().photoPaths.size() > 0 || incoming().caption.size() > 0)
+        && incoming().allowComments is bool
+        && (incoming().official == false || (incoming().official == true && isOfficer()))
+        && incoming().removed == false
+        && incoming().likeCount == 0
+        && incoming().commentCount == 0
+        && (!('taggedMemberIds' in incoming())
+            || (incoming().taggedMemberIds is list && incoming().taggedMemberIds.size() <= 20))
+        && isNow(incoming().createdAt);
+
+      // Authors edit the caption and comment setting.
+      allow update: if isApproved()
+        && resource.data.authorId == request.auth.uid
+        && changed().hasOnly(['caption', 'allowComments', 'updatedAt'])
+        && isText(incoming().caption, 0, 2200)
+        && incoming().allowComments is bool;
+
+      // Officers remove or restore a post.
+      allow update: if isOfficer()
+        && changed().hasOnly(['removed', 'updatedAt'])
+        && incoming().removed is bool;
+
+      allow delete: if isApproved()
+        && (resource.data.authorId == request.auth.uid || isOfficer());
+
+      match /comments/{commentId} {
+        allow read: if isApproved();
+        allow create: if isApproved()
+          && incoming().keys().hasOnly(['authorId', 'text', 'createdAt'])
+          && incoming().authorId == request.auth.uid
+          && isText(incoming().text, 1, 1000)
+          && isNow(incoming().createdAt)
+          && get(postPath(postId)).data.allowComments == true
+          && get(postPath(postId)).data.removed == false;
+        allow delete: if isApproved()
+          && (resource.data.authorId == request.auth.uid || isOfficer());
+      }
+
+      match /likes/{userId} {
+        allow read: if isApproved();
+        allow create: if isApproved()
+          && isSelf(userId)
+          && exists(postPath(postId))
+          && incoming().keys().hasOnly(['createdAt'])
+          && isNow(incoming().createdAt);
+        allow delete: if isApproved() && isSelf(userId);
+      }
+    }
+
+    // ---------- Reports ----------
+
+    match /reports/{reportId} {
+      // Reporters stay anonymous to everyone but officers.
+      allow read: if isOfficer();
+      allow create: if isApproved()
+        && incoming().keys().hasOnly(['reporterId', 'targetType', 'postId', 'commentId',
+                                      'targetAuthorId', 'reason', 'details', 'status',
+                                      'createdAt'])
+        && incoming().reporterId == request.auth.uid
+        && incoming().targetType in ['post', 'comment']
+        && incoming().postId is string
+        && incoming().targetAuthorId is string
+        && incoming().reason in ['spam', 'harassment', 'inappropriate', 'other']
+        && optionalText(incoming(), 'details', 500)
+        && incoming().status == 'open'
+        && isNow(incoming().createdAt);
+      allow update: if isOfficer()
+        && changed().hasOnly(['status', 'resolvedBy', 'resolvedAt'])
+        && incoming().status in ['open', 'kept', 'removed', 'restricted']
+        && incoming().resolvedBy == request.auth.uid
+        && isNow(incoming().resolvedAt);
+      allow delete: if isAdmin();
+    }
+
+    // ---------- Blocks ----------
+
+    match /blocks/{ownerId}/blocked/{otherId} {
+      allow read, delete: if isSelf(ownerId);
+      allow create: if isSelf(ownerId)
+        && otherId != request.auth.uid
+        && incoming().keys().hasOnly(['createdAt'])
+        && isNow(incoming().createdAt);
+    }
+
+    // ---------- Chapter content officers manage ----------
+
+    match /programs/{programId} {
+      allow read: if isApproved();
+      allow write: if isOfficer();
+
+      match /milestones/{milestoneId} {
+        allow read: if isApproved();
+        allow write: if isOfficer();
+      }
+    }
+
+    match /goals/{goalId} {
+      allow read: if isApproved();
+      allow write: if isOfficer();
+    }
+
+    match /announcements/{announcementId} {
+      allow read: if isApproved();
+      allow write: if isOfficer();
+    }
+
+    // Computed by Cloud Functions with the Admin SDK. Clients only read.
+    match /kpis/{periodId} {
+      allow read: if isOfficer();
+      allow write: if false;
     }
   }
 }
