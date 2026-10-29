@@ -1,8 +1,64 @@
 rules_version = '2';
 
-// Locked down until #3 adds the real rules. Nothing is readable or writable from the app.
+// Storage rules for Sigma Sigma Lambda Connect. Membership and roles are read from
+// Firestore. See docs/data-model.md and tests/rules/storage.test.ts.
 service firebase.storage {
   match /b/{bucket}/o {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    function memberPath() {
+      return /databases/(default)/documents/members/$(request.auth.uid);
+    }
+
+    function rolePath() {
+      return /databases/(default)/documents/roles/$(request.auth.uid);
+    }
+
+    function isApproved() {
+      return signedIn()
+        && firestore.exists(memberPath())
+        && firestore.get(memberPath()).data.status == 'approved';
+    }
+
+    function isOfficer() {
+      return isApproved()
+        && firestore.exists(rolePath())
+        && firestore.get(rolePath()).data.role in ['officer', 'admin'];
+    }
+
+    function isImageUnder(maxBytes) {
+      return request.resource.contentType.matches('image/.*')
+        && request.resource.size < maxBytes;
+    }
+
+    // Profile photos. Pending members can upload theirs during profile setup.
+    match /avatars/{userId}/{fileName} {
+      allow read: if isSelf(userId) || isApproved();
+      allow create, update: if isSelf(userId) && isImageUnder(5 * 1024 * 1024);
+      allow delete: if isSelf(userId);
+    }
+
+    // Photos for a post, stored under the author's ID.
+    match /posts/{userId}/{postId}/{fileName} {
+      allow read: if isApproved();
+      allow create, update: if isSelf(userId) && isApproved() && isImageUnder(10 * 1024 * 1024);
+      allow delete: if (isSelf(userId) && isApproved()) || isOfficer();
+    }
+
+    // Event hero photos.
+    match /events/{eventId}/{fileName} {
+      allow read: if isApproved();
+      allow create, update: if isOfficer() && isImageUnder(10 * 1024 * 1024);
+      allow delete: if isOfficer();
+    }
+
     match /{allPaths=**} {
       allow read, write: if false;
     }
