@@ -30,6 +30,7 @@ jest.mock('@/data/programs');
 jest.mock('@/data/announcements');
 jest.mock('@/data/leadership');
 jest.mock('@/data/requests');
+jest.mock('@/data/attendance');
 const members = jest.requireMock<typeof import('@/data/__mocks__/members')>('@/data/members');
 
 beforeEach(() => {

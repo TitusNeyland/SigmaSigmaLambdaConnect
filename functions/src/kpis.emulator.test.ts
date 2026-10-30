@@ -2,7 +2,7 @@ import { deleteApp, initializeApp, type App } from 'firebase-admin/app';
 import { getFirestore, Timestamp, type Firestore } from 'firebase-admin/firestore';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
-import { computeKpis } from './kpis';
+import { computeKpis, isApprovedOfficer } from './kpis';
 
 // Runs against the Firestore emulator (npm run test:rules).
 
@@ -45,7 +45,7 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
-  for (const c of ['members', 'events', 'posts', 'goals', 'kpis']) {
+  for (const c of ['members', 'events', 'posts', 'goals', 'kpis', 'roles']) {
     await db.recursiveDelete(db.collection(c));
   }
   for (const uid of ['a', 'b', 'c', 'd']) await member(uid);
@@ -141,5 +141,18 @@ describe('computeKpis', () => {
       eventsHeld: 0,
       goalsTotal: 0,
     });
+  });
+});
+
+describe('isApprovedOfficer', () => {
+  it('is true only for approved officers and admins', async () => {
+    await db.doc('roles/a').set({ role: 'officer', title: 'Secretary' });
+    await db.doc('roles/b').set({ role: 'admin' });
+    await db.doc('roles/pete').set({ role: 'officer' });
+    expect(await isApprovedOfficer(db, 'a')).toBe(true);
+    expect(await isApprovedOfficer(db, 'b')).toBe(true);
+    expect(await isApprovedOfficer(db, 'c')).toBe(false);
+    expect(await isApprovedOfficer(db, 'pete')).toBe(false);
+    expect(await isApprovedOfficer(db, 'nobody')).toBe(false);
   });
 });

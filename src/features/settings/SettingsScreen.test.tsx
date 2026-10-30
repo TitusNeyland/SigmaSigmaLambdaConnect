@@ -25,6 +25,7 @@ jest.mock('@/data/programs');
 jest.mock('@/data/announcements');
 jest.mock('@/data/leadership');
 jest.mock('@/data/requests');
+jest.mock('@/data/attendance');
 const account = jest.requireMock<typeof import('@/data/__mocks__/account')>('@/data/account');
 const blocks = jest.requireMock<typeof import('@/data/__mocks__/blocks')>('@/data/blocks');
 

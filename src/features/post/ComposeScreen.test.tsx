@@ -23,6 +23,7 @@ jest.mock('@/data/programs');
 jest.mock('@/data/announcements');
 jest.mock('@/data/leadership');
 jest.mock('@/data/requests');
+jest.mock('@/data/attendance');
 const posts = jest.requireMock<typeof import('@/data/__mocks__/posts')>('@/data/posts');
 jest.mock('./preparePhoto', () => ({
   preparePhoto: jest.fn(async (photo: { uri: string }) => photo.uri.replace('.jpg', '-small.jpg')),
