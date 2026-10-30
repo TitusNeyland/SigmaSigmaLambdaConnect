@@ -70,6 +70,7 @@ export async function deleteUserData(
   // Their block list, push tokens, role and profile (with its private contact doc).
   await db.recursiveDelete(db.doc(`blocks/${uid}`));
   await db.recursiveDelete(db.doc(`pushTokens/${uid}`));
+  await db.recursiveDelete(db.doc(`likeDigests/${uid}`));
   await db.doc(`roles/${uid}`).delete();
   await db.recursiveDelete(db.doc(`members/${uid}`));
 

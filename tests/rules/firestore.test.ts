@@ -1175,6 +1175,16 @@ describe('reporting content (#36)', () => {
   });
 });
 
+describe('like digests (#40)', () => {
+  it('are server only: nobody in the app can read or write the queue', async () => {
+    const path = 'likeDigests/alice/pending/alicePost_bob';
+    for (const uid of [USERS.alice, USERS.bob, USERS.olivia, USERS.adam]) {
+      await assertFails(getDoc(doc(as(uid), path)));
+      await assertFails(setDoc(doc(as(uid), path), { postId: 'alicePost', likerId: 'bob' }));
+    }
+  });
+});
+
 describe('push tokens', () => {
   const token = (extra: object = {}) => ({
     token: 'ExponentPushToken[abc]',
