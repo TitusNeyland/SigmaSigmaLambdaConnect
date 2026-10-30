@@ -18,6 +18,12 @@ export { deleteAccount } from './account.js';
 export { eventNotifications, notifyEventCancelled, notifyNewEvent } from './events.js';
 export { cleanUpDeletedPost, countCommentLikes, countComments, countLikes } from './posts.js';
 export { notifyApproval } from './push.js';
+export {
+  likeDigests,
+  notifyNewComment,
+  queueLikeNotification,
+  unqueueLikeNotification,
+} from './social.js';
 
 /** Confirms deploys work. Returns the project the function is running in. */
 export const health = onRequest((_req, res) => {

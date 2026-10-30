@@ -16,6 +16,9 @@ Sent today:
 - **Event reminder** (`eventNotifications`, hourly, kind `events`): to Going and Maybe RSVPs about a day before the event.
 - **RSVP deadline nudge** (same job): to approved members who haven't answered, within a day of the deadline.
 
+- **Comments** (`notifyNewComment`, kind `social`): to the post's author, and to the person replied to. Never for your own comments or from someone you blocked.
+- **Likes** (`likeDigests`, every 15 minutes, kind `social`): batched as "Marcus Reed and 3 others liked your post". Likes wait in `likeDigests/{author}/pending`, which only the server can touch; an unlike before the digest takes it back out.
+
 The hourly job marks each event (`reminderSentAt`, `deadlineNudgeSentAt`), so nobody gets the same notification twice. Times in messages use `CHAPTER_TIME_ZONE` in `functions/src/events.ts` (Central time); change it if the chapter is elsewhere.
 
 ## One-time setup (Titus)
