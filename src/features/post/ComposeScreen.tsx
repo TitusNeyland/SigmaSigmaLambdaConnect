@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -26,6 +26,7 @@ import {
   HeaderButton,
   ListRow,
   ListSection,
+  ProgressBar,
   SearchField,
   SwitchRow,
   TextField,
@@ -43,6 +44,8 @@ import {
   toggleTag,
 } from './composeLogic';
 import { makeCover, usePostDraft } from './draft';
+import { preparePhoto } from './preparePhoto';
+import { overallPercent, uploadLabel } from './uploadLogic';
 
 const DAY = 86_400_000;
 
@@ -80,6 +83,10 @@ export function ComposeScreen() {
   const [search, setSearch] = useState('');
   const [sharing, setSharing] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [progress, setProgress] = useState<{ done: number; fractions: number[] }>({
+    done: 0,
+    fractions: [],
+  });
   const [posted, setPosted] = useState<string | null>(null);
   const [now] = useState(() => new Date());
 
@@ -95,15 +102,43 @@ export function ComposeScreen() {
   const photos = draft.photos;
   const ready = canShare(photos.length, caption) && !sharing;
 
+  // Kept across retries: the same post ID, and photos already uploaded aren't sent again.
+  const upload = useRef<{ postId: string | null; paths: Map<string, string>; next: number }>({
+    postId: null,
+    paths: new Map(),
+    next: 0,
+  });
+
   async function share() {
-    if (!canShare(photos.length, caption)) return;
+    if (!canShare(photos.length, caption) || sharing) return;
     setSharing(true);
     setFailed(false);
+    setProgress({
+      done: 0,
+      fractions: photos.map((p) => (upload.current.paths.has(p.uri) ? 1 : 0)),
+    });
     try {
-      const id = newPostId();
+      const state = upload.current;
+      state.postId ??= newPostId();
+      const id = state.postId;
       const photoPaths: string[] = [];
       for (const [i, photo] of photos.entries()) {
-        photoPaths.push(await uploadPostPhoto(uid, id, i, photo.uri));
+        let path = state.paths.get(photo.uri);
+        if (!path) {
+          const prepared = await preparePhoto(photo);
+          path = await uploadPostPhoto(uid, id, state.next++, prepared, (fraction) =>
+            setProgress((p) => ({
+              ...p,
+              fractions: p.fractions.map((f, j) => (j === i ? fraction : f)),
+            })),
+          );
+          state.paths.set(photo.uri, path);
+        }
+        photoPaths.push(path);
+        setProgress((p) => ({
+          done: i + 1,
+          fractions: p.fractions.map((f, j) => (j === i ? 1 : f)),
+        }));
       }
       await createPost(id, uid, {
         caption: caption.trim(),
@@ -173,7 +208,7 @@ export function ComposeScreen() {
           New post
         </AppText>
         <HeaderButton
-          title={sharing ? 'Sharing…' : 'Share'}
+          title={sharing ? 'Sharing…' : failed ? 'Retry' : 'Share'}
           bold
           disabled={!ready}
           onPress={share}
@@ -272,15 +307,37 @@ export function ComposeScreen() {
             </AppText>
           </Pressable>
 
+          {sharing && photos.length > 0 ? (
+            <View style={styles.progress} testID="compose-progress">
+              <AppText variant="footnote" color={colors.textSecondary}>
+                {uploadLabel(progress.done, photos.length)}
+              </AppText>
+              <ProgressBar
+                percent={overallPercent(progress.fractions, photos.length)}
+                accessibilityLabel={`Upload ${overallPercent(progress.fractions, photos.length)} percent done`}
+                testID="compose-progress-bar"
+              />
+            </View>
+          ) : null}
+
           {failed ? (
-            <AppText
-              variant="footnote"
-              color={colors.destructive}
-              align="center"
-              testID="compose-error"
-            >
-              Couldn’t share your post. Check your connection and try again.
-            </AppText>
+            <View style={styles.progress}>
+              <AppText
+                variant="footnote"
+                color={colors.destructive}
+                align="center"
+                testID="compose-error"
+              >
+                Couldn’t share your post. Your caption and photos are saved here.
+              </AppText>
+              <Button
+                title="Try again"
+                variant="secondary"
+                onPress={share}
+                fullWidth
+                testID="compose-retry"
+              />
+            </View>
           ) : null}
         </ScrollView>
       </KeyboardAvoidingView>
@@ -413,6 +470,7 @@ const styles = StyleSheet.create({
     backgroundColor: palette.scrim,
   },
   link: { minHeight: MIN_TOUCH, justifyContent: 'center' },
+  progress: { gap: spacing.sm },
   sheetList: { maxHeight: THUMB * 4 },
   posted: { flex: 1, justifyContent: 'center', padding: spacing.xxl, gap: spacing.md },
   check: {

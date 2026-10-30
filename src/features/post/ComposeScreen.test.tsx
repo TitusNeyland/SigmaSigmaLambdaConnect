@@ -19,6 +19,10 @@ const feed = jest.requireMock<typeof import('@/data/__mocks__/feed')>('@/data/fe
 jest.mock('@/data/likes');
 jest.mock('@/data/posts');
 const posts = jest.requireMock<typeof import('@/data/__mocks__/posts')>('@/data/posts');
+jest.mock('./preparePhoto', () => ({
+  preparePhoto: jest.fn(async (photo: { uri: string }) => photo.uri.replace('.jpg', '-small.jpg')),
+}));
+const { preparePhoto } = jest.requireMock<typeof import('./preparePhoto')>('./preparePhoto');
 jest.mock('./pickPhotos', () => ({ pickFromLibrary: jest.fn(), takePhoto: jest.fn() }));
 const picker = jest.requireMock<typeof import('./pickPhotos')>('./pickPhotos');
 
@@ -105,10 +109,11 @@ it('shares photos, caption, event, tags and the comments setting, cover first', 
   });
   await press(screen.getByTestId('compose-share'));
 
+  // Each photo is shrunk before upload, cover first.
   expect(posts.uploadPostPhoto.mock.calls.map((c) => [c[2], c[3]])).toEqual([
-    [0, 'file:///3.jpg'],
-    [1, 'file:///1.jpg'],
-    [2, 'file:///2.jpg'],
+    [0, 'file:///3-small.jpg'],
+    [1, 'file:///1-small.jpg'],
+    [2, 'file:///2-small.jpg'],
   ]);
   expect(posts.createPost).toHaveBeenCalledWith('new-post', me(), {
     caption: 'Great turnout at the gala',
@@ -181,4 +186,75 @@ it('Back returns to the photos with the picks kept', async () => {
   await compose(1, 2);
   await press(screen.getByTestId('compose-back'));
   await waitFor(() => expect(screen.getByTestId('thumb-2')).toBeTruthy());
+});
+
+describe('upload progress and retry', () => {
+  it('shrinks every photo before it goes up', async () => {
+    await compose(1, 2);
+    await press(screen.getByTestId('compose-share'));
+    expect(preparePhoto).toHaveBeenCalledTimes(2);
+    expect(preparePhoto).toHaveBeenCalledWith({ uri: 'file:///1.jpg', width: 1000, height: 1000 });
+  });
+
+  it('shows which photo is uploading and how far along it is', async () => {
+    let finish: () => void = () => {};
+    let report: (f: number) => void = () => {};
+    posts.uploadPostPhoto.mockImplementationOnce(
+      (_u: string, _p: string, _i: number, _uri: string, onProgress?: unknown) =>
+        new Promise<string>((resolve) => {
+          report = onProgress as (f: number) => void;
+          finish = () => resolve('posts/me/new-post/0.jpg');
+        }),
+    );
+    await compose(1, 2);
+    await press(screen.getByTestId('compose-share'));
+    expect(screen.getByTestId('compose-progress')).toHaveTextContent(/Uploading 1 of 2/);
+    await act(async () => report(0.5));
+    expect(screen.getByTestId('compose-progress-bar').props.accessibilityLabel).toBe(
+      'Upload 25 percent done',
+    );
+    await act(async () => finish());
+    await waitFor(() => expect(screen.getByTestId('posted')).toBeTruthy());
+  });
+
+  it('retries without re-sending photos that made it, or losing the caption', async () => {
+    posts.uploadPostPhoto
+      .mockImplementationOnce(async () => 'posts/me/new-post/0.jpg')
+      .mockRejectedValueOnce(new Error('network'));
+    await compose(1, 2);
+    await type('compose-caption', 'Keep me');
+    await press(screen.getByTestId('compose-share'));
+    await waitFor(() => expect(screen.getByTestId('compose-retry')).toBeTruthy());
+    expect(screen.getByTestId('compose-share')).toHaveTextContent('Retry');
+    expect(screen.getByTestId('compose-caption').props.value).toBe('Keep me');
+    expect(posts.createPost).not.toHaveBeenCalled();
+
+    await press(screen.getByTestId('compose-retry'));
+    await waitFor(() => expect(screen.getByTestId('posted')).toBeTruthy());
+    // Photo 1 went up once; photo 2 was tried twice, under a new name the second time.
+    const uris = posts.uploadPostPhoto.mock.calls.map((c) => c[3]);
+    expect(uris).toEqual(['file:///1-small.jpg', 'file:///2-small.jpg', 'file:///2-small.jpg']);
+    expect(posts.uploadPostPhoto.mock.calls.map((c) => c[2])).toEqual([0, 1, 2]);
+    // One post ID across both tries.
+    expect(posts.newPostId).toHaveBeenCalledTimes(1);
+    expect(posts.createPost).toHaveBeenCalledWith(
+      'new-post',
+      me(),
+      expect.objectContaining({
+        caption: 'Keep me',
+        photoPaths: ['posts/me/new-post/0.jpg', `posts/${me()}/new-post/2.jpg`],
+      }),
+    );
+  });
+
+  it('retries the post itself when only that failed', async () => {
+    posts.createPost.mockRejectedValueOnce(new Error('offline'));
+    await compose(1);
+    await press(screen.getByTestId('compose-share'));
+    await waitFor(() => expect(screen.getByTestId('compose-retry')).toBeTruthy());
+    await press(screen.getByTestId('compose-retry'));
+    await waitFor(() => expect(screen.getByTestId('posted')).toBeTruthy());
+    expect(posts.uploadPostPhoto).toHaveBeenCalledTimes(1);
+    expect(posts.createPost).toHaveBeenCalledTimes(2);
+  });
 });

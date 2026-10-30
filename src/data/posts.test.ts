@@ -1,5 +1,5 @@
 import { setDoc } from 'firebase/firestore';
-import { ref, uploadBytes } from 'firebase/storage';
+import { ref, uploadBytesResumable } from 'firebase/storage';
 
 import { createPost, newPostId, postPhotoPath, uploadPostPhoto } from './posts';
 
@@ -12,9 +12,19 @@ jest.mock('firebase/firestore', () => ({
   setDoc: jest.fn(),
   serverTimestamp: jest.fn(() => 'NOW'),
 }));
+type Observer = [
+  (s: { bytesTransferred: number; totalBytes: number }) => void,
+  (e: unknown) => void,
+  () => void,
+];
+let mockTask: { observers: Observer | null } = { observers: null };
 jest.mock('firebase/storage', () => ({
   ref: jest.fn((_s: unknown, path: string) => ({ path })),
-  uploadBytes: jest.fn(),
+  uploadBytesResumable: jest.fn(() => ({
+    on: (_event: string, next: Observer[0], error: Observer[1], done: Observer[2]) => {
+      mockTask.observers = [next, error, done];
+    },
+  })),
   getDownloadURL: jest.fn(),
 }));
 
@@ -24,18 +34,32 @@ it('makes an ID up front', () => {
   expect(newPostId()).toBe('auto');
 });
 
-it('stores photos where the storage rules let the author write', async () => {
+it('stores photos where the storage rules let the author write, reporting progress', async () => {
   expect(postPhotoPath('me', 'p1', 2)).toBe('posts/me/p1/2.jpg');
   global.fetch = jest.fn(async () => ({ blob: async () => ({ size: 1 }) })) as never;
-  expect(await uploadPostPhoto('me', 'p1', 0, 'file:///a.jpg')).toBe('posts/me/p1/0.jpg');
+  const progress: number[] = [];
+  const pending = uploadPostPhoto('me', 'p1', 0, 'file:///a.jpg', (f) => progress.push(f));
+  await new Promise(process.nextTick);
+  const [next, , done] = mockTask.observers!;
+  next({ bytesTransferred: 50, totalBytes: 200 });
+  next({ bytesTransferred: 200, totalBytes: 200 });
+  done();
+  expect(await pending).toBe('posts/me/p1/0.jpg');
+  expect(progress).toEqual([0.25, 1, 1]);
   expect(ref).toHaveBeenCalledWith({ name: 'storage' }, 'posts/me/p1/0.jpg');
-  expect(uploadBytes).toHaveBeenCalledWith(
+  expect(uploadBytesResumable).toHaveBeenCalledWith(
     { path: 'posts/me/p1/0.jpg' },
     { size: 1 },
-    {
-      contentType: 'image/jpeg',
-    },
+    { contentType: 'image/jpeg' },
   );
+});
+
+it('fails the upload when Storage refuses it', async () => {
+  global.fetch = jest.fn(async () => ({ blob: async () => ({ size: 1 }) })) as never;
+  const pending = uploadPostPhoto('me', 'p1', 0, 'file:///a.jpg');
+  await new Promise(process.nextTick);
+  mockTask.observers![1](new Error('storage/unauthorized'));
+  await expect(pending).rejects.toThrow('storage/unauthorized');
 });
 
 it('creates the post with exactly the fields the rules allow', async () => {
