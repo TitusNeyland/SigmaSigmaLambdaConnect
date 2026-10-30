@@ -1606,8 +1606,8 @@ describe('restrictions and the reports queue (#50)', () => {
     await assertFails(q(as(USERS.alice)));
   });
 
-  it('officers can read removed posts for the preview; members cannot', async () => {
+  it('officers can read removed posts for the preview; other members cannot', async () => {
     await assertSucceeds(getDoc(doc(as(USERS.olivia), 'posts/removedPost')));
-    await assertFails(getDoc(doc(as(USERS.alice), 'posts/removedPost')));
+    await assertFails(getDoc(doc(as(USERS.bob), 'posts/removedPost')));
   });
 });
