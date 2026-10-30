@@ -1,6 +1,13 @@
 import { getFirestore, type Firestore } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions';
-import { onDocumentWritten, type FirestoreEvent } from 'firebase-functions/v2/firestore';
+import { getStorage } from 'firebase-admin/storage';
+
+import type { BucketLike } from './account.js';
+import {
+  onDocumentDeleted,
+  onDocumentWritten,
+  type FirestoreEvent,
+} from 'firebase-functions/v2/firestore';
 
 /**
  * Sets a counter on a document to the real number of docs in one of its subcollections.
@@ -61,3 +68,26 @@ export const countCommentLikes = onDocumentWritten(
     await recountCommentLikes(event.params.postId, event.params.commentId);
   },
 );
+
+/**
+ * After a post is deleted (by its author or an officer), removes what the app can't: its
+ * comments and their likes, its likes, and its photos in Storage.
+ */
+export async function cleanUpPost(
+  postId: string,
+  authorId: string | undefined,
+  deps: { db?: Firestore; bucket?: BucketLike } = {},
+) {
+  const db = deps.db ?? getFirestore();
+  // recursiveDelete on the (already deleted) post removes everything still under it.
+  await db.recursiveDelete(db.doc(`posts/${postId}`));
+  if (authorId) {
+    const bucket = deps.bucket ?? getStorage().bucket();
+    await bucket.deleteFiles({ prefix: `posts/${authorId}/${postId}/` });
+  }
+}
+
+export const cleanUpDeletedPost = onDocumentDeleted('posts/{postId}', async (event) => {
+  const authorId = event.data?.get('authorId') as string | undefined;
+  await cleanUpPost(event.params.postId, typeof authorId === 'string' ? authorId : undefined);
+});

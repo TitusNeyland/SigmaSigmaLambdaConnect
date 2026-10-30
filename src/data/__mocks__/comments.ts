@@ -76,7 +76,16 @@ export const addComment = jest.fn(
 export const likeComment = jest.fn(async (_p: string, _c: string, _u: string) => {});
 export const unlikeComment = jest.fn(async (_p: string, _c: string, _u: string) => {});
 
+/** Removes it from the live list, like the real listener would. */
+export const deleteComment = jest.fn(async (postId: string, commentId: string) => {
+  setMockComments(
+    postId,
+    (comments[postId] ?? []).filter((c) => c.id !== commentId),
+  );
+});
+
 export function resetCommentsMock() {
+  deleteComment.mockClear();
   comments = {};
   failing = false;
   counter = 0;

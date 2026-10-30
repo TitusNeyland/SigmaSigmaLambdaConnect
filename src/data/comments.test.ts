@@ -8,7 +8,14 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 
-import { addComment, likeComment, subscribeToComments, toComment, unlikeComment } from './comments';
+import {
+  addComment,
+  deleteComment,
+  likeComment,
+  subscribeToComments,
+  toComment,
+  unlikeComment,
+} from './comments';
 
 jest.mock('./firebase', () => ({ db: { name: 'db' } }));
 jest.mock('./feed', () => ({
@@ -118,6 +125,11 @@ describe('writes', () => {
       { path: 'posts/p/comments' },
       { authorId: 'me', text: 'Agreed', createdAt: 'NOW', replyToId: 'c1' },
     );
+  });
+
+  it('deletes a comment', async () => {
+    await deleteComment('p', 'c1');
+    expect(deleteDoc).toHaveBeenCalledWith({ path: 'posts/p/comments/c1' });
   });
 
   it('likes and unlikes a comment', async () => {

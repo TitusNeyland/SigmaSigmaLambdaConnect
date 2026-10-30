@@ -125,3 +125,8 @@ export async function likeComment(postId: string, commentId: string, uid: string
 export async function unlikeComment(postId: string, commentId: string, uid: string) {
   await deleteDoc(doc(db, 'posts', postId, 'comments', commentId, 'likes', uid));
 }
+
+/** Deletes one of the member's own comments. Replies to it stay, shown on their own. */
+export async function deleteComment(postId: string, commentId: string): Promise<void> {
+  await deleteDoc(doc(db, 'posts', postId, 'comments', commentId));
+}

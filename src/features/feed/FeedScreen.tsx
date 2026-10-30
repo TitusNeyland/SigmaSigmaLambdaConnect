@@ -113,6 +113,10 @@ export function FeedScreen() {
     );
   }
 
+  function removePost(id: string) {
+    setFeed((f) => (f.state === 'ready' ? { ...f, posts: f.posts.filter((p) => p.id !== id) } : f));
+  }
+
   const posts = useMemo(
     () => (feed.state === 'ready' ? visiblePosts(feed.posts, blocked) : []),
     [feed, blocked],
@@ -135,7 +139,9 @@ export function FeedScreen() {
       <FlatList
         data={posts}
         keyExtractor={(p) => p.id}
-        renderItem={({ item }) => <PostCard post={item} now={now} me={uid} />}
+        renderItem={({ item }) => (
+          <PostCard post={item} now={now} me={uid} onDeleted={removePost} />
+        )}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         ListHeaderComponent={header}
         ListEmptyComponent={

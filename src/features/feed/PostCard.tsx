@@ -4,11 +4,13 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
 import type { FeedPost } from '@/data/feed';
+import type { PostEdit } from '@/data/posts';
 import { colors, MIN_TOUCH, spacing } from '@/theme';
 import { AppText, Avatar } from '@/ui';
 
 import { authorLine, captionPreview, commentsLabel, likesLabel, timeAgo } from './feedLogic';
 import { PhotoCarousel } from './PhotoCarousel';
+import { PostMenu } from './PostMenu';
 import { useLike } from './useLike';
 
 function HeartIcon({ filled }: { filled: boolean }) {
@@ -45,6 +47,10 @@ export type PostCardProps = {
   me: string;
   /** On the post's own screen, the comment button and link have nowhere new to go. */
   hideCommentLink?: boolean;
+  /** Called after the author deletes it, so the list can drop it. */
+  onDeleted?: (id: string) => void;
+  /** Called after the author edits it. */
+  onEdited?: (edit: PostEdit) => void;
 };
 
 function openAuthor(post: FeedPost, me: string) {
@@ -57,8 +63,17 @@ function openPost(id: string) {
 }
 
 /** One post in the feed: author line, photos, counts and caption, Instagram style. */
-export function PostCard({ post, now, me, hideCommentLink = false }: PostCardProps) {
+export function PostCard({
+  post: original,
+  now,
+  me,
+  hideCommentLink = false,
+  onDeleted,
+  onEdited,
+}: PostCardProps) {
   const [expanded, setExpanded] = useState(false);
+  const [edit, setEdit] = useState<PostEdit | null>(null);
+  const post = edit ? { ...original, ...edit } : original;
   const name = post.author?.displayName ?? 'Former member';
   const line = post.author ? authorLine(post.author) : '';
   const caption = captionPreview(post.caption);
@@ -66,29 +81,32 @@ export function PostCard({ post, now, me, hideCommentLink = false }: PostCardPro
 
   return (
     <View style={styles.card} testID={`post-${post.id}`}>
-      <Pressable
-        onPress={post.author ? () => openAuthor(post, me) : undefined}
-        disabled={!post.author}
-        accessibilityRole={post.author ? 'button' : undefined}
-        accessibilityLabel={[name, line, timeAgo(post.createdAt, now)].filter(Boolean).join(', ')}
-        style={styles.header}
-        testID={`post-author-${post.id}`}
-      >
-        <Avatar name={name} uri={post.author?.photoURL} size={36} />
-        <View style={styles.flex}>
-          <AppText variant="subhead" weight="600" numberOfLines={1}>
-            {name}
-          </AppText>
-          {line ? (
-            <AppText variant="caption" color={colors.textSecondary} numberOfLines={1}>
-              {line}
+      <View style={styles.headerRow}>
+        <Pressable
+          onPress={post.author ? () => openAuthor(post, me) : undefined}
+          disabled={!post.author}
+          accessibilityRole={post.author ? 'button' : undefined}
+          accessibilityLabel={[name, line, timeAgo(post.createdAt, now)].filter(Boolean).join(', ')}
+          style={styles.header}
+          testID={`post-author-${post.id}`}
+        >
+          <Avatar name={name} uri={post.author?.photoURL} size={36} />
+          <View style={styles.flex}>
+            <AppText variant="subhead" weight="600" numberOfLines={1}>
+              {name}
             </AppText>
-          ) : null}
-        </View>
-        <AppText variant="caption" color={colors.textSecondary}>
-          {timeAgo(post.createdAt, now)}
-        </AppText>
-      </Pressable>
+            {line ? (
+              <AppText variant="caption" color={colors.textSecondary} numberOfLines={1}>
+                {line}
+              </AppText>
+            ) : null}
+          </View>
+          <AppText variant="caption" color={colors.textSecondary}>
+            {timeAgo(post.createdAt, now)}
+          </AppText>
+        </Pressable>
+        <PostMenu post={post} me={me} onEdited={setEdit} onDeleted={() => onDeleted?.(post.id)} />
+      </View>
 
       <PhotoCarousel paths={post.photoPaths} label={`Photo from ${name}`} onDoubleTap={like.like} />
 
@@ -166,7 +184,9 @@ export function PostCard({ post, now, me, hideCommentLink = false }: PostCardPro
 
 const styles = StyleSheet.create({
   card: { backgroundColor: colors.background, paddingBottom: spacing.lg },
+  headerRow: { flexDirection: 'row', alignItems: 'center', paddingRight: spacing.lg },
   header: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
