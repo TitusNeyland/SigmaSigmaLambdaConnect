@@ -11,6 +11,7 @@ import {
 import {
   fetchEventDetail,
   fetchEventsBetween,
+  fetchEventSummary,
   fetchUpcomingEvents,
   RsvpSaveError,
   setRsvp,
@@ -276,5 +277,23 @@ describe('setRsvp', () => {
     await expect(setRsvp('gala', 'me', 'going')).rejects.toMatchObject({ reason: 'closed' });
     jest.mocked(setDoc).mockRejectedValueOnce({ code: 'unavailable' });
     await expect(setRsvp('gala', 'me', 'going')).rejects.toBeInstanceOf(RsvpSaveError);
+  });
+});
+
+describe('fetchEventSummary', () => {
+  it('reads one event with my RSVP, or null if it’s gone', async () => {
+    jest.mocked(getDoc).mockImplementation(async (ref: unknown) => {
+      const path = (ref as { path: string }).path;
+      if (path === 'events/gala')
+        return {
+          exists: () => true,
+          data: () => ({ title: 'Gala', startsAt: ts('2026-11-07T23:00:00Z') }),
+        } as never;
+      if (path === 'events/gala/rsvps/me')
+        return { exists: () => true, data: () => ({ status: 'maybe' }) } as never;
+      return { exists: () => false, data: () => ({}) } as never;
+    });
+    expect(await fetchEventSummary('gala', 'me')).toMatchObject({ id: 'gala', myRsvp: 'maybe' });
+    expect(await fetchEventSummary('nope', 'me')).toBeNull();
   });
 });

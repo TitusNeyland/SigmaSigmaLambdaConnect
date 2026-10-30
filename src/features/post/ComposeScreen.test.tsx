@@ -126,6 +126,7 @@ it('shares photos, caption, event, tags and the comments setting, cover first', 
     eventId: 'gala',
     taggedMemberIds: ['b', 'z'],
     allowComments: false,
+    official: false,
   });
   await waitFor(() => expect(screen.getByTestId('posted')).toBeTruthy());
 });

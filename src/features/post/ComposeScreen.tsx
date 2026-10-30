@@ -15,6 +15,7 @@ import { fetchDirectory, type DirectoryEntry } from '@/data/directory';
 import { fetchEventsBetween, type EventSummary } from '@/data/events';
 import { createPost, newPostId, uploadPostPhoto } from '@/data/posts';
 import { useAuth } from '@/features/auth/AuthProvider';
+import { useCan } from '@/features/roles/RoleProvider';
 import { formatDay } from '@/features/events/eventsLogic';
 import { notifyFeedChanged } from '@/features/feed/feedEvents';
 import { colors, MIN_TOUCH, palette, radius, spacing } from '@/theme';
@@ -77,6 +78,8 @@ export function ComposeScreen() {
   const { draft, setPhotos, reset } = usePostDraft();
   const [caption, setCaption] = useState('');
   const [allowComments, setAllowComments] = useState(true);
+  const canPostOfficial = useCan('posts.official');
+  const [official, setOfficial] = useState(false);
   const [event, setEvent] = useState<EventSummary | null>(null);
   const [tags, setTags] = useState<DirectoryEntry[]>([]);
   const [sheet, setSheet] = useState<Sheet>(null);
@@ -146,6 +149,7 @@ export function ComposeScreen() {
         eventId: event?.id ?? null,
         taggedMemberIds: tags.map((t) => t.uid),
         allowComments,
+        official: canPostOfficial && official,
       });
       notifyFeedChanged();
       setPosted(id);
@@ -294,6 +298,19 @@ export function ComposeScreen() {
               onValueChange={setAllowComments}
               testID="compose-comments"
             />
+            {canPostOfficial ? (
+              <SwitchRow
+                title="Post as Sigma Sigma Lambda"
+                subtitle={
+                  official
+                    ? 'Shows the chapter name and a verified badge. A tagged event gets an RSVP card.'
+                    : 'For official chapter news. Officers only.'
+                }
+                value={official}
+                onValueChange={setOfficial}
+                testID="compose-official"
+              />
+            ) : null}
           </ListSection>
 
           <Pressable

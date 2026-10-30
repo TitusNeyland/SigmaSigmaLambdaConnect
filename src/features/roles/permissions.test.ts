@@ -6,6 +6,7 @@ const OFFICER_TOOLS: Capability[] = [
   'events.manage',
   'attendance.take',
   'announcements.post',
+  'posts.official',
   'reports.review',
   'programs.manage',
 ];

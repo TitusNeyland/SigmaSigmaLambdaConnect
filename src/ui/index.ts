@@ -13,3 +13,4 @@ export * from './SearchField';
 export * from './NavHeader';
 export * from './HeaderButton';
 export * from './DateTimeField';
+export * from './Monogram';
