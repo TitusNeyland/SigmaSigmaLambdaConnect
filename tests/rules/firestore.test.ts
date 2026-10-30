@@ -1260,16 +1260,23 @@ describe('announcements (#43)', () => {
   });
 
   it('officers post the exact announcement the app writes (src/data/announcements.ts)', async () => {
-    await assertSucceeds(setDoc(doc(as(USERS.olivia), 'announcements/a1'), announcement()));
+    await assertSucceeds(setDoc(doc(as(USERS.olivia), 'announcements/fresh'), announcement()));
   });
 
   it('members cannot post, and officers cannot post as someone else', async () => {
     await assertFails(
-      setDoc(doc(as(USERS.alice), 'announcements/a1'), announcement({ authorId: USERS.alice })),
+      setDoc(doc(as(USERS.alice), 'announcements/fresh'), announcement({ authorId: USERS.alice })),
     );
     await assertFails(
-      setDoc(doc(as(USERS.olivia), 'announcements/a1'), announcement({ authorId: USERS.adam })),
+      setDoc(doc(as(USERS.olivia), 'announcements/fresh'), announcement({ authorId: USERS.adam })),
     );
+  });
+
+  it('officers edit the text or pin of an existing one, nothing else', async () => {
+    const ref = doc(as(USERS.olivia), 'announcements/a1');
+    await assertSucceeds(updateDoc(ref, { pinned: false, updatedAt: serverTimestamp() }));
+    await assertFails(updateDoc(ref, { authorId: USERS.olivia }));
+    await assertFails(updateDoc(doc(as(USERS.alice), 'announcements/a1'), { pinned: false }));
   });
 
   it('rejects empty, long or extra fields', async () => {
