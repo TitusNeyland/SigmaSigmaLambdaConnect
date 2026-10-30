@@ -19,6 +19,7 @@ const feed = jest.requireMock<typeof import('@/data/__mocks__/feed')>('@/data/fe
 jest.mock('@/data/likes');
 jest.mock('@/data/posts');
 jest.mock('@/data/comments');
+jest.mock('@/data/programs');
 const comments = jest.requireMock<typeof import('@/data/__mocks__/comments')>('@/data/comments');
 
 const me = () => auth.sampleUser().uid;

@@ -1264,6 +1264,25 @@ describe('officer-managed chapter content', () => {
     await assertFails(setDoc(doc(as(USERS.alice), path), { name: 'x' }));
   });
 
+  it('accepts the exact check-off from mobile (src/data/programs.ts), recording who', async () => {
+    const tick = (db: Firestore, done: boolean, by: string | null, status: string) => {
+      const batch = writeBatch(db);
+      batch.update(doc(db, 'programs/scholarship/milestones/m1'), {
+        done,
+        doneAt: done ? serverTimestamp() : null,
+        doneBy: by,
+      });
+      batch.update(doc(db, 'programs/scholarship'), { status, updatedAt: serverTimestamp() });
+      return batch.commit();
+    };
+    const db = as(USERS.olivia);
+    await assertSucceeds(tick(db, true, USERS.olivia, 'in_progress'));
+    await assertSucceeds(tick(db, false, null, 'not_started'));
+    await assertFails(tick(db, true, USERS.adam, 'in_progress'));
+    await assertFails(tick(db, true, USERS.olivia, 'finished'));
+    await assertFails(tick(as(USERS.alice), true, USERS.alice, 'in_progress'));
+  });
+
   it('members cannot update milestones', async () => {
     await assertFails(
       updateDoc(doc(as(USERS.alice), 'programs/scholarship/milestones/m1'), { done: false }),

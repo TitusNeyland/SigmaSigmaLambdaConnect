@@ -396,11 +396,22 @@ service cloud.firestore {
 
     match /programs/{programId} {
       allow read: if isApproved();
-      allow write: if isOfficer();
+      allow create, delete: if isOfficer();
+      allow update: if isOfficer()
+        && incoming().status in ['not_started', 'in_progress', 'at_risk', 'completed'];
 
+      // Officers check milestones off from mobile (#44). Whoever checks it off is recorded.
       match /milestones/{milestoneId} {
         allow read: if isApproved();
-        allow write: if isOfficer();
+        allow create, delete: if isOfficer();
+        allow update: if isOfficer()
+          && (!changed().hasAny(['done', 'doneAt', 'doneBy'])
+              || (incoming().done == true
+                  && incoming().doneBy == request.auth.uid
+                  && isNow(incoming().doneAt))
+              || (incoming().done == false
+                  && incoming().doneBy == null
+                  && incoming().doneAt == null));
       }
     }
 

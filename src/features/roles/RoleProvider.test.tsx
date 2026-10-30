@@ -19,6 +19,7 @@ jest.mock('@/data/feed');
 jest.mock('@/data/likes');
 jest.mock('@/data/posts');
 jest.mock('@/data/comments');
+jest.mock('@/data/programs');
 const roles = jest.requireMock<typeof import('@/data/__mocks__/roles')>('@/data/roles');
 
 function signIn(status: 'approved' | 'pending', role: Parameters<typeof roles.resetRolesMock>[0]) {
