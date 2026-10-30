@@ -20,6 +20,7 @@ jest.mock('@/data/programs');
 jest.mock('@/data/announcements');
 jest.mock('@/data/leadership');
 jest.mock('@/data/requests');
+jest.mock('@/data/attendance');
 jest.mock('./pickPhotos', () => ({ pickFromLibrary: jest.fn(), takePhoto: jest.fn() }));
 const picker = jest.requireMock<typeof import('./pickPhotos')>('./pickPhotos');
 

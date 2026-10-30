@@ -1492,3 +1492,67 @@ describe('membership requests (#48)', () => {
     await assertFails(deleteDoc(doc(as(USERS.adam), 'decisions/d1')));
   });
 });
+
+describe('taking attendance (#49)', () => {
+  it('officers save the exact writes in src/data/attendance.ts in one batch', async () => {
+    const db = as(USERS.olivia);
+    const batch = writeBatch(db);
+    batch.set(doc(db, 'events/open/attendance/alice'), {
+      memberId: USERS.alice,
+      checkedInBy: USERS.olivia,
+      checkedInAt: serverTimestamp(),
+      walkIn: false,
+      serviceHours: 2,
+    });
+    batch.set(doc(db, 'events/open/attendance/bob'), {
+      memberId: USERS.bob,
+      checkedInBy: USERS.olivia,
+      checkedInAt: serverTimestamp(),
+      walkIn: true,
+    });
+    await assertSucceeds(batch.commit());
+    await assertSucceeds(deleteDoc(doc(db, 'events/open/attendance/bob')));
+  });
+
+  it('officers can re-save someone to change their hours', async () => {
+    const db = as(USERS.olivia);
+    const write = (hours: number) =>
+      setDoc(doc(db, 'events/open/attendance/alice'), {
+        memberId: USERS.alice,
+        checkedInBy: USERS.olivia,
+        checkedInAt: serverTimestamp(),
+        walkIn: false,
+        serviceHours: hours,
+      });
+    await assertSucceeds(write(2));
+    await assertSucceeds(write(3));
+  });
+
+  it('officers can read the roster: events, RSVPs and check-ins', async () => {
+    const db = as(USERS.olivia);
+    await assertSucceeds(
+      getDocs(
+        query(
+          collection(db, 'events'),
+          where('startsAt', '>=', hoursFromNow(-14 * 24)),
+          where('startsAt', '<=', hoursFromNow(24)),
+          orderBy('startsAt', 'desc'),
+        ),
+      ),
+    );
+    await assertSucceeds(getDocs(collection(db, 'events/open/rsvps')));
+    await assertSucceeds(getDocs(collection(db, 'events/open/attendance')));
+  });
+
+  it('members cannot read the whole roster or check anyone in', async () => {
+    await assertFails(getDocs(collection(as(USERS.alice), 'events/open/attendance')));
+    await assertFails(
+      setDoc(doc(as(USERS.alice), 'events/open/attendance/bob'), {
+        memberId: USERS.bob,
+        checkedInBy: USERS.alice,
+        checkedInAt: serverTimestamp(),
+        walkIn: true,
+      }),
+    );
+  });
+});

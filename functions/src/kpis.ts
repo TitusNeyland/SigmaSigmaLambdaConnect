@@ -1,6 +1,7 @@
 import { getFirestore, Timestamp, type Firestore } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions';
 import { onDocumentWritten } from 'firebase-functions/v2/firestore';
+import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 
 import { CHAPTER_TIME_ZONE } from './events.js';
@@ -351,4 +352,26 @@ export const kpisHourly = onSchedule(
 /** When officers change a goal or its target, the ring updates right away. */
 export const kpisOnGoalChange = onDocumentWritten('goals/{goalId}', async () => {
   await computeKpis();
+});
+
+/** True for an approved officer or admin. Roles live server-side in roles/{uid}. */
+export async function isApprovedOfficer(db: Firestore, uid: string): Promise<boolean> {
+  const [role, member] = await Promise.all([
+    db.doc(`roles/${uid}`).get(),
+    db.doc(`members/${uid}`).get(),
+  ]);
+  return (
+    ['officer', 'admin'].includes(role.get('role') as string) && member.get('status') === 'approved'
+  );
+}
+
+/** Called after an officer saves attendance (#49), so the leadership numbers update right away. */
+export const refreshKpis = onCall(async (request) => {
+  if (!request.auth) throw new HttpsError('unauthenticated', 'Sign in first.');
+  const db = getFirestore();
+  if (!(await isApprovedOfficer(db, request.auth.uid))) {
+    throw new HttpsError('permission-denied', 'Officers only.');
+  }
+  await computeKpis(db);
+  return { ok: true };
 });
