@@ -4,12 +4,15 @@ import Svg, { Circle } from 'react-native-svg';
 
 import type { FeedPost } from '@/data/feed';
 import { deletePost, updatePost, type PostEdit } from '@/data/posts';
+import { reportContent } from '@/data/reports';
 import { colors, MIN_TOUCH, spacing } from '@/theme';
 import { AppText, BottomSheet, Button, ListRow, ListSection, SwitchRow, TextField } from '@/ui';
 
 import { MAX_CAPTION } from '@/features/post/composeLogic';
 
-type Sheet = null | 'menu' | 'edit' | 'delete';
+import { ReportSheet } from './ReportSheet';
+
+type Sheet = null | 'menu' | 'edit' | 'delete' | 'report';
 
 function MoreIcon() {
   return (
@@ -28,7 +31,7 @@ export type PostMenuProps = {
   onDeleted: () => void;
 };
 
-/** The ••• menu on a post. Authors edit or delete; report and block come for others (#36, #37). */
+/** The ••• menu on a post. Authors edit or delete; everyone else can report (#36). */
 export function PostMenu({ post, me, onEdited, onDeleted }: PostMenuProps) {
   const mine = post.authorId === me;
   const [sheet, setSheet] = useState<Sheet>(null);
@@ -36,8 +39,6 @@ export function PostMenu({ post, me, onEdited, onDeleted }: PostMenuProps) {
   const [allowComments, setAllowComments] = useState(post.allowComments);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
-
-  if (!mine) return null;
 
   const canSave = post.photoPaths.length > 0 || caption.trim().length > 0;
 
@@ -93,22 +94,47 @@ export function PostMenu({ post, me, onEdited, onDeleted }: PostMenuProps) {
       </Pressable>
 
       <BottomSheet visible={sheet === 'menu'} onClose={() => setSheet(null)}>
-        <ListSection>
-          <ListRow
-            title="Edit post"
-            onPress={() => open('edit')}
-            showChevron={false}
-            testID="post-edit"
-          />
-          <ListRow
-            title="Delete post"
-            destructive
-            onPress={() => open('delete')}
-            testID="post-delete"
-          />
-        </ListSection>
+        {mine ? (
+          <ListSection>
+            <ListRow
+              title="Edit post"
+              onPress={() => open('edit')}
+              showChevron={false}
+              testID="post-edit"
+            />
+            <ListRow
+              title="Delete post"
+              destructive
+              onPress={() => open('delete')}
+              testID="post-delete"
+            />
+          </ListSection>
+        ) : (
+          <ListSection>
+            <ListRow
+              title="Report post"
+              destructive
+              onPress={() => open('report')}
+              testID="post-report"
+            />
+          </ListSection>
+        )}
         <Button title="Cancel" variant="plain" onPress={() => setSheet(null)} fullWidth />
       </BottomSheet>
+
+      <ReportSheet
+        visible={sheet === 'report'}
+        what="post"
+        onClose={() => setSheet(null)}
+        onReport={(reason) =>
+          reportContent(me, {
+            targetType: 'post',
+            postId: post.id,
+            targetAuthorId: post.authorId,
+            reason,
+          })
+        }
+      />
 
       <BottomSheet
         visible={sheet === 'edit'}

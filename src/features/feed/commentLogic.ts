@@ -5,13 +5,19 @@ export type CommentRow = { comment: PostComment; isReply: boolean };
 /**
  * Orders comments for display: each top-level comment, then its replies, one level deep. A
  * reply to a reply joins the thread of the comment it ultimately answers. A reply whose
- * comment was deleted shows as a top-level comment. Blocked members' comments are hidden.
+ * comment was deleted shows as a top-level comment. Blocked members' comments, and comments
+ * the member reported, are hidden.
  */
 export function threadComments(
   comments: PostComment[],
   blocked: ReadonlySet<string> = new Set(),
+  /** Comments the member reported, as hiddenKey keys. */
+  hidden: ReadonlySet<string> = new Set(),
+  postId = '',
 ): CommentRow[] {
-  const visible = comments.filter((c) => !blocked.has(c.authorId));
+  const visible = comments.filter(
+    (c) => !blocked.has(c.authorId) && !hidden.has(`comment_${postId}_${c.id}`),
+  );
   const byId = new Map(visible.map((c) => [c.id, c]));
   const rootOf = (c: PostComment): string => {
     let current = c;

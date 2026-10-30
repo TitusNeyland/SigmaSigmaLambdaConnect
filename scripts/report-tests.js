@@ -19,3 +19,22 @@ const suites = results.numTotalTestSuites ?? 0;
 const level = failed > 0 || total === 0 ? 'error' : 'notice';
 
 console.log(`::${level} title=${label}::${passed} passed, ${failed} failed, ${total} total in ${suites} files`);
+
+// Name each failing test (up to 10) so the cause is readable without the raw log.
+const failures = (results.testResults ?? []).flatMap((file) =>
+  (file.assertionResults ?? [])
+    .filter((t) => t.status === 'failed')
+    .map((t) => ({
+      name: [...(t.ancestorTitles ?? []), t.title].join(' › '),
+      file: String(file.name ?? '').replace(process.cwd() + '/', ''),
+      message: String((t.failureMessages ?? [])[0] ?? '')
+        .split('\n')
+        .slice(0, 3)
+        .join(' ')
+        .replace(/\s+/g, ' ')
+        .slice(0, 300),
+    })),
+);
+for (const f of failures.slice(0, 10)) {
+  console.log(`::error title=${label} failed::${f.file}: ${f.name}. ${f.message}`);
+}

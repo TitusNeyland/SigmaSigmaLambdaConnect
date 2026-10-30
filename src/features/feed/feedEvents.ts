@@ -11,3 +11,17 @@ export function onFeedChanged(listener: () => void): () => void {
 export function notifyFeedChanged() {
   for (const l of listeners) l();
 }
+
+const reportedListeners = new Set<(what: 'post' | 'comment') => void>();
+
+/** Lets the screen thank the member after a report, since the reported item hides itself. */
+export function onReported(listener: (what: 'post' | 'comment') => void): () => void {
+  reportedListeners.add(listener);
+  return () => {
+    reportedListeners.delete(listener);
+  };
+}
+
+export function notifyReported(what: 'post' | 'comment') {
+  for (const l of reportedListeners) l(what);
+}

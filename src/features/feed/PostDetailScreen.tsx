@@ -11,7 +11,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { subscribeToBlocked } from '@/data/blocks';
 import { addComment, subscribeToComments, type PostComment } from '@/data/comments';
 import { fetchPost, type FeedPost } from '@/data/feed';
 import { useAuth } from '@/features/auth/AuthProvider';
@@ -22,6 +21,8 @@ import { canPostComment, MAX_COMMENT, threadComments } from './commentLogic';
 import { CommentItem } from './CommentRow';
 import { notifyFeedChanged } from './feedEvents';
 import { PostCard } from './PostCard';
+import { ReportedNotice } from './ReportedNotice';
+import { useHiddenContent } from './useHidden';
 
 type Loaded = { state: 'loading' } | { state: 'ready'; post: FeedPost | null } | { state: 'error' };
 
@@ -38,7 +39,6 @@ export function PostDetailScreen({ id }: { id: string }) {
   const [attempt, setAttempt] = useState(0);
   const [comments, setComments] = useState<PostComment[] | null>(null);
   const [commentsFailed, setCommentsFailed] = useState(false);
-  const [blocked, setBlocked] = useState<ReadonlySet<string>>(new Set());
   const [draft, setDraft] = useState('');
   const [replyTo, setReplyTo] = useState<PostComment | null>(null);
   const [sending, setSending] = useState(false);
@@ -70,17 +70,17 @@ export function PostDetailScreen({ id }: { id: string }) {
     );
   }, [id, uid]);
 
-  useEffect(() => {
-    if (!uid) return;
-    return subscribeToBlocked(
-      uid,
-      (accounts) => setBlocked(new Set(accounts.map((a) => a.uid))),
-      () => {},
-    );
-  }, [uid]);
-
-  const rows = useMemo(() => threadComments(comments ?? [], blocked), [comments, blocked]);
-  const post = loaded.state === 'ready' ? loaded.post : null;
+  const { blocked, hidden } = useHiddenContent(uid);
+  const rows = useMemo(
+    () => threadComments(comments ?? [], blocked, hidden, id),
+    [comments, blocked, hidden, id],
+  );
+  const loadedPost = loaded.state === 'ready' ? loaded.post : null;
+  // A post the member reported, or whose author they blocked, isn't shown even by link.
+  const post =
+    loadedPost && !hidden.has(`post_${id}`) && !blocked.has(loadedPost.authorId)
+      ? loadedPost
+      : null;
   // The count shown follows the live list, so it updates the moment a comment lands.
   const count = comments ? comments.length : (post?.commentCount ?? 0);
 
@@ -109,7 +109,9 @@ export function PostDetailScreen({ id }: { id: string }) {
               ? 'Loading…'
               : loaded.state === 'error'
                 ? 'Couldn’t load this post.'
-                : 'This post isn’t available. It may have been deleted.'}
+                : loadedPost
+                  ? 'You won’t see this post. You reported it or blocked its author.'
+                  : 'This post isn’t available. It may have been deleted.'}
           </AppText>
           {loaded.state === 'error' ? (
             <Button
@@ -248,6 +250,7 @@ export function PostDetailScreen({ id }: { id: string }) {
           </View>
         ) : null}
       </KeyboardAvoidingView>
+      <ReportedNotice />
     </SafeAreaView>
   );
 }

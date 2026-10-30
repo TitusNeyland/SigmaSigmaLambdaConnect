@@ -1115,6 +1115,52 @@ describe('reports', () => {
   });
 });
 
+describe('reporting content (#36)', () => {
+  const reportAndHide = (db: Firestore, key: string, report: object, hidden: object) => {
+    const batch = writeBatch(db);
+    batch.set(doc(db, `reports/${key}`), {
+      reporterId: USERS.bob,
+      targetAuthorId: USERS.alice,
+      reason: 'spam',
+      status: 'open',
+      createdAt: serverTimestamp(),
+      ...report,
+    });
+    batch.set(doc(db, `hidden/bob/items/${key}`), { createdAt: serverTimestamp(), ...hidden });
+    return batch.commit();
+  };
+
+  it('accepts the exact post and comment reports the app sends (src/data/reports.ts)', async () => {
+    const db = as(USERS.bob);
+    await assertSucceeds(
+      reportAndHide(
+        db,
+        'post_alicePost',
+        { targetType: 'post', postId: 'alicePost' },
+        { targetType: 'post', postId: 'alicePost' },
+      ),
+    );
+    await assertSucceeds(
+      reportAndHide(
+        db,
+        'comment_alicePost_c1',
+        { targetType: 'comment', postId: 'alicePost', commentId: 'c1' },
+        { targetType: 'comment', postId: 'alicePost', commentId: 'c1' },
+      ),
+    );
+  });
+
+  it('hidden items are the member’s own, keyed by what they hide', async () => {
+    const item = { targetType: 'post', postId: 'alicePost', createdAt: serverTimestamp() };
+    await assertFails(setDoc(doc(as(USERS.bob), 'hidden/bob/items/post_other'), item));
+    await assertFails(setDoc(doc(as(USERS.bob), 'hidden/alice/items/post_alicePost'), item));
+    await assertFails(setDoc(doc(as(USERS.pete), 'hidden/pete/items/post_alicePost'), item));
+    await assertSucceeds(setDoc(doc(as(USERS.bob), 'hidden/bob/items/post_alicePost'), item));
+    await assertSucceeds(getDocs(collection(as(USERS.bob), 'hidden/bob/items')));
+    await assertFails(getDocs(collection(as(USERS.olivia), 'hidden/bob/items')));
+  });
+});
+
 describe('push tokens', () => {
   const token = (extra: object = {}) => ({
     token: 'ExponentPushToken[abc]',
