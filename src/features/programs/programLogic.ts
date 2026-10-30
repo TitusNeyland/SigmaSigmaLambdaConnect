@@ -59,3 +59,30 @@ export function dueLabel(due: Date | null, now: Date, status: ProgressStatus): s
   const date = `${MONTHS[due.getMonth()]} ${due.getDate()}`;
   return status === 'completed' ? `Was due ${date}` : `Due ${date}`;
 }
+
+export type ProgramGroup = {
+  key: 'help' | 'track' | 'done';
+  title: string;
+  programs: ProgramSummary[];
+};
+
+/**
+ * The member view's sections: needs help first (at risk), then on track (in progress and
+ * not started), then completed. Each in due-date order. Empty sections are left out.
+ */
+export function groupPrograms(programs: ProgramSummary[]): ProgramGroup[] {
+  const byDue = (a: ProgramSummary, b: ProgramSummary) =>
+    (a.dueAt?.getTime() ?? Infinity) - (b.dueAt?.getTime() ?? Infinity);
+  const groups: ProgramGroup[] = [
+    { key: 'help', title: 'Needs help', programs: programs.filter((p) => p.status === 'at_risk') },
+    {
+      key: 'track',
+      title: 'On track',
+      programs: programs.filter((p) => p.status === 'in_progress' || p.status === 'not_started'),
+    },
+    { key: 'done', title: 'Completed', programs: programs.filter((p) => p.status === 'completed') },
+  ];
+  return groups
+    .map((g) => ({ ...g, programs: [...g.programs].sort(byDue) }))
+    .filter((g) => g.programs.length > 0);
+}

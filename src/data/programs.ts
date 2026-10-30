@@ -6,6 +6,7 @@ import {
   orderBy,
   query,
   serverTimestamp,
+  setDoc,
   Timestamp,
   writeBatch,
 } from 'firebase/firestore';
@@ -102,4 +103,25 @@ export async function setMilestoneDone(
   });
   batch.update(doc(db, 'programs', programId), { status, updatedAt: serverTimestamp() });
   await batch.commit();
+}
+
+/** Whether the member already offered to help with each program, by program ID. */
+export async function fetchMyHelpOffers(
+  programIds: string[],
+  uid: string,
+): Promise<ReadonlySet<string>> {
+  const offered = await Promise.all(
+    programIds.map(
+      async (id) => [id, (await getDoc(doc(db, 'programs', id, 'helpers', uid))).exists()] as const,
+    ),
+  );
+  return new Set(offered.filter(([, yes]) => yes).map(([id]) => id));
+}
+
+/** Offers to help with a program. A Cloud Function tells its owner (or the officers). */
+export async function offerHelp(programId: string, uid: string): Promise<void> {
+  await setDoc(doc(db, 'programs', programId, 'helpers', uid), {
+    memberId: uid,
+    createdAt: serverTimestamp(),
+  });
 }

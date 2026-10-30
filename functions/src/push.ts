@@ -3,12 +3,13 @@ import { logger } from 'firebase-functions';
 import { onDocumentUpdated } from 'firebase-functions/v2/firestore';
 
 /**
- * What a notification is about. The first four match the switches in Settings (#15);
- * `account` (like being approved) always sends.
+ * What a notification is about. The first four match the switches in Settings (#15).
+ * `account` (like being approved) always sends. `officer` is work for officers, like an
+ * offer to help (#45); it always sends, to approved members only.
  */
-export type PushKind = 'events' | 'announcements' | 'social' | 'tasks' | 'account';
+export type PushKind = 'events' | 'announcements' | 'social' | 'tasks' | 'account' | 'officer';
 
-type PrefKey = Exclude<PushKind, 'account'>;
+type PrefKey = Exclude<PushKind, 'account' | 'officer'>;
 
 /** Must match DEFAULT_NOTIFICATION_PREFS in src/data/types.ts (a unit test checks). */
 export const DEFAULT_PREFS: Record<PrefKey, boolean> = {
@@ -34,6 +35,7 @@ export function wantsPush(member: Record<string, unknown> | undefined, kind: Pus
   if (kind === 'account') return true;
   // Chapter notifications only go to approved members.
   if (member.status !== 'approved') return false;
+  if (kind === 'officer') return true;
   const prefs = member.notificationPrefs;
   const saved =
     prefs && typeof prefs === 'object' ? (prefs as Record<string, unknown>)[kind] : undefined;

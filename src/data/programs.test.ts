@@ -1,6 +1,13 @@
-import { getDoc, getDocs, orderBy, Timestamp, writeBatch } from 'firebase/firestore';
+import { getDoc, getDocs, orderBy, setDoc, Timestamp, writeBatch } from 'firebase/firestore';
 
-import { fetchProgram, fetchPrograms, setMilestoneDone, toProgram } from './programs';
+import {
+  fetchMyHelpOffers,
+  fetchProgram,
+  fetchPrograms,
+  offerHelp,
+  setMilestoneDone,
+  toProgram,
+} from './programs';
 
 jest.mock('./firebase', () => ({ db: { name: 'db' } }));
 jest.mock('firebase/firestore', () => {
@@ -22,6 +29,7 @@ jest.mock('firebase/firestore', () => {
     getDocs: jest.fn(),
     getDoc: jest.fn(),
     writeBatch: jest.fn(),
+    setDoc: jest.fn(),
     serverTimestamp: jest.fn(() => 'NOW'),
   };
 });
@@ -93,4 +101,25 @@ it('checks a milestone off and sets the status in one write, recording who', asy
     { path: 'programs/p1/milestones/m2' },
     { done: false, doneAt: null, doneBy: null },
   );
+});
+
+describe('help offers', () => {
+  it('offers as myself with exactly the fields the rules allow', async () => {
+    jest.mocked(setDoc).mockResolvedValue(undefined);
+    await offerHelp('health', 'me');
+    expect(setDoc).toHaveBeenCalledWith(
+      { path: 'programs/health/helpers/me' },
+      { memberId: 'me', createdAt: 'NOW' },
+    );
+  });
+
+  it('checks which programs I already offered on', async () => {
+    jest
+      .mocked(getDoc)
+      .mockImplementation(
+        async (ref: unknown) =>
+          ({ exists: () => (ref as { path: string }).path === 'programs/a/helpers/me' }) as never,
+      );
+    expect(await fetchMyHelpOffers(['a', 'b'], 'me')).toEqual(new Set(['a']));
+  });
 });
