@@ -22,6 +22,7 @@ jest.mock('@/data/announcements');
 jest.mock('@/data/leadership');
 jest.mock('@/data/requests');
 jest.mock('@/data/attendance');
+jest.mock('@/data/moderation');
 const att = jest.requireMock<typeof import('@/data/__mocks__/attendance')>('@/data/attendance');
 
 async function type(target: Parameters<typeof fireEvent.changeText>[0], text: string) {

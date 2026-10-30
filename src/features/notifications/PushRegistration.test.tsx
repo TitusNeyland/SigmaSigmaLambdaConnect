@@ -21,6 +21,7 @@ jest.mock('@/data/announcements');
 jest.mock('@/data/leadership');
 jest.mock('@/data/requests');
 jest.mock('@/data/attendance');
+jest.mock('@/data/moderation');
 jest.mock('./registerForPush', () => ({
   registerForPush: jest.fn(async () => 'registered'),
   unregisterPush: jest.fn(async () => {}),

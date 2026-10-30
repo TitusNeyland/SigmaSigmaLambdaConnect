@@ -18,6 +18,7 @@ export { deleteAccount } from './account.js';
 export { logMemberDecision } from './decisions.js';
 export { notifyAnnouncement } from './announcements.js';
 export { eventNotifications, notifyEventCancelled, notifyNewEvent } from './events.js';
+export { resolveReport, undoReportDecision } from './moderation.js';
 export { kpisHourly, kpisOnGoalChange, refreshKpis } from './kpis.js';
 export { cleanUpDeletedPost, countCommentLikes, countComments, countLikes } from './posts.js';
 export { notifyProgramHelp } from './programs.js';

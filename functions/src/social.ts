@@ -169,7 +169,8 @@ export const notifyNewComment = onDocumentCreated(
   'posts/{postId}/comments/{commentId}',
   async (event) => {
     const data = event.data?.data();
-    if (data) await notifyComment(event.params.postId, data);
+    // A comment put back by an officer's undo (#50) isn't new; don't notify again.
+    if (data && !data.restoredAt) await notifyComment(event.params.postId, data);
   },
 );
 
