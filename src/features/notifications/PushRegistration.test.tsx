@@ -16,6 +16,7 @@ jest.mock('@/data/feed');
 jest.mock('@/data/likes');
 jest.mock('@/data/posts');
 jest.mock('@/data/comments');
+jest.mock('@/data/programs');
 jest.mock('./registerForPush', () => ({
   registerForPush: jest.fn(async () => 'registered'),
   unregisterPush: jest.fn(async () => {}),

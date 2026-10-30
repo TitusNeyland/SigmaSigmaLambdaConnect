@@ -17,6 +17,7 @@ jest.mock('@/data/feed');
 jest.mock('@/data/likes');
 jest.mock('@/data/posts');
 jest.mock('@/data/comments');
+jest.mock('@/data/programs');
 const directory = jest.requireMock<typeof import('@/data/__mocks__/directory')>('@/data/directory');
 
 const THIS_YEAR = new Date().getFullYear();
