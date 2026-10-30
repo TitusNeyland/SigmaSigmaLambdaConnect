@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import { router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -80,7 +80,16 @@ export function EventsScreen() {
   const [reloadKey, setReloadKey] = useState(0);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState<CategoryFilter>('all');
-  const [view, setView] = useState<EventsView>('upcoming');
+  // The Chapter hub's Calendar tile opens /events?view=calendar.
+  const params = useLocalSearchParams<{ view?: string }>();
+  const [view, setView] = useState<EventsView>(
+    params.view === 'calendar' ? 'calendar' : 'upcoming',
+  );
+  const [seenView, setSeenView] = useState(params.view);
+  if (params.view !== seenView) {
+    setSeenView(params.view);
+    if (params.view === 'calendar') setView('calendar');
+  }
   const [now, setNow] = useState(() => new Date());
 
   // Reload whenever the tab comes back into view, so an RSVP changed elsewhere shows here.

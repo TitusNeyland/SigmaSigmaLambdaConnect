@@ -19,6 +19,7 @@ jest.mock('@/data/posts');
 jest.mock('@/data/comments');
 jest.mock('@/data/programs');
 jest.mock('@/data/announcements');
+jest.mock('@/data/leadership');
 const events = jest.requireMock<typeof import('@/data/__mocks__/events')>('@/data/events');
 
 const day = (n: number, hour = 19) => {
@@ -192,5 +193,15 @@ describe('Upcoming and Calendar', () => {
     );
     await press(screen.getByRole('tab', { name: 'Upcoming' }));
     expect(screen.getByTestId('featured-event')).toBeTruthy();
+  });
+
+  it('opens straight to the calendar from a link (the Chapter tile)', async () => {
+    await renderRouter('src/app', { initialUrl: '/events?view=calendar' });
+    await waitFor(() => expect(screen.getByTestId('calendar')).toBeTruthy());
+    expect(screen.getByRole('tab', { name: 'Calendar' }).props.accessibilityState).toMatchObject({
+      selected: true,
+    });
+    await press(screen.getByRole('tab', { name: 'Upcoming' }));
+    await waitFor(() => expect(screen.getByTestId('featured-event')).toBeTruthy());
   });
 });

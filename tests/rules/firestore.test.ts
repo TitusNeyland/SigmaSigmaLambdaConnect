@@ -1354,3 +1354,29 @@ describe('KPIs', () => {
     await assertFails(setDoc(doc(as(USERS.adam), 'kpis/2026-fall'), { participationRate: 1 }));
   });
 });
+
+describe('chapter hub waiting counts (#42)', () => {
+  // The exact queries in src/data/leadership.ts.
+  const pending = (db: Firestore) =>
+    getCountFromServer(query(collection(db, 'members'), where('status', '==', 'pending')));
+  const open = (db: Firestore) =>
+    getCountFromServer(query(collection(db, 'reports'), where('status', '==', 'open')));
+
+  it('officers and admins can count membership requests and open reports', async () => {
+    for (const uid of [USERS.olivia, USERS.adam]) {
+      await assertSucceeds(pending(as(uid)));
+      await assertSucceeds(open(as(uid)));
+    }
+  });
+
+  it('members cannot count reports', async () => {
+    await assertFails(open(as(USERS.alice)));
+  });
+
+  it('pending accounts and strangers cannot count either', async () => {
+    for (const uid of [USERS.pete, USERS.stranger]) {
+      await assertFails(pending(as(uid)));
+      await assertFails(open(as(uid)));
+    }
+  });
+});
