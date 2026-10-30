@@ -1,5 +1,5 @@
 import { collection, doc, serverTimestamp, setDoc } from 'firebase/firestore';
-import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import { getDownloadURL, ref, uploadBytesResumable } from 'firebase/storage';
 
 import { db, storage } from './firebase';
 
@@ -22,16 +22,29 @@ export function newPostId(): string {
 export const postPhotoPath = (uid: string, postId: string, index: number) =>
   `posts/${uid}/${postId}/${index}.jpg`;
 
-/** Uploads one prepared JPEG for a post and returns its Storage path. */
+/**
+ * Uploads one prepared JPEG for a post and returns its Storage path. Reports progress from
+ * 0 to 1 as it goes.
+ */
 export async function uploadPostPhoto(
   uid: string,
   postId: string,
   index: number,
   localUri: string,
+  onProgress?: (fraction: number) => void,
 ): Promise<string> {
   const path = postPhotoPath(uid, postId, index);
   const blob = await (await fetch(localUri)).blob();
-  await uploadBytes(ref(storage, path), blob, { contentType: 'image/jpeg' });
+  const task = uploadBytesResumable(ref(storage, path), blob, { contentType: 'image/jpeg' });
+  await new Promise<void>((resolve, reject) => {
+    task.on(
+      'state_changed',
+      (snap) => onProgress?.(snap.totalBytes ? snap.bytesTransferred / snap.totalBytes : 0),
+      reject,
+      () => resolve(),
+    );
+  });
+  onProgress?.(1);
   return path;
 }
 
