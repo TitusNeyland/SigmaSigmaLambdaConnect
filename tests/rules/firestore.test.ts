@@ -1556,3 +1556,58 @@ describe('taking attendance (#49)', () => {
     );
   });
 });
+
+describe('restrictions and the reports queue (#50)', () => {
+  const restrict = (uid: string, hours: number) =>
+    env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore() as unknown as Firestore, `restrictions/${uid}`), {
+        until: hoursFromNow(hours),
+        by: USERS.olivia,
+        decisionId: 'd1',
+      });
+    });
+  const post = () =>
+    setDoc(doc(as(USERS.alice), 'posts/paused'), {
+      ...postDoc(USERS.alice),
+      createdAt: serverTimestamp(),
+    });
+  const comment = () =>
+    setDoc(doc(as(USERS.alice), 'posts/alicePost/comments/paused'), {
+      authorId: USERS.alice,
+      text: 'Trying anyway',
+      createdAt: serverTimestamp(),
+    });
+
+  it('a restricted member cannot post or comment', async () => {
+    await restrict(USERS.alice, 24 * 7);
+    await assertFails(post());
+    await assertFails(comment());
+  });
+
+  it('they can again once the restriction is over', async () => {
+    await restrict(USERS.alice, -1);
+    await assertSucceeds(post());
+    await assertSucceeds(comment());
+  });
+
+  it('members see only their own restriction; officers see all; nobody writes them', async () => {
+    await restrict(USERS.alice, 24);
+    await assertSucceeds(getDoc(doc(as(USERS.alice), 'restrictions/alice')));
+    await assertFails(getDoc(doc(as(USERS.bob), 'restrictions/alice')));
+    await assertSucceeds(getDoc(doc(as(USERS.olivia), 'restrictions/alice')));
+    await assertFails(deleteDoc(doc(as(USERS.alice), 'restrictions/alice')));
+    await assertFails(setDoc(doc(as(USERS.adam), 'restrictions/bob'), { until: hoursFromNow(24) }));
+  });
+
+  it('officers list open reports with the exact query in src/data/moderation.ts', async () => {
+    const q = (db: Firestore) =>
+      getDocs(query(collection(db, 'reports'), where('status', '==', 'open')));
+    await assertSucceeds(q(as(USERS.olivia)));
+    await assertFails(q(as(USERS.alice)));
+  });
+
+  it('officers can read removed posts for the preview; members cannot', async () => {
+    await assertSucceeds(getDoc(doc(as(USERS.olivia), 'posts/removedPost')));
+    await assertFails(getDoc(doc(as(USERS.alice), 'posts/removedPost')));
+  });
+});

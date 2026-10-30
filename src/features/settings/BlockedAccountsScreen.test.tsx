@@ -23,6 +23,7 @@ jest.mock('@/data/announcements');
 jest.mock('@/data/leadership');
 jest.mock('@/data/requests');
 jest.mock('@/data/attendance');
+jest.mock('@/data/moderation');
 const blocks = jest.requireMock<typeof import('@/data/__mocks__/blocks')>('@/data/blocks');
 
 async function press(target: Parameters<typeof fireEvent.press>[0]) {

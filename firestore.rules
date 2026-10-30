@@ -237,6 +237,12 @@ service cloud.firestore {
 
     // ---------- Posts ----------
 
+    // An officer can pause someone's posting and commenting for a week (#50).
+    function notRestricted() {
+      let path = /databases/$(database)/documents/restrictions/$(request.auth.uid);
+      return !exists(path) || get(path).data.until < request.time;
+    }
+
     function postPath(postId) {
       return /databases/$(database)/documents/posts/$(postId);
     }
@@ -264,6 +270,7 @@ service cloud.firestore {
         && incoming().allowComments is bool
         && (incoming().official == false || (incoming().official == true && isOfficer()))
         && incoming().removed == false
+        && notRestricted()
         && incoming().likeCount == 0
         && incoming().commentCount == 0
         && (!('taggedMemberIds' in incoming())
@@ -296,7 +303,8 @@ service cloud.firestore {
           && (!('replyToId' in incoming())
               || exists(/databases/$(database)/documents/posts/$(postId)/comments/$(incoming().replyToId)))
           && get(postPath(postId)).data.allowComments == true
-          && get(postPath(postId)).data.removed == false;
+          && get(postPath(postId)).data.removed == false
+          && notRestricted();
         allow delete: if isApproved()
           && (resource.data.authorId == request.auth.uid || isOfficer());
 
@@ -474,6 +482,12 @@ service cloud.firestore {
         && isApproved()
         && incoming().keys().hasOnly(['readAt'])
         && isNow(incoming().readAt);
+    }
+
+    // Set by the resolveReport Cloud Function (#50). The member can see their own.
+    match /restrictions/{userId} {
+      allow read: if isSelf(userId) || isOfficer();
+      allow write: if false;
     }
 
     // Officer decisions (#48, #50), logged by Cloud Functions so the record can't be edited.

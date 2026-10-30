@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { addComment, subscribeToComments, type PostComment } from '@/data/comments';
+import { restrictionNote, useRestriction } from '@/features/moderation/useRestriction';
 import { fetchPost, type FeedPost } from '@/data/feed';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { colors, MIN_TOUCH, radius, spacing, type } from '@/theme';
@@ -71,6 +72,7 @@ export function PostDetailScreen({ id }: { id: string }) {
   }, [id, uid]);
 
   const { blocked, hidden } = useHiddenContent(uid);
+  const pausedUntil = useRestriction(uid);
   const rows = useMemo(
     () => threadComments(comments ?? [], blocked, hidden, id),
     [comments, blocked, hidden, id],
@@ -193,7 +195,13 @@ export function PostDetailScreen({ id }: { id: string }) {
           }
         />
 
-        {post.allowComments ? (
+        {post.allowComments && pausedUntil ? (
+          <View style={styles.inputBar}>
+            <AppText variant="footnote" color={colors.warning} testID="comments-paused">
+              {restrictionNote(pausedUntil)}
+            </AppText>
+          </View>
+        ) : post.allowComments ? (
           <View style={styles.inputBar}>
             {replyTo ? (
               <View style={styles.replying} testID="replying-to">

@@ -21,6 +21,7 @@ jest.mock('@/data/announcements');
 jest.mock('@/data/leadership');
 jest.mock('@/data/requests');
 jest.mock('@/data/attendance');
+jest.mock('@/data/moderation');
 const programs = jest.requireMock<typeof import('@/data/__mocks__/programs')>('@/data/programs');
 
 const m = (id: string, name: string, done: boolean, order: number) => ({ id, name, done, order });

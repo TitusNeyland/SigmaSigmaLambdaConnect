@@ -23,6 +23,8 @@ jest.mock('@/data/announcements');
 jest.mock('@/data/leadership');
 jest.mock('@/data/requests');
 jest.mock('@/data/attendance');
+jest.mock('@/data/moderation');
+const mod = jest.requireMock<typeof import('@/data/__mocks__/moderation')>('@/data/moderation');
 const comments = jest.requireMock<typeof import('@/data/__mocks__/comments')>('@/data/comments');
 
 const me = () => auth.sampleUser().uid;
@@ -44,6 +46,7 @@ beforeEach(() => {
   members.resetMembersMock(members.sampleMember({ status: 'approved' }));
   blocks.resetBlocksMock();
   comments.resetCommentsMock();
+  mod.resetModerationMock();
   feed.resetFeedMock([
     feed.samplePost({ id: 'p1', caption: 'Sample gala photos', commentCount: 2 }),
   ]);
@@ -172,4 +175,12 @@ it('opens from the feed and goes back', async () => {
   await waitFor(() => expect(screen.getByTestId('comment-count')).toBeTruthy());
   await press(screen.getByTestId('post-back'));
   await waitFor(() => expect(screen).toHavePathname('/home'));
+});
+
+it('explains a posting pause instead of showing the comment box (#50)', async () => {
+  mod.setMockRestriction(new Date(2026, 10, 5, 12));
+  await openPost();
+  await waitFor(() => expect(screen.getByTestId('comments-paused')).toBeTruthy());
+  expect(screen.queryByTestId('comment-input')).toBeNull();
+  expect(screen.getByTestId('comments-paused')).toHaveTextContent(/until Nov 5\./);
 });

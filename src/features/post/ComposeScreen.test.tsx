@@ -24,6 +24,8 @@ jest.mock('@/data/announcements');
 jest.mock('@/data/leadership');
 jest.mock('@/data/requests');
 jest.mock('@/data/attendance');
+jest.mock('@/data/moderation');
+const mod = jest.requireMock<typeof import('@/data/__mocks__/moderation')>('@/data/moderation');
 const posts = jest.requireMock<typeof import('@/data/__mocks__/posts')>('@/data/posts');
 jest.mock('./preparePhoto', () => ({
   preparePhoto: jest.fn(async (photo: { uri: string }) => photo.uri.replace('.jpg', '-small.jpg')),
@@ -53,6 +55,7 @@ beforeEach(() => {
   auth.resetAuthMock();
   members.resetMembersMock(members.sampleMember({ status: 'approved' }));
   posts.resetPostsMock();
+  mod.resetModerationMock();
   feed.resetFeedMock([]);
   events.resetEventsMock([
     events.sampleEvent({
@@ -263,5 +266,22 @@ describe('upload progress and retry', () => {
     await waitFor(() => expect(screen.getByTestId('posted')).toBeTruthy());
     expect(posts.uploadPostPhoto).toHaveBeenCalledTimes(1);
     expect(posts.createPost).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('when officers paused posting (#50)', () => {
+  it('explains why and keeps Share off', async () => {
+    mod.setMockRestriction(new Date(2026, 10, 5, 12));
+    await compose();
+    await waitFor(() => expect(screen.getByTestId('compose-paused')).toBeTruthy());
+    expect(screen.getByTestId('compose-paused')).toHaveTextContent(
+      'Officers paused your posting and commenting until Nov 5.',
+    );
+    await type('compose-caption', 'Trying anyway');
+    expect(screen.getByTestId('compose-share').props.accessibilityState).toMatchObject({
+      disabled: true,
+    });
+    await press(screen.getByTestId('compose-share'));
+    expect(posts.createPost).not.toHaveBeenCalled();
   });
 });

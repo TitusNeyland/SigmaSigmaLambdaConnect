@@ -23,6 +23,7 @@ jest.mock('@/data/announcements');
 jest.mock('@/data/leadership');
 jest.mock('@/data/requests');
 jest.mock('@/data/attendance');
+jest.mock('@/data/moderation');
 const admin = jest.requireMock<typeof import('@/data/__mocks__/eventAdmin')>('@/data/eventAdmin');
 jest.mock('./pickEventPhoto', () => ({ pickEventPhoto: jest.fn(), EVENT_PHOTO_WIDTH: 1600 }));
 const { pickEventPhoto } = jest.requireMock<typeof import('./pickEventPhoto')>('./pickEventPhoto');

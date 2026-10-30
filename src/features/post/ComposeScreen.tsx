@@ -15,6 +15,7 @@ import { fetchDirectory, type DirectoryEntry } from '@/data/directory';
 import { fetchEventsBetween, type EventSummary } from '@/data/events';
 import { createPost, newPostId, uploadPostPhoto } from '@/data/posts';
 import { useAuth } from '@/features/auth/AuthProvider';
+import { restrictionNote, useRestriction } from '@/features/moderation/useRestriction';
 import { useCan } from '@/features/roles/RoleProvider';
 import { formatDay } from '@/features/events/eventsLogic';
 import { notifyFeedChanged } from '@/features/feed/feedEvents';
@@ -103,7 +104,8 @@ export function ComposeScreen() {
   const brothers = useWhenOpen(sheet === 'brothers', fetchDirectory);
 
   const photos = draft.photos;
-  const ready = canShare(photos.length, caption) && !sharing;
+  const pausedUntil = useRestriction(uid);
+  const ready = canShare(photos.length, caption) && !sharing && !pausedUntil;
 
   // Kept across retries: the same post ID, and photos already uploaded aren't sent again.
   const upload = useRef<{ postId: string | null; paths: Map<string, string>; next: number }>({
@@ -113,7 +115,7 @@ export function ComposeScreen() {
   });
 
   async function share() {
-    if (!canShare(photos.length, caption) || sharing) return;
+    if (!canShare(photos.length, caption) || sharing || pausedUntil) return;
     setSharing(true);
     setFailed(false);
     setProgress({
@@ -225,6 +227,11 @@ export function ComposeScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+          {pausedUntil ? (
+            <AppText variant="footnote" color={colors.warning} testID="compose-paused">
+              {restrictionNote(pausedUntil)}
+            </AppText>
+          ) : null}
           {photos.length > 0 ? (
             <View style={styles.field}>
               <ScrollView
