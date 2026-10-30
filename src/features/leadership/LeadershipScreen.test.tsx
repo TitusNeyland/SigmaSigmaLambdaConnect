@@ -21,6 +21,8 @@ jest.mock('@/data/programs');
 const programs = jest.requireMock<typeof import('@/data/__mocks__/programs')>('@/data/programs');
 jest.mock('@/data/announcements');
 jest.mock('@/data/leadership');
+jest.mock('@/data/requests');
+const requests = jest.requireMock<typeof import('@/data/__mocks__/requests')>('@/data/requests');
 const leadership =
   jest.requireMock<typeof import('@/data/__mocks__/leadership')>('@/data/leadership');
 
@@ -40,6 +42,7 @@ function signIn(role: Parameters<typeof roles.resetRolesMock>[0]) {
 beforeEach(() => {
   signIn({ role: 'officer', title: 'Secretary' });
   leadership.resetLeadershipMock();
+  requests.resetRequestsMock();
   leadership.setMockKpis(leadership.sampleCurrentKpis());
   programs.resetProgramsMock([
     programs.sampleProgram(),
@@ -120,9 +123,11 @@ describe('KPIs', () => {
 
 describe('needs attention', () => {
   it('lists requests, reports and programs at risk', async () => {
-    leadership.setMockWaiting({ membershipRequests: 2, openReports: 1 });
+    requests.resetRequestsMock([requests.sampleRequest()]);
+    leadership.setMockWaiting({ membershipRequests: 1, openReports: 1 });
     await openLeadership();
-    await waitFor(() => expect(screen.getByTestId('requests-count')).toHaveTextContent('2'));
+    await waitFor(() => expect(screen.getByTestId('request-sample-jordan')).toBeTruthy());
+    expect(screen.queryByTestId('attention-requests')).toBeNull();
     expect(screen.getByTestId('reports-count')).toHaveTextContent('1');
     expect(screen.getByTestId('attention-program-sample-drive')).toBeTruthy();
     expect(screen.queryByTestId('attention-program-sample-scholarship')).toBeNull();
@@ -134,7 +139,10 @@ describe('needs attention', () => {
     ['attention-reports', '/chapter/reports'],
     ['attention-program-sample-drive', '/chapter/programs/sample-drive'],
   ])('%s opens %s', async (id, path) => {
-    leadership.setMockWaiting({ membershipRequests: 2, openReports: 1 });
+    requests.resetRequestsMock(
+      ['a', 'b', 'c', 'd'].map((x) => requests.sampleRequest({ uid: `sample-${x}` })),
+    );
+    leadership.setMockWaiting({ membershipRequests: 4, openReports: 1 });
     const r = await openLeadership();
     await waitFor(() => expect(screen.getByTestId(id)).toBeTruthy());
     await press(screen.getByTestId(id));
@@ -145,6 +153,31 @@ describe('needs attention', () => {
     programs.resetProgramsMock([programs.sampleProgram()]);
     await openLeadership();
     await waitFor(() => expect(screen.getByTestId('attention-none')).toBeTruthy());
+  });
+});
+
+describe('membership requests inline (#48)', () => {
+  it('shows the first three with approve and decline, and links to the rest', async () => {
+    requests.resetRequestsMock(
+      ['a', 'b', 'c', 'd'].map((x) =>
+        requests.sampleRequest({ uid: `sample-${x}`, displayName: `Sample ${x.toUpperCase()}` }),
+      ),
+    );
+    await openLeadership();
+    await waitFor(() => expect(screen.getByTestId('request-sample-a')).toBeTruthy());
+    expect(screen.getByTestId('request-sample-c')).toBeTruthy();
+    expect(screen.queryByTestId('request-sample-d')).toBeNull();
+    expect(screen.getByTestId('requests-count')).toHaveTextContent('4');
+
+    await press(screen.getByTestId('approve-sample-a'));
+    expect(requests.decideRequest).toHaveBeenCalledWith(
+      'sample-a',
+      auth.sampleUser().uid,
+      'approved',
+    );
+    expect(screen.getByTestId('request-done-sample-a')).toHaveTextContent(
+      'Approved. Sample A is in.',
+    );
   });
 });
 

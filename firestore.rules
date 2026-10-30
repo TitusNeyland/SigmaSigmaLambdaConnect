@@ -476,6 +476,12 @@ service cloud.firestore {
         && isNow(incoming().readAt);
     }
 
+    // Officer decisions (#48, #50), logged by Cloud Functions so the record can't be edited.
+    match /decisions/{decisionId} {
+      allow read: if isOfficer();
+      allow write: if false;
+    }
+
     // Computed by Cloud Functions with the Admin SDK. Clients only read.
     match /kpis/{periodId} {
       allow read: if isOfficer();

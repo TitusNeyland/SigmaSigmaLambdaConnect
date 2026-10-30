@@ -15,6 +15,7 @@ initializeApp();
 setGlobalOptions({ region: 'us-central1', maxInstances: 10 });
 
 export { deleteAccount } from './account.js';
+export { logMemberDecision } from './decisions.js';
 export { notifyAnnouncement } from './announcements.js';
 export { eventNotifications, notifyEventCancelled, notifyNewEvent } from './events.js';
 export { kpisHourly, kpisOnGoalChange } from './kpis.js';
