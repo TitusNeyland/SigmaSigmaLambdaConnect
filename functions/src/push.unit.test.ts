@@ -42,6 +42,18 @@ describe('wantsPush', () => {
   });
 });
 
+describe('officer notices', () => {
+  it('always go to approved members, whatever the switches say', () => {
+    expect(
+      wantsPush(
+        { status: 'approved', notificationPrefs: { tasks: false, events: false } },
+        'officer',
+      ),
+    ).toBe(true);
+    expect(wantsPush({ status: 'pending' }, 'officer')).toBe(false);
+  });
+});
+
 describe('approvalMessage', () => {
   it('only fires when a pending member is approved', () => {
     expect(approvalMessage({ status: 'pending' }, { status: 'approved' })).toMatchObject({

@@ -1,6 +1,6 @@
 import type { ProgramMilestone, ProgramSummary } from '@/data/programs';
 
-import { chapterPercent, dueLabel, percentDone, statusAfter } from './programLogic';
+import { chapterPercent, dueLabel, groupPrograms, percentDone, statusAfter } from './programLogic';
 
 const ms = (...done: boolean[]): ProgramMilestone[] =>
   done.map((d, i) => ({ id: `m${i}`, name: `M${i}`, order: i, done: d }));
@@ -47,5 +47,34 @@ describe('dueLabel', () => {
     expect(dueLabel(new Date(2026, 9, 28), NOW, 'in_progress')).toBe('1 day late');
     expect(dueLabel(new Date(2026, 9, 1), NOW, 'completed')).toBe('Was due Oct 1');
     expect(dueLabel(null, NOW, 'in_progress')).toBe('No due date');
+  });
+});
+
+describe('groupPrograms', () => {
+  const p = (id: string, status: ProgramSummary['status'], due: number | null) =>
+    ({
+      id,
+      status,
+      dueAt: due === null ? null : new Date(due),
+      milestones: [],
+    }) as unknown as ProgramSummary;
+
+  it('puts needs help first, then on track, then completed, each by due date', () => {
+    const groups = groupPrograms([
+      p('done', 'completed', 1),
+      p('later', 'in_progress', 30),
+      p('help', 'at_risk', 20),
+      p('soon', 'not_started', 10),
+      p('undated', 'in_progress', null),
+    ]);
+    expect(groups.map((g) => [g.title, g.programs.map((x) => x.id)])).toEqual([
+      ['Needs help', ['help']],
+      ['On track', ['soon', 'later', 'undated']],
+      ['Completed', ['done']],
+    ]);
+  });
+
+  it('leaves out empty groups', () => {
+    expect(groupPrograms([p('a', 'completed', 1)]).map((g) => g.key)).toEqual(['done']);
   });
 });

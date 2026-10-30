@@ -1283,6 +1283,17 @@ describe('officer-managed chapter content', () => {
     await assertFails(tick(as(USERS.alice), true, USERS.alice, 'in_progress'));
   });
 
+  it('members offer to help as themselves; officers see who offered (#45)', async () => {
+    const offer = (uid: string) => ({ memberId: uid, createdAt: serverTimestamp() });
+    const path = (uid: string) => `programs/scholarship/helpers/${uid}`;
+    await assertSucceeds(setDoc(doc(as(USERS.alice), path('alice')), offer(USERS.alice)));
+    await assertFails(setDoc(doc(as(USERS.alice), path('bob')), offer(USERS.bob)));
+    await assertFails(setDoc(doc(as(USERS.pete), path('pete')), offer(USERS.pete)));
+    await assertSucceeds(getDoc(doc(as(USERS.alice), path('alice'))));
+    await assertFails(getDoc(doc(as(USERS.bob), path('alice'))));
+    await assertSucceeds(getDocs(collection(as(USERS.olivia), 'programs/scholarship/helpers')));
+  });
+
   it('members cannot update milestones', async () => {
     await assertFails(
       updateDoc(doc(as(USERS.alice), 'programs/scholarship/milestones/m1'), { done: false }),

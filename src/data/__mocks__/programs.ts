@@ -47,10 +47,24 @@ export const setMilestoneDone = jest.fn(
   async (_p: string, _m: string, _done: boolean, _uid: string, _status: string) => {},
 );
 
+let offers = new Set<string>();
+
+export const fetchMyHelpOffers = jest.fn(async (_ids: string[], _uid: string) => new Set(offers));
+export const offerHelp = jest.fn(async (programId: string, _uid: string) => {
+  offers.add(programId);
+});
+
+export function setMockOffers(ids: string[]) {
+  offers = new Set(ids);
+}
+
 export function resetProgramsMock(initial: ProgramSummary[] = []) {
   programs = initial;
   failing = false;
   fetchPrograms.mockClear();
   fetchProgram.mockClear();
   setMilestoneDone.mockReset().mockResolvedValue(undefined);
+  offers = new Set();
+  fetchMyHelpOffers.mockClear();
+  offerHelp.mockClear();
 }

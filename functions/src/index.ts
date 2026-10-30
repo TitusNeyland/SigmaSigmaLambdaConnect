@@ -17,6 +17,7 @@ setGlobalOptions({ region: 'us-central1', maxInstances: 10 });
 export { deleteAccount } from './account.js';
 export { eventNotifications, notifyEventCancelled, notifyNewEvent } from './events.js';
 export { cleanUpDeletedPost, countCommentLikes, countComments, countLikes } from './posts.js';
+export { notifyProgramHelp } from './programs.js';
 export { notifyApproval } from './push.js';
 export {
   likeDigests,
