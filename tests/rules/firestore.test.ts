@@ -1248,13 +1248,56 @@ describe('blocks', () => {
   });
 });
 
+describe('announcements (#43)', () => {
+  const announcement = (extra: object = {}) => ({
+    title: 'Dues reminder',
+    body: 'Sample. Use the link the Treasurer shared.',
+    authorId: USERS.olivia,
+    authorTitle: 'Treasurer',
+    pinned: false,
+    createdAt: serverTimestamp(),
+    ...extra,
+  });
+
+  it('officers post the exact announcement the app writes (src/data/announcements.ts)', async () => {
+    await assertSucceeds(setDoc(doc(as(USERS.olivia), 'announcements/fresh'), announcement()));
+  });
+
+  it('members cannot post, and officers cannot post as someone else', async () => {
+    await assertFails(
+      setDoc(doc(as(USERS.alice), 'announcements/fresh'), announcement({ authorId: USERS.alice })),
+    );
+    await assertFails(
+      setDoc(doc(as(USERS.olivia), 'announcements/fresh'), announcement({ authorId: USERS.adam })),
+    );
+  });
+
+  it('officers edit the text or pin of an existing one, nothing else', async () => {
+    const ref = doc(as(USERS.olivia), 'announcements/a1');
+    await assertSucceeds(updateDoc(ref, { pinned: false, updatedAt: serverTimestamp() }));
+    await assertFails(updateDoc(ref, { authorId: USERS.olivia }));
+    await assertFails(updateDoc(doc(as(USERS.alice), 'announcements/a1'), { pinned: false }));
+  });
+
+  it('rejects empty, long or extra fields', async () => {
+    const db = as(USERS.olivia);
+    await assertFails(setDoc(doc(db, 'announcements/a'), announcement({ title: '' })));
+    await assertFails(setDoc(doc(db, 'announcements/b'), announcement({ body: 'x'.repeat(2001) })));
+    await assertFails(setDoc(doc(db, 'announcements/c'), announcement({ urgent: true })));
+  });
+
+  it('members mark announcements read for themselves only', async () => {
+    const read = { readAt: serverTimestamp() };
+    await assertSucceeds(setDoc(doc(as(USERS.alice), 'reads/alice/announcements/a1'), read));
+    await assertSucceeds(getDocs(collection(as(USERS.alice), 'reads/alice/announcements')));
+    await assertFails(setDoc(doc(as(USERS.bob), 'reads/alice/announcements/a1'), read));
+    await assertFails(getDocs(collection(as(USERS.olivia), 'reads/alice/announcements')));
+    await assertFails(setDoc(doc(as(USERS.pete), 'reads/pete/announcements/a1'), read));
+  });
+});
+
 describe('officer-managed chapter content', () => {
-  const paths = [
-    'programs/new',
-    'programs/scholarship/milestones/new',
-    'goals/new',
-    'announcements/new',
-  ];
+  const paths = ['programs/new', 'programs/scholarship/milestones/new', 'goals/new'];
 
   it.each(paths)('officers can write %s', async (path) => {
     await assertSucceeds(setDoc(doc(as(USERS.olivia), path), { name: 'x' }));

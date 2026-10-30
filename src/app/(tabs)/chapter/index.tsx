@@ -1,5 +1,6 @@
 import { router } from 'expo-router';
 
+import { AnnouncementsSection } from '@/features/announcements/AnnouncementsSection';
 import { PlaceholderScreen } from '@/features/navigation/PlaceholderScreen';
 import { RequireCapability, useRole } from '@/features/roles/RoleProvider';
 import { ListRow, ListSection } from '@/ui';
@@ -19,6 +20,16 @@ export default function ChapterScreen() {
           testID="directory-entry"
         />
       </ListSection>
+      <AnnouncementsSection />
+      <RequireCapability capability="announcements.post">
+        <ListSection>
+          <ListRow
+            title="New announcement"
+            onPress={() => router.push('/chapter/announcements/new')}
+            testID="new-announcement"
+          />
+        </ListSection>
+      </RequireCapability>
       {/* Officers only. Members never see leadership tools, and the rules block them anyway. */}
       <RequireCapability capability="leadership.view">
         <ListSection header="Leadership">
