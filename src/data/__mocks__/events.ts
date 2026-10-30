@@ -85,6 +85,7 @@ export class RsvpSaveError extends Error {
 
 /** Saves into the mock detail so a reload shows the new RSVP and going count. */
 export const setRsvp = jest.fn(async (eventId: string, _uid: string, status: RsvpStatus) => {
+  events = events.map((e) => (e.id === eventId ? { ...e, myRsvp: status } : e));
   const detail = details[eventId];
   if (!detail) return;
   const wasGoing = detail.myRsvp === 'going';
@@ -96,6 +97,13 @@ export const setRsvp = jest.fn(async (eventId: string, _uid: string, status: Rsv
   };
 });
 
+/** Looks the event up in the mock list (setRsvp updates it). */
+export const fetchEventSummary = jest.fn(async (id: string, _uid: string) => {
+  const event = events.find((e) => e.id === id);
+  if (!event) return null;
+  return event;
+});
+
 export function resetEventsMock(initial: EventSummary[] = []) {
   events = initial;
   failing = false;
@@ -104,4 +112,5 @@ export function resetEventsMock(initial: EventSummary[] = []) {
   details = {};
   fetchEventDetail.mockClear();
   setRsvp.mockClear();
+  fetchEventSummary.mockClear();
 }

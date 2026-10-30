@@ -820,13 +820,27 @@ describe('posts', () => {
     );
   });
 
-  it('only officers can make official chapter posts', async () => {
+  it('only officers and admins can make official chapter posts (posts.official)', async () => {
     await assertFails(
       setDoc(doc(as(USERS.alice), 'posts/official'), newPost(USERS.alice, { official: true })),
+    );
+    await assertFails(
+      setDoc(doc(as(USERS.rogue), 'posts/official'), newPost(USERS.rogue, { official: true })),
     );
     await assertSucceeds(
       setDoc(doc(as(USERS.olivia), 'posts/official'), newPost(USERS.olivia, { official: true })),
     );
+    await assertSucceeds(
+      setDoc(
+        doc(as(USERS.adam), 'posts/officialAdmin'),
+        newPost(USERS.adam, { official: true, eventId: 'open' }),
+      ),
+    );
+  });
+
+  it('nobody can turn an ordinary post official afterwards', async () => {
+    await assertFails(updateDoc(doc(as(USERS.alice), 'posts/alicePost'), { official: true }));
+    await assertFails(updateDoc(doc(as(USERS.olivia), 'posts/alicePost'), { official: true }));
   });
 
   it('authors can edit their caption but not counters', async () => {

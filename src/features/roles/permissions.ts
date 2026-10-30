@@ -13,6 +13,8 @@ export type Capability =
   | 'events.manage'
   | 'attendance.take'
   | 'announcements.post'
+  /** Post as Sigma Sigma Lambda with the verified badge (#39). Rules: posts.official. */
+  | 'posts.official'
   | 'reports.review'
   | 'programs.manage'
   | 'roles.manage';
@@ -23,6 +25,7 @@ const OFFICER: readonly Capability[] = [
   'events.manage',
   'attendance.take',
   'announcements.post',
+  'posts.official',
   'reports.review',
   'programs.manage',
 ];

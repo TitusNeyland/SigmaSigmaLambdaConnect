@@ -194,3 +194,17 @@ export async function setRsvp(eventId: string, uid: string, status: RsvpStatus):
     throw new RsvpSaveError(code === 'permission-denied' ? 'closed' : 'failed');
   }
 }
+
+/** One event with the member's RSVP, for the card on an official post (#39). */
+export async function fetchEventSummary(
+  eventId: string,
+  uid: string,
+): Promise<EventSummary | null> {
+  const [snap, mine] = await Promise.all([
+    getDoc(doc(db, 'events', eventId)),
+    getDoc(doc(db, 'events', eventId, 'rsvps', uid)),
+  ]);
+  if (!snap.exists()) return null;
+  const status = mine.exists() ? (mine.data().status as RsvpStatus) : null;
+  return toEventSummary(eventId, snap.data(), status && RSVPS.includes(status) ? status : null);
+}

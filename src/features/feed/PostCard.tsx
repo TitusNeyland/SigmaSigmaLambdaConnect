@@ -6,9 +6,11 @@ import Svg, { Path } from 'react-native-svg';
 import type { FeedPost } from '@/data/feed';
 import type { PostEdit } from '@/data/posts';
 import { colors, MIN_TOUCH, spacing } from '@/theme';
-import { AppText, Avatar } from '@/ui';
+import { CHAPTER_NAME } from '@/config/app';
+import { AppText, Avatar, Monogram, VerifiedBadge } from '@/ui';
 
 import { authorLine, captionPreview, commentsLabel, likesLabel, timeAgo } from './feedLogic';
+import { OfficialEventCard } from './OfficialEventCard';
 import { PhotoCarousel } from './PhotoCarousel';
 import { PostMenu } from './PostMenu';
 import { useLike } from './useLike';
@@ -74,8 +76,10 @@ export function PostCard({
   const [expanded, setExpanded] = useState(false);
   const [edit, setEdit] = useState<PostEdit | null>(null);
   const post = edit ? { ...original, ...edit } : original;
-  const name = post.author?.displayName ?? 'Former member';
-  const line = post.author ? authorLine(post.author) : '';
+  // Official posts speak as the chapter (#39); everyone else as themselves.
+  const name = post.official ? CHAPTER_NAME : (post.author?.displayName ?? 'Former member');
+  const line = post.official ? 'Official chapter post' : post.author ? authorLine(post.author) : '';
+  const tappable = !post.official && !!post.author;
   const caption = captionPreview(post.caption);
   const like = useLike(post.id, me, { liked: post.likedByMe, count: post.likeCount });
 
@@ -83,18 +87,32 @@ export function PostCard({
     <View style={styles.card} testID={`post-${post.id}`}>
       <View style={styles.headerRow}>
         <Pressable
-          onPress={post.author ? () => openAuthor(post, me) : undefined}
-          disabled={!post.author}
-          accessibilityRole={post.author ? 'button' : undefined}
-          accessibilityLabel={[name, line, timeAgo(post.createdAt, now)].filter(Boolean).join(', ')}
+          onPress={tappable ? () => openAuthor(post, me) : undefined}
+          disabled={!tappable}
+          accessibilityRole={tappable ? 'button' : undefined}
+          accessibilityLabel={[
+            name,
+            post.official ? 'verified' : '',
+            line,
+            timeAgo(post.createdAt, now),
+          ]
+            .filter(Boolean)
+            .join(', ')}
           style={styles.header}
           testID={`post-author-${post.id}`}
         >
-          <Avatar name={name} uri={post.author?.photoURL} size={36} />
+          {post.official ? (
+            <Monogram size={36} />
+          ) : (
+            <Avatar name={name} uri={post.author?.photoURL} size={36} />
+          )}
           <View style={styles.flex}>
-            <AppText variant="subhead" weight="600" numberOfLines={1}>
-              {name}
-            </AppText>
+            <View style={styles.nameRow}>
+              <AppText variant="subhead" weight="600" numberOfLines={1} style={styles.shrink}>
+                {name}
+              </AppText>
+              {post.official ? <VerifiedBadge /> : null}
+            </View>
             {line ? (
               <AppText variant="caption" color={colors.textSecondary} numberOfLines={1}>
                 {line}
@@ -105,7 +123,15 @@ export function PostCard({
             {timeAgo(post.createdAt, now)}
           </AppText>
         </Pressable>
-        <PostMenu post={post} me={me} onEdited={setEdit} onDeleted={() => onDeleted?.(post.id)} />
+        <PostMenu
+          post={post}
+          me={me}
+          onEdited={(e) => {
+            setEdit(e);
+            onEdited?.(e);
+          }}
+          onDeleted={() => onDeleted?.(post.id)}
+        />
       </View>
 
       <PhotoCarousel paths={post.photoPaths} label={`Photo from ${name}`} onDoubleTap={like.like} />
@@ -178,12 +204,17 @@ export function PostCard({
           </Pressable>
         ) : null}
       </View>
+      {post.official && post.eventId ? (
+        <OfficialEventCard eventId={post.eventId} me={me} now={now} />
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   card: { backgroundColor: colors.background, paddingBottom: spacing.lg },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  shrink: { flexShrink: 1 },
   headerRow: { flexDirection: 'row', alignItems: 'center', paddingRight: spacing.lg },
   header: {
     flex: 1,

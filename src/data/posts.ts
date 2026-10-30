@@ -11,6 +11,8 @@ export type NewPost = {
   eventId: string | null;
   taggedMemberIds: string[];
   allowComments: boolean;
+  /** Posted as Sigma Sigma Lambda (#39). Officers only; the rules check. */
+  official: boolean;
 };
 
 /** A new post's ID, made up front so its photos can be uploaded under it first. */
@@ -60,7 +62,7 @@ export async function createPost(id: string, uid: string, post: NewPost): Promis
     eventId: post.eventId,
     taggedMemberIds: post.taggedMemberIds,
     allowComments: post.allowComments,
-    official: false,
+    official: post.official,
     removed: false,
     likeCount: 0,
     commentCount: 0,
