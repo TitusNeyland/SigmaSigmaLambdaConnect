@@ -20,6 +20,7 @@ jest.mock('@/data/eventAdmin');
 jest.mock('@/data/feed');
 jest.mock('@/data/likes');
 jest.mock('@/data/posts');
+jest.mock('@/data/comments');
 const account = jest.requireMock<typeof import('@/data/__mocks__/account')>('@/data/account');
 const blocks = jest.requireMock<typeof import('@/data/__mocks__/blocks')>('@/data/blocks');
 

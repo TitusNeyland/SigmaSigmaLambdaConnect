@@ -43,6 +43,8 @@ export type PostCardProps = {
   now: Date;
   /** The signed-in member, so their own name opens their Profile tab. */
   me: string;
+  /** On the post's own screen, the comment button and link have nowhere new to go. */
+  hideCommentLink?: boolean;
 };
 
 function openAuthor(post: FeedPost, me: string) {
@@ -55,7 +57,7 @@ function openPost(id: string) {
 }
 
 /** One post in the feed: author line, photos, counts and caption, Instagram style. */
-export function PostCard({ post, now, me }: PostCardProps) {
+export function PostCard({ post, now, me, hideCommentLink = false }: PostCardProps) {
   const [expanded, setExpanded] = useState(false);
   const name = post.author?.displayName ?? 'Former member';
   const line = post.author ? authorLine(post.author) : '';
@@ -101,7 +103,7 @@ export function PostCard({ post, now, me }: PostCardProps) {
         >
           <HeartIcon filled={like.liked} />
         </Pressable>
-        {post.allowComments ? (
+        {post.allowComments && !hideCommentLink ? (
           <Pressable
             onPress={() => openPost(post.id)}
             accessibilityRole="button"

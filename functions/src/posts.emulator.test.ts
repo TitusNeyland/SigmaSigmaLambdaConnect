@@ -2,7 +2,7 @@ import { deleteApp, initializeApp, type App } from 'firebase-admin/app';
 import { getFirestore, type Firestore } from 'firebase-admin/firestore';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
-import { recountLikes } from './posts';
+import { recountCommentLikes, recountComments, recountLikes } from './posts';
 
 // Runs against the Firestore emulator (npm run test:rules).
 
@@ -42,5 +42,26 @@ describe('recountLikes', () => {
   it('does nothing for a post that was deleted', async () => {
     await expect(recountLikes('gone', db)).resolves.toBe(0);
     expect((await db.doc('posts/gone').get()).exists).toBe(false);
+  });
+});
+
+describe('comment counts', () => {
+  it('counts comments on the post, replies included', async () => {
+    await db.doc('posts/p/comments/c1').set({ authorId: 'a', text: 'Hi' });
+    await db.doc('posts/p/comments/c2').set({ authorId: 'b', text: 'Yo', replyToId: 'c1' });
+    expect(await recountComments('p', db)).toBe(2);
+    expect((await db.doc('posts/p').get()).get('commentCount')).toBe(2);
+    await db.doc('posts/p/comments/c2').delete();
+    await recountComments('p', db);
+    expect((await db.doc('posts/p').get()).get('commentCount')).toBe(1);
+  });
+
+  it('counts likes on a comment, and ignores a deleted comment', async () => {
+    await db.doc('posts/p/comments/c1').set({ authorId: 'a', text: 'Hi' });
+    await db.doc('posts/p/comments/c1/likes/a').set({ memberId: 'a' });
+    await db.doc('posts/p/comments/c1/likes/b').set({ memberId: 'b' });
+    expect(await recountCommentLikes('p', 'c1', db)).toBe(2);
+    expect((await db.doc('posts/p/comments/c1').get()).get('likeCount')).toBe(2);
+    await expect(recountCommentLikes('p', 'gone', db)).resolves.toBe(0);
   });
 });

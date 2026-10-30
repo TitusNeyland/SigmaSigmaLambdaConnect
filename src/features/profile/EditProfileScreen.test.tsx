@@ -17,6 +17,7 @@ jest.mock('@/data/eventAdmin');
 jest.mock('@/data/feed');
 jest.mock('@/data/likes');
 jest.mock('@/data/posts');
+jest.mock('@/data/comments');
 const profile = jest.requireMock<typeof import('@/data/__mocks__/profile')>('@/data/profile');
 jest.mock('./pickAvatar', () => ({ pickAvatar: jest.fn(), AVATAR_SIZE: 512 }));
 const { pickAvatar } = jest.requireMock<typeof import('./pickAvatar')>('./pickAvatar');

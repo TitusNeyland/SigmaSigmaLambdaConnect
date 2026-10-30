@@ -55,7 +55,7 @@ const text = (v: unknown) => (typeof v === 'string' ? v : '');
 const count = (v: unknown) => (typeof v === 'number' && v > 0 ? Math.floor(v) : 0);
 
 /** Authors are looked up once per member, however many of their posts are on the page. */
-async function fetchAuthor(uid: string): Promise<FeedAuthor | null> {
+export async function fetchAuthor(uid: string): Promise<FeedAuthor | null> {
   const [member, role] = await Promise.all([
     getDoc(doc(db, 'members', uid)),
     getDoc(doc(db, 'roles', uid)),
@@ -139,4 +139,19 @@ export async function fetchFeedPage(
     posts: posts.filter((p): p is FeedPost => p !== null),
     cursor: snap.docs.length === pageSize ? snap.docs[snap.docs.length - 1] : null,
   };
+}
+
+/**
+ * One post, for its detail screen. Null when it doesn't exist, was removed by officers, or
+ * isn't readable.
+ */
+export async function fetchPost(postId: string, uid: string): Promise<FeedPost | null> {
+  const [snap, liked] = await Promise.all([
+    getDoc(doc(db, 'posts', postId)),
+    getDoc(doc(db, 'posts', postId, 'likes', uid)),
+  ]);
+  if (!snap.exists() || snap.data().removed === true) return null;
+  const data = snap.data();
+  const author = await fetchAuthor(text(data.authorId));
+  return toFeedPost(snap.id, data, author, liked.exists());
 }

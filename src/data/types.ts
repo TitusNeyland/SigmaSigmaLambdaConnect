@@ -150,6 +150,10 @@ export type Comment = {
   authorId: string;
   text: string;
   createdAt: Timestamp;
+  /** Set on a reply: the comment it answers. Replies are one level deep. */
+  replyToId?: string;
+  /** Kept by a Cloud Function from comments/{id}/likes. */
+  likeCount?: number;
 };
 
 /** posts/{postId}/likes/{uid} */

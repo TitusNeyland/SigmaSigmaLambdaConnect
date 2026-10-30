@@ -905,6 +905,39 @@ describe('comments', () => {
     );
   });
 
+  it('members reply to a comment on the same post, not one that doesn’t exist (#34)', async () => {
+    const db = as(USERS.bob);
+    await assertSucceeds(
+      setDoc(doc(db, 'posts/alicePost/comments/reply'), {
+        ...newComment(USERS.bob),
+        replyToId: 'c1',
+      }),
+    );
+    await assertFails(
+      setDoc(doc(db, 'posts/alicePost/comments/bad'), {
+        ...newComment(USERS.bob),
+        replyToId: 'nope',
+      }),
+    );
+    await assertFails(
+      setDoc(doc(db, 'posts/alicePost/comments/extra'), { ...newComment(USERS.bob), likeCount: 5 }),
+    );
+  });
+
+  it('members like a comment as themselves only; the count is not theirs to set', async () => {
+    const like = (uid: string) => ({ memberId: uid, createdAt: serverTimestamp() });
+    const path = (uid: string) => `posts/alicePost/comments/c1/likes/${uid}`;
+    await assertSucceeds(setDoc(doc(as(USERS.bob), path('bob')), like(USERS.bob)));
+    await assertFails(setDoc(doc(as(USERS.bob), path('alice')), like(USERS.alice)));
+    await assertFails(setDoc(doc(as(USERS.pete), path('pete')), like(USERS.pete)));
+    await assertFails(
+      setDoc(doc(as(USERS.bob), 'posts/alicePost/comments/gone/likes/bob'), like(USERS.bob)),
+    );
+    await assertSucceeds(getDoc(doc(as(USERS.alice), path('bob'))));
+    await assertFails(deleteDoc(doc(as(USERS.alice), path('bob'))));
+    await assertSucceeds(deleteDoc(doc(as(USERS.bob), path('bob'))));
+  });
+
   it('enforces the comment length limits', async () => {
     await assertFails(
       setDoc(doc(as(USERS.bob), 'posts/alicePost/comments/a'), newComment(USERS.bob, '')),
