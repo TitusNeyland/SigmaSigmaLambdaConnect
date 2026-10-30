@@ -1118,7 +1118,7 @@ describe('reports', () => {
 describe('reporting content (#36)', () => {
   const reportAndHide = (db: Firestore, key: string, report: object, hidden: object) => {
     const batch = writeBatch(db);
-    batch.set(doc(db, 'reports/new'), {
+    batch.set(doc(db, `reports/${key}`), {
       reporterId: USERS.bob,
       targetAuthorId: USERS.alice,
       reason: 'spam',
