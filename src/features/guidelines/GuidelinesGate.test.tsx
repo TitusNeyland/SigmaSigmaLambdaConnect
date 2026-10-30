@@ -18,6 +18,7 @@ jest.mock('@/data/likes');
 jest.mock('@/data/posts');
 jest.mock('@/data/comments');
 jest.mock('@/data/programs');
+jest.mock('@/data/announcements');
 
 async function press(target: Parameters<typeof fireEvent.press>[0]) {
   await act(async () => {

@@ -18,6 +18,7 @@ jest.mock('@/data/likes');
 jest.mock('@/data/posts');
 jest.mock('@/data/comments');
 jest.mock('@/data/programs');
+jest.mock('@/data/announcements');
 const events = jest.requireMock<typeof import('@/data/__mocks__/events')>('@/data/events');
 
 const day = (n: number, hour = 19) => {

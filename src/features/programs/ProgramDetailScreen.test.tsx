@@ -18,6 +18,7 @@ jest.mock('@/data/likes');
 jest.mock('@/data/posts');
 jest.mock('@/data/comments');
 jest.mock('@/data/programs');
+jest.mock('@/data/announcements');
 const programs = jest.requireMock<typeof import('@/data/__mocks__/programs')>('@/data/programs');
 
 const PROGRAM = programs.sampleProgram({

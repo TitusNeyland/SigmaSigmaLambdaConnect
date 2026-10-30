@@ -431,9 +431,33 @@ service cloud.firestore {
       allow write: if isOfficer();
     }
 
+    // Officers post announcements (#43); a Cloud Function pushes them to members.
     match /announcements/{announcementId} {
       allow read: if isApproved();
-      allow write: if isOfficer();
+      allow create: if isOfficer()
+        && incoming().keys().hasOnly(['title', 'body', 'authorId', 'authorTitle', 'pinned',
+                                      'createdAt'])
+        && isText(incoming().title, 1, 100)
+        && isText(incoming().body, 1, 2000)
+        && incoming().authorId == request.auth.uid
+        && optionalText(incoming(), 'authorTitle', 40)
+        && incoming().pinned is bool
+        && isNow(incoming().createdAt);
+      allow update: if isOfficer()
+        && changed().hasOnly(['title', 'body', 'pinned', 'updatedAt'])
+        && isText(incoming().title, 1, 100)
+        && isText(incoming().body, 1, 2000)
+        && incoming().pinned is bool;
+      allow delete: if isOfficer();
+    }
+
+    // Which announcements a member has read, for the unread dots. Only they see it.
+    match /reads/{userId}/announcements/{announcementId} {
+      allow read: if isSelf(userId);
+      allow create, update: if isSelf(userId)
+        && isApproved()
+        && incoming().keys().hasOnly(['readAt'])
+        && isNow(incoming().readAt);
     }
 
     // Computed by Cloud Functions with the Admin SDK. Clients only read.
