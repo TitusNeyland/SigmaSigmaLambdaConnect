@@ -20,6 +20,7 @@ import { AppText, Button, NavHeader } from '@/ui';
 
 import { canPostComment, MAX_COMMENT, threadComments } from './commentLogic';
 import { CommentItem } from './CommentRow';
+import { notifyFeedChanged } from './feedEvents';
 import { PostCard } from './PostCard';
 
 type Loaded = { state: 'loading' } | { state: 'ready'; post: FeedPost | null } | { state: 'error' };
@@ -139,7 +140,21 @@ export function PostDetailScreen({ id }: { id: string }) {
           keyboardShouldPersistTaps="handled"
           ListHeaderComponent={
             <View>
-              <PostCard post={{ ...post, commentCount: 0 }} now={now} me={uid} hideCommentLink />
+              <PostCard
+                post={{ ...post, commentCount: 0 }}
+                now={now}
+                me={uid}
+                hideCommentLink
+                onEdited={(e) =>
+                  setLoaded((l) =>
+                    l.state === 'ready' && l.post ? { ...l, post: { ...l.post, ...e } } : l,
+                  )
+                }
+                onDeleted={() => {
+                  notifyFeedChanged();
+                  goBack();
+                }}
+              />
               <View style={styles.commentsHead}>
                 <AppText variant="headline" testID="comment-count">
                   {count === 1 ? '1 comment' : `${count} comments`}

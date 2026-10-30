@@ -1,7 +1,14 @@
-import { setDoc } from 'firebase/firestore';
+import { deleteDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { ref, uploadBytesResumable } from 'firebase/storage';
 
-import { createPost, newPostId, postPhotoPath, uploadPostPhoto } from './posts';
+import {
+  createPost,
+  deletePost,
+  newPostId,
+  postPhotoPath,
+  updatePost,
+  uploadPostPhoto,
+} from './posts';
 
 jest.mock('./firebase', () => ({ db: { name: 'db' }, storage: { name: 'storage' } }));
 jest.mock('firebase/firestore', () => ({
@@ -10,6 +17,8 @@ jest.mock('firebase/firestore', () => ({
     s.length ? { path: s.join('/') } : { id: 'auto' },
   ),
   setDoc: jest.fn(),
+  updateDoc: jest.fn(),
+  deleteDoc: jest.fn(),
   serverTimestamp: jest.fn(() => 'NOW'),
 }));
 type Observer = [
@@ -86,4 +95,19 @@ it('creates the post with exactly the fields the rules allow', async () => {
       createdAt: 'NOW',
     },
   );
+});
+
+describe('edit and delete', () => {
+  it('edits only the caption and comment setting', async () => {
+    await updatePost('p1', { caption: '  New ', allowComments: true });
+    expect(updateDoc).toHaveBeenCalledWith(
+      { path: 'posts/p1' },
+      { caption: 'New', allowComments: true, updatedAt: 'NOW' },
+    );
+  });
+
+  it('deletes the post', async () => {
+    await deletePost('p1');
+    expect(deleteDoc).toHaveBeenCalledWith({ path: 'posts/p1' });
+  });
 });

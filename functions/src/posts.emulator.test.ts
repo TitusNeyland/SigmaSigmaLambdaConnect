@@ -2,7 +2,7 @@ import { deleteApp, initializeApp, type App } from 'firebase-admin/app';
 import { getFirestore, type Firestore } from 'firebase-admin/firestore';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
-import { recountCommentLikes, recountComments, recountLikes } from './posts';
+import { cleanUpPost, recountCommentLikes, recountComments, recountLikes } from './posts';
 
 // Runs against the Firestore emulator (npm run test:rules).
 
@@ -63,5 +63,25 @@ describe('comment counts', () => {
     expect(await recountCommentLikes('p', 'c1', db)).toBe(2);
     expect((await db.doc('posts/p/comments/c1').get()).get('likeCount')).toBe(2);
     await expect(recountCommentLikes('p', 'gone', db)).resolves.toBe(0);
+  });
+});
+
+describe('cleanUpPost', () => {
+  it('removes comments, their likes, likes and photos left under a deleted post', async () => {
+    await db.doc('posts/p/comments/c1').set({ authorId: 'b', text: 'Hi' });
+    await db.doc('posts/p/comments/c1/likes/a').set({ memberId: 'a' });
+    await db.doc('posts/p/likes/b').set({ memberId: 'b' });
+    await db.doc('posts/other/likes/b').set({ memberId: 'b' });
+    await db.doc('posts/p').delete();
+    const deleted: string[] = [];
+    const bucket = { deleteFiles: async ({ prefix }: { prefix: string }) => deleted.push(prefix) };
+
+    await cleanUpPost('p', 'a', { db, bucket });
+
+    for (const path of ['posts/p/comments/c1', 'posts/p/comments/c1/likes/a', 'posts/p/likes/b']) {
+      expect((await db.doc(path).get()).exists).toBe(false);
+    }
+    expect((await db.doc('posts/other/likes/b').get()).exists).toBe(true);
+    expect(deleted).toEqual(['posts/a/p/']);
   });
 });

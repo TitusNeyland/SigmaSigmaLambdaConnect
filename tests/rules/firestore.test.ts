@@ -834,6 +834,19 @@ describe('posts', () => {
     await assertFails(updateDoc(doc(as(USERS.alice), 'posts/alicePost'), { likeCount: 500 }));
   });
 
+  it('accepts the exact edit from the post menu (src/data/posts.ts)', async () => {
+    await assertSucceeds(
+      updateDoc(doc(as(USERS.alice), 'posts/alicePost'), {
+        caption: 'Fixed',
+        allowComments: false,
+        updatedAt: serverTimestamp(),
+      }),
+    );
+    await assertFails(
+      updateDoc(doc(as(USERS.alice), 'posts/alicePost'), { photoPaths: [], caption: 'x' }),
+    );
+  });
+
   it("members cannot edit someone else's post", async () => {
     await assertFails(updateDoc(doc(as(USERS.bob), 'posts/alicePost'), { caption: 'Mine now' }));
   });

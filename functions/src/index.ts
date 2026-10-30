@@ -16,7 +16,7 @@ setGlobalOptions({ region: 'us-central1', maxInstances: 10 });
 
 export { deleteAccount } from './account.js';
 export { eventNotifications, notifyEventCancelled, notifyNewEvent } from './events.js';
-export { countCommentLikes, countComments, countLikes } from './posts.js';
+export { cleanUpDeletedPost, countCommentLikes, countComments, countLikes } from './posts.js';
 export { notifyApproval } from './push.js';
 
 /** Confirms deploys work. Returns the project the function is running in. */

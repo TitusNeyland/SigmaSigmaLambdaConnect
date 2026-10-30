@@ -1,4 +1,4 @@
-import { collection, doc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { collection, deleteDoc, doc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
 import { getDownloadURL, ref, uploadBytesResumable } from 'firebase/storage';
 
 import { db, storage } from './firebase';
@@ -70,3 +70,22 @@ export async function createPost(id: string, uid: string, post: NewPost): Promis
 
 /** For showing a photo right after upload, before the feed reloads. */
 export const postPhotoUrl = (path: string) => getDownloadURL(ref(storage, path));
+
+/** What an author can change after posting. The rules allow only these. */
+export type PostEdit = { caption: string; allowComments: boolean };
+
+export async function updatePost(id: string, edit: PostEdit): Promise<void> {
+  await updateDoc(doc(db, 'posts', id), {
+    caption: edit.caption.trim(),
+    allowComments: edit.allowComments,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+/**
+ * Deletes the post. A Cloud Function then removes its comments, likes and photos, which the
+ * app can't reach on its own.
+ */
+export async function deletePost(id: string): Promise<void> {
+  await deleteDoc(doc(db, 'posts', id));
+}
