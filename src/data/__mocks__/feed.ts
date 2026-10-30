@@ -56,8 +56,28 @@ export const fetchFeedPage = jest.fn(
   },
 );
 
+let details: Record<string, FeedPost | null> = {};
+
+/** Posts the detail screen can open. Falls back to the feed list. */
+export function setMockPostDetails(next: Record<string, FeedPost | null>) {
+  details = next;
+}
+
+export const fetchPost = jest.fn(async (postId: string, _uid: string) => {
+  if (failing) {
+    failing = false;
+    throw new Error('offline');
+  }
+  if (postId in details) return details[postId];
+  return posts.find((p) => p.id === postId) ?? null;
+});
+
+export const fetchAuthor = jest.fn(async () => null);
+
 export function resetFeedMock(initial: FeedPost[] = []) {
   posts = initial;
   failing = false;
   fetchFeedPage.mockClear();
+  details = {};
+  fetchPost.mockClear();
 }

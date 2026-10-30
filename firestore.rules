@@ -287,15 +287,30 @@ service cloud.firestore {
 
       match /comments/{commentId} {
         allow read: if isApproved();
+        // A reply (#34) points at the comment it answers, which must be on the same post.
         allow create: if isApproved()
-          && incoming().keys().hasOnly(['authorId', 'text', 'createdAt'])
+          && incoming().keys().hasOnly(['authorId', 'text', 'createdAt', 'replyToId'])
           && incoming().authorId == request.auth.uid
           && isText(incoming().text, 1, 1000)
           && isNow(incoming().createdAt)
+          && (!('replyToId' in incoming())
+              || exists(/databases/$(database)/documents/posts/$(postId)/comments/$(incoming().replyToId)))
           && get(postPath(postId)).data.allowComments == true
           && get(postPath(postId)).data.removed == false;
         allow delete: if isApproved()
           && (resource.data.authorId == request.auth.uid || isOfficer());
+
+        // Likes on a comment (#34). The count is kept by a Cloud Function.
+        match /likes/{userId} {
+          allow read: if isApproved();
+          allow create: if isApproved()
+            && isSelf(userId)
+            && exists(/databases/$(database)/documents/posts/$(postId)/comments/$(commentId))
+            && incoming().keys().hasOnly(['memberId', 'createdAt'])
+            && incoming().memberId == userId
+            && isNow(incoming().createdAt);
+          allow delete: if isApproved() && isSelf(userId);
+        }
       }
 
       match /likes/{userId} {

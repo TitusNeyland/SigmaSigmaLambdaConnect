@@ -14,6 +14,7 @@ jest.mock('@/data/eventAdmin');
 jest.mock('@/data/feed');
 jest.mock('@/data/likes');
 jest.mock('@/data/posts');
+jest.mock('@/data/comments');
 const members = jest.requireMock<typeof import('@/data/__mocks__/members')>('@/data/members');
 
 const unverified = () => auth.sampleUser({ emailVerified: false });
