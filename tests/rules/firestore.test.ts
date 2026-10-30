@@ -1446,3 +1446,49 @@ describe('goals (#47)', () => {
     }
   });
 });
+
+describe('membership requests (#48)', () => {
+  it('officers list pending sign-ups with the exact query in src/data/requests.ts', async () => {
+    const q = (db: Firestore) =>
+      getDocs(query(collection(db, 'members'), where('status', '==', 'pending')));
+    await assertSucceeds(q(as(USERS.olivia)));
+    await assertSucceeds(q(as(USERS.adam)));
+    await assertFails(q(as(USERS.pete)));
+  });
+
+  it('officers decline with the exact write from src/data/requests.ts', async () => {
+    await assertSucceeds(
+      updateDoc(doc(as(USERS.olivia), 'members/pete'), {
+        status: 'declined',
+        reviewedBy: USERS.olivia,
+        reviewedAt: serverTimestamp(),
+      }),
+    );
+  });
+
+  it('members cannot approve anyone', async () => {
+    await assertFails(
+      updateDoc(doc(as(USERS.alice), 'members/pete'), {
+        status: 'approved',
+        reviewedBy: USERS.alice,
+        reviewedAt: serverTimestamp(),
+      }),
+    );
+  });
+
+  it('the decision log is officer-only and nobody writes it from the app', async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore() as unknown as Firestore, 'decisions/d1'), {
+        kind: 'membership',
+        subjectId: USERS.pete,
+        decision: 'approved',
+        by: USERS.olivia,
+      });
+    });
+    await assertSucceeds(getDoc(doc(as(USERS.olivia), 'decisions/d1')));
+    await assertFails(getDoc(doc(as(USERS.alice), 'decisions/d1')));
+    await assertFails(getDoc(doc(as(USERS.pete), 'decisions/d1')));
+    await assertFails(setDoc(doc(as(USERS.adam), 'decisions/d2'), { kind: 'membership' }));
+    await assertFails(deleteDoc(doc(as(USERS.adam), 'decisions/d1')));
+  });
+});

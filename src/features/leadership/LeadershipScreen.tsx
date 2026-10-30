@@ -10,7 +10,10 @@ import {
   type WaitingCounts,
 } from '@/data/leadership';
 import { fetchPrograms, type ProgramSummary } from '@/data/programs';
+import { decideRequest, fetchPendingRequests, type MembershipRequest } from '@/data/requests';
 import type { KpiPeriodKind } from '@/data/types';
+import { useAuth } from '@/features/auth/AuthProvider';
+import { RequestRow } from '@/features/requests/RequestRow';
 import { useCan, useRole } from '@/features/roles/RoleProvider';
 import { colors, palette, radius, spacing } from '@/theme';
 import {
@@ -30,6 +33,9 @@ const PERIODS = [
   { value: 'year', label: 'Chapter year' },
   { value: 'days30', label: '30 days' },
 ] as const satisfies readonly { value: KpiPeriodKind; label: string }[];
+
+/** How many sign-ups to show right on this screen; the rest are a tap away. */
+export const INLINE_REQUESTS = 3;
 
 type Loaded =
   { state: 'loading' } | { state: 'error' } | { state: 'ready'; kpis: CurrentKpis | null };
@@ -52,6 +58,8 @@ function Count({ n, testID }: { n: number; testID: string }) {
 /** Officers' view of chapter health: goals, KPIs, what needs attention, quick actions. */
 export function LeadershipScreen() {
   const { label } = useRole();
+  const auth = useAuth();
+  const uid = auth.status === 'signedIn' ? auth.user.uid : '';
   const canLead = useCan('leadership.view');
   const canApprove = useCan('members.approve');
   const canReview = useCan('reports.review');
@@ -64,6 +72,7 @@ export function LeadershipScreen() {
   const [loaded, setLoaded] = useState<Loaded>({ state: 'loading' });
   const [waiting, setWaiting] = useState<WaitingCounts | null>(null);
   const [atRisk, setAtRisk] = useState<ProgramSummary[]>([]);
+  const [pending, setPending] = useState<MembershipRequest[]>([]);
   const [attempt, setAttempt] = useState(0);
   const [now, setNow] = useState(() => new Date());
 
@@ -87,12 +96,18 @@ export function LeadershipScreen() {
         (p) => live && setAtRisk(p.filter((x) => x.status === 'at_risk')),
         () => {},
       );
+      if (canApprove) {
+        fetchPendingRequests().then(
+          (r) => live && setPending(r),
+          () => {},
+        );
+      }
       return () => {
         live = false;
       };
       // attempt isn't read; bumping it is how Try again reloads.
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [canLead, attempt]),
+    }, [canLead, canApprove, attempt]),
   );
 
   // Fails closed: no role loaded means a regular member, who never sees this.
@@ -111,7 +126,7 @@ export function LeadershipScreen() {
 
   const kpis = loaded.state === 'ready' ? loaded.kpis : null;
   const current = kpis?.periods[period] ?? null;
-  const requests = canApprove ? (waiting?.membershipRequests ?? 0) : 0;
+  const requests = canApprove ? pending.length : 0;
   const reports = canReview ? (waiting?.openReports ?? 0) : 0;
   const nothingNeeded = requests === 0 && reports === 0 && atRisk.length === 0;
 
@@ -238,9 +253,21 @@ export function LeadershipScreen() {
         )}
 
         <ListSection header="Needs attention" testID="needs-attention">
-          {canApprove && requests > 0 ? (
+          {canApprove
+            ? pending
+                .slice(0, INLINE_REQUESTS)
+                .map((r) => (
+                  <RequestRow
+                    key={r.uid}
+                    request={r}
+                    now={now}
+                    onDecide={(d) => decideRequest(r.uid, uid, d)}
+                  />
+                ))
+            : null}
+          {canApprove && requests > INLINE_REQUESTS ? (
             <ListRow
-              title="Membership requests"
+              title="All membership requests"
               trailing={<Count n={requests} testID="requests-count" />}
               showChevron
               onPress={() => router.push('/chapter/requests')}

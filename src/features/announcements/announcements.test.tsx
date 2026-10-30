@@ -20,6 +20,7 @@ jest.mock('@/data/comments');
 jest.mock('@/data/programs');
 jest.mock('@/data/announcements');
 jest.mock('@/data/leadership');
+jest.mock('@/data/requests');
 const ann =
   jest.requireMock<typeof import('@/data/__mocks__/announcements')>('@/data/announcements');
 

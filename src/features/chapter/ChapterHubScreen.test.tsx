@@ -24,6 +24,7 @@ jest.mock('@/data/announcements');
 const ann =
   jest.requireMock<typeof import('@/data/__mocks__/announcements')>('@/data/announcements');
 jest.mock('@/data/leadership');
+jest.mock('@/data/requests');
 const leadership =
   jest.requireMock<typeof import('@/data/__mocks__/leadership')>('@/data/leadership');
 
