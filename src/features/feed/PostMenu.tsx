@@ -4,15 +4,17 @@ import Svg, { Circle } from 'react-native-svg';
 
 import type { FeedPost } from '@/data/feed';
 import { deletePost, updatePost, type PostEdit } from '@/data/posts';
+import { block } from '@/data/blocks';
 import { reportContent } from '@/data/reports';
 import { colors, MIN_TOUCH, spacing } from '@/theme';
 import { AppText, BottomSheet, Button, ListRow, ListSection, SwitchRow, TextField } from '@/ui';
 
 import { MAX_CAPTION } from '@/features/post/composeLogic';
 
+import { BlockSheet } from './BlockSheet';
 import { ReportSheet } from './ReportSheet';
 
-type Sheet = null | 'menu' | 'edit' | 'delete' | 'report';
+type Sheet = null | 'menu' | 'edit' | 'delete' | 'report' | 'block';
 
 function MoreIcon() {
   return (
@@ -31,7 +33,7 @@ export type PostMenuProps = {
   onDeleted: () => void;
 };
 
-/** The ••• menu on a post. Authors edit or delete; everyone else can report (#36). */
+/** The ••• menu on a post. Authors edit or delete; everyone else can report or block. */
 export function PostMenu({ post, me, onEdited, onDeleted }: PostMenuProps) {
   const mine = post.authorId === me;
   const [sheet, setSheet] = useState<Sheet>(null);
@@ -117,10 +119,25 @@ export function PostMenu({ post, me, onEdited, onDeleted }: PostMenuProps) {
               onPress={() => open('report')}
               testID="post-report"
             />
+            {post.author ? (
+              <ListRow
+                title={`Block ${post.author.displayName}`}
+                destructive
+                onPress={() => open('block')}
+                testID="post-block"
+              />
+            ) : null}
           </ListSection>
         )}
         <Button title="Cancel" variant="plain" onPress={() => setSheet(null)} fullWidth />
       </BottomSheet>
+
+      <BlockSheet
+        visible={sheet === 'block'}
+        name={post.author?.displayName ?? 'this member'}
+        onClose={() => setSheet(null)}
+        onBlock={() => block(me, post.authorId)}
+      />
 
       <ReportSheet
         visible={sheet === 'report'}

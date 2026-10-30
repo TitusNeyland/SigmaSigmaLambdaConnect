@@ -25,3 +25,16 @@ export function onReported(listener: (what: 'post' | 'comment') => void): () => 
 export function notifyReported(what: 'post' | 'comment') {
   for (const l of reportedListeners) l(what);
 }
+
+const blockedListeners = new Set<(name: string) => void>();
+
+export function onBlocked(listener: (name: string) => void): () => void {
+  blockedListeners.add(listener);
+  return () => {
+    blockedListeners.delete(listener);
+  };
+}
+
+export function notifyBlocked(name: string) {
+  for (const l of blockedListeners) l(name);
+}

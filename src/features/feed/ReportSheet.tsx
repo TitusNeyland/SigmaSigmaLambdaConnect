@@ -12,13 +12,15 @@ export type ReportSheetProps = {
   what: 'post' | 'comment';
   onClose: () => void;
   onReport: (reason: ReportReason) => Promise<void>;
+  /** Offers "Block {name}" too, for comments, which have no menu of their own. */
+  block?: { name: string; onPress: () => void };
 };
 
 /**
  * Pick a reason and report. Afterwards the screen's ReportedNotice thanks the member, since
  * the reported item disappears for them. Errors keep the sheet open.
  */
-export function ReportSheet({ visible, what, onClose, onReport }: ReportSheetProps) {
+export function ReportSheet({ visible, what, onClose, onReport, block }: ReportSheetProps) {
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
 
@@ -57,6 +59,16 @@ export function ReportSheet({ visible, what, onClose, onReport }: ReportSheetPro
           />
         ))}
       </ListSection>
+      {block ? (
+        <ListSection>
+          <ListRow
+            title={`Block ${block.name}`}
+            destructive
+            onPress={busy ? undefined : block.onPress}
+            testID="report-block"
+          />
+        </ListSection>
+      ) : null}
       {failed ? (
         <AppText variant="footnote" color={colors.destructive} align="center" testID="report-error">
           Couldn’t send your report. Try again.
