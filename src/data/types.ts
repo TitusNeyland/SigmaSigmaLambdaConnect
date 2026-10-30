@@ -239,14 +239,40 @@ export type Announcement = {
   createdAt: Timestamp;
 };
 
-/** kpis/{periodId}, e.g. "2026-fall". Computed by Cloud Functions (#47). */
+export type KpiPeriodKind = 'semester' | 'year' | 'days30';
+
+/** One of the chapter's goals, checked against the chapter year's numbers. */
+export type GoalResult = {
+  id: string;
+  name: string;
+  metric: Goal['metric'];
+  target: number;
+  unit: Goal['unit'];
+  /** Where the chapter is now, in the goal's unit. Null for custom goals or no data yet. */
+  value: number | null;
+  met: boolean;
+};
+
+/**
+ * kpis/{periodId}, e.g. "2026-fall", "2026-27" or "last-30-days", plus kpis/current with all
+ * three current periods. Computed by Cloud Functions (#47, functions/src/kpis.ts).
+ */
 export type KpiSnapshot = {
   period: string;
-  participationRate: number;
-  attendanceRate: number;
+  kind: KpiPeriodKind;
+  label: string;
+  start: Timestamp;
+  end: Timestamp;
+  /** 0 to 1. Share of approved members checked in to at least one event. Null with no events. */
+  participationRate: number | null;
+  /** 0 to 1. Average share of approved members checked in per event. Null with no events. */
+  attendanceRate: number | null;
   serviceHours: number;
+  /** Approved members who checked in or posted in the period. */
   activeMembers: number;
   totalMembers: number;
+  eventsHeld: number;
+  goals: GoalResult[];
   goalsDone: number;
   goalsTotal: number;
   computedAt: Timestamp;

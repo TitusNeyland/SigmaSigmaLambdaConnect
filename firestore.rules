@@ -426,9 +426,25 @@ service cloud.firestore {
       }
     }
 
+    // Chapter-defined goals (#47). The KPI function checks them against the chapter year.
+    function goalValid(g) {
+      return g.keys().hasAll(['name', 'metric', 'target', 'unit', 'chapterYear', 'done'])
+        && g.keys().hasOnly(['name', 'metric', 'target', 'unit', 'chapterYear', 'done'])
+        && isText(g.name, 1, 80)
+        && g.target is number && g.target >= 0
+        && g.chapterYear is string && g.chapterYear.matches('^[0-9]{4}-[0-9]{2}$')
+        && g.done is bool
+        && ((g.metric in ['participation', 'attendance'] && g.unit == 'percent'
+             && g.target <= 100)
+            || (g.metric == 'service_hours' && g.unit == 'hours')
+            || (g.metric == 'active_members' && g.unit == 'count')
+            || (g.metric == 'custom' && g.unit in ['percent', 'hours', 'count']));
+    }
+
     match /goals/{goalId} {
       allow read: if isApproved();
-      allow write: if isOfficer();
+      allow create, update: if isOfficer() && goalValid(incoming());
+      allow delete: if isOfficer();
     }
 
     // Officers post announcements (#43); a Cloud Function pushes them to members.

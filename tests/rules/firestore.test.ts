@@ -1297,7 +1297,7 @@ describe('announcements (#43)', () => {
 });
 
 describe('officer-managed chapter content', () => {
-  const paths = ['programs/new', 'programs/scholarship/milestones/new', 'goals/new'];
+  const paths = ['programs/new', 'programs/scholarship/milestones/new'];
 
   it.each(paths)('officers can write %s', async (path) => {
     await assertSucceeds(setDoc(doc(as(USERS.olivia), path), { name: 'x' }));
@@ -1350,6 +1350,18 @@ describe('KPIs', () => {
     await assertFails(getDoc(doc(as(USERS.alice), 'kpis/2026-fall')));
   });
 
+  it('officers can read kpis/current, with all three periods; members cannot', async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore() as unknown as Firestore, 'kpis/current'), {
+        semester: { period: '2026-fall' },
+      });
+    });
+    await assertSucceeds(getDoc(doc(as(USERS.olivia), 'kpis/current')));
+    await assertSucceeds(getDoc(doc(as(USERS.adam), 'kpis/current')));
+    await assertFails(getDoc(doc(as(USERS.alice), 'kpis/current')));
+    await assertFails(getDoc(doc(as(USERS.pete), 'kpis/current')));
+  });
+
   it('nobody can write KPIs from the app, not even admins', async () => {
     await assertFails(setDoc(doc(as(USERS.adam), 'kpis/2026-fall'), { participationRate: 1 }));
   });
@@ -1377,6 +1389,60 @@ describe('chapter hub waiting counts (#42)', () => {
     for (const uid of [USERS.pete, USERS.stranger]) {
       await assertFails(pending(as(uid)));
       await assertFails(open(as(uid)));
+    }
+  });
+});
+
+describe('goals (#47)', () => {
+  const goal = (extra: object = {}) => ({
+    name: 'Sample service hours',
+    metric: 'service_hours',
+    target: 500,
+    unit: 'hours',
+    chapterYear: '2026-27',
+    done: false,
+    ...extra,
+  });
+
+  it('officers set chapter goals and change targets; members only read', async () => {
+    await assertSucceeds(setDoc(doc(as(USERS.olivia), 'goals/hours'), goal()));
+    await assertSucceeds(updateDoc(doc(as(USERS.olivia), 'goals/hours'), { target: 600 }));
+    await assertSucceeds(getDoc(doc(as(USERS.alice), 'goals/hours')));
+    await assertFails(setDoc(doc(as(USERS.alice), 'goals/mine'), goal()));
+    await assertFails(updateDoc(doc(as(USERS.alice), 'goals/hours'), { target: 1 }));
+    await assertFails(getDoc(doc(as(USERS.pete), 'goals/hours')));
+    await assertSucceeds(deleteDoc(doc(as(USERS.olivia), 'goals/hours')));
+  });
+
+  it('accepts each metric with its own unit, and custom goals', async () => {
+    const db = as(USERS.olivia);
+    await assertSucceeds(
+      setDoc(doc(db, 'goals/p'), goal({ metric: 'participation', unit: 'percent', target: 70 })),
+    );
+    await assertSucceeds(
+      setDoc(doc(db, 'goals/a'), goal({ metric: 'attendance', unit: 'percent', target: 50 })),
+    );
+    await assertSucceeds(
+      setDoc(doc(db, 'goals/m'), goal({ metric: 'active_members', unit: 'count', target: 30 })),
+    );
+    await assertSucceeds(
+      setDoc(doc(db, 'goals/c'), goal({ metric: 'custom', unit: 'count', target: 1, done: true })),
+    );
+  });
+
+  it('rejects malformed goals', async () => {
+    const db = as(USERS.olivia);
+    for (const bad of [
+      goal({ metric: 'dues' }),
+      goal({ unit: 'percent' }),
+      goal({ metric: 'participation', unit: 'percent', target: 120 }),
+      goal({ target: -1 }),
+      goal({ target: 'lots' }),
+      goal({ name: '' }),
+      goal({ chapterYear: 'this year' }),
+      goal({ official: true }),
+    ]) {
+      await assertFails(setDoc(doc(db, 'goals/bad'), bad));
     }
   });
 });
