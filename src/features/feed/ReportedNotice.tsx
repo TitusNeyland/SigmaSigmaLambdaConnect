@@ -4,37 +4,53 @@ import { Pressable, StyleSheet } from 'react-native';
 import { colors, palette, radius, spacing } from '@/theme';
 import { AppText } from '@/ui';
 
-import { onReported } from './feedEvents';
+import { onBlocked, onReported } from './feedEvents';
 
 /** How long the thank-you stays up. */
 export const NOTICE_MS = 6000;
 
-/** A short thank-you at the bottom of the screen after a report. Tap to dismiss. */
+/** A short note at the bottom of the screen after a report or a block. Tap to dismiss. */
 export function ReportedNotice() {
-  const [what, setWhat] = useState<'post' | 'comment' | null>(null);
+  const [notice, setNotice] = useState<{ title: string; body: string } | null>(null);
 
-  useEffect(() => onReported(setWhat), []);
   useEffect(() => {
-    if (!what) return;
-    const t = setTimeout(() => setWhat(null), NOTICE_MS);
+    const stopReported = onReported((what) =>
+      setNotice({
+        title: 'Thanks for reporting',
+        body: `Officers will take a look. You won’t see this ${what} anymore, and the author won’t know it was you.`,
+      }),
+    );
+    const stopBlocked = onBlocked((name) =>
+      setNotice({
+        title: `You blocked ${name}`,
+        body: 'They aren’t told. Unblock them any time in Settings.',
+      }),
+    );
+    return () => {
+      stopReported();
+      stopBlocked();
+    };
+  }, []);
+  useEffect(() => {
+    if (!notice) return;
+    const t = setTimeout(() => setNotice(null), NOTICE_MS);
     return () => clearTimeout(t);
-  }, [what]);
+  }, [notice]);
 
-  if (!what) return null;
+  if (!notice) return null;
   return (
     <Pressable
-      onPress={() => setWhat(null)}
+      onPress={() => setNotice(null)}
       accessibilityRole="alert"
       accessibilityLiveRegion="polite"
       style={styles.notice}
       testID="reported-notice"
     >
       <AppText variant="subhead" weight="600" color={palette.onInk}>
-        Thanks for reporting
+        {notice.title}
       </AppText>
       <AppText variant="footnote" color={palette.onInk}>
-        Officers will take a look. You won’t see this {what} anymore, and the author won’t know it
-        was you.
+        {notice.body}
       </AppText>
     </Pressable>
   );

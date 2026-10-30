@@ -3,11 +3,13 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
 import { deleteComment, type PostComment } from '@/data/comments';
+import { block } from '@/data/blocks';
 import { reportContent } from '@/data/reports';
 import { colors, MIN_TOUCH, spacing } from '@/theme';
 import { AppText, Avatar, BottomSheet, Button } from '@/ui';
 
 import { likesLabel, timeAgo } from './feedLogic';
+import { BlockSheet } from './BlockSheet';
 import { ReportSheet } from './ReportSheet';
 import { useCommentLike } from './useLike';
 
@@ -51,6 +53,7 @@ export function CommentItem({
   });
   const [confirm, setConfirm] = useState(false);
   const [reporting, setReporting] = useState(false);
+  const [blocking, setBlocking] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteFailed, setDeleteFailed] = useState(false);
 
@@ -156,6 +159,17 @@ export function CommentItem({
         visible={reporting}
         what="comment"
         onClose={() => setReporting(false)}
+        block={
+          comment.author
+            ? {
+                name: comment.author.displayName,
+                onPress: () => {
+                  setReporting(false);
+                  setBlocking(true);
+                },
+              }
+            : undefined
+        }
         onReport={(reason) =>
           reportContent(me, {
             targetType: 'comment',
@@ -165,6 +179,13 @@ export function CommentItem({
             reason,
           })
         }
+      />
+
+      <BlockSheet
+        visible={blocking}
+        name={comment.author?.displayName ?? 'this member'}
+        onClose={() => setBlocking(false)}
+        onBlock={() => block(me, comment.authorId)}
       />
 
       <BottomSheet
