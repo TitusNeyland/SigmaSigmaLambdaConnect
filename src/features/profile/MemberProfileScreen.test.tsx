@@ -23,6 +23,7 @@ jest.mock('@/data/posts');
 jest.mock('@/data/comments');
 jest.mock('@/data/programs');
 jest.mock('@/data/announcements');
+jest.mock('@/data/leadership');
 const reports = jest.requireMock<typeof import('@/data/__mocks__/reports')>('@/data/reports');
 
 const OTHER = 'sample-chris';

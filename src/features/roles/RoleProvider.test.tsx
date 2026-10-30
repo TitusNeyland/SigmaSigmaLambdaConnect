@@ -21,6 +21,7 @@ jest.mock('@/data/posts');
 jest.mock('@/data/comments');
 jest.mock('@/data/programs');
 jest.mock('@/data/announcements');
+jest.mock('@/data/leadership');
 const roles = jest.requireMock<typeof import('@/data/__mocks__/roles')>('@/data/roles');
 
 function signIn(status: 'approved' | 'pending', role: Parameters<typeof roles.resetRolesMock>[0]) {
@@ -46,13 +47,13 @@ describe('Chapter tab leadership entry', () => {
     signIn('approved', { role: 'officer', title: 'Treasurer' });
     await openChapter();
     expect(screen.getByTestId('leadership-entry')).toBeTruthy();
-    expect(screen.getByText('Signed in as Treasurer. Built in #46.')).toBeTruthy();
+    expect(screen.getByTestId('leadership-entry').props.accessibilityLabel).toMatch(/Treasurer/);
   });
 
   it('shows for admins', async () => {
     signIn('approved', { role: 'admin' });
     await openChapter();
-    expect(screen.getByText('Signed in as Admin. Built in #46.')).toBeTruthy();
+    expect(screen.getByTestId('leadership-entry').props.accessibilityLabel).toMatch(/Admin/);
   });
 
   it('appears the moment an admin promotes someone, and disappears on demotion', async () => {
