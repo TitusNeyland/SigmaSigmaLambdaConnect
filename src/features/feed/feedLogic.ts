@@ -41,9 +41,16 @@ export function commentsLabel(n: number): string {
   return n === 1 ? 'View 1 comment' : `View all ${n.toLocaleString('en-US')} comments`;
 }
 
-/** Drops posts by people the member blocked. Removed posts never reach the app. */
-export function visiblePosts(posts: FeedPost[], blocked: ReadonlySet<string>): FeedPost[] {
-  return posts.filter((p) => !blocked.has(p.authorId));
+/**
+ * Drops posts by people the member blocked and posts they reported (keys from hiddenKey).
+ * Removed posts never reach the app.
+ */
+export function visiblePosts(
+  posts: FeedPost[],
+  blocked: ReadonlySet<string>,
+  hidden: ReadonlySet<string> = new Set(),
+): FeedPost[] {
+  return posts.filter((p) => !blocked.has(p.authorId) && !hidden.has(`post_${p.id}`));
 }
 
 /** Adds a page under what's loaded, skipping any post already shown (posts can shift pages). */

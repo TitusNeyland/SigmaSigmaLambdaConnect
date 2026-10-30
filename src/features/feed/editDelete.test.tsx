@@ -47,10 +47,12 @@ async function openHome() {
 }
 
 describe('my posts', () => {
-  it('only my posts get the edit and delete menu', async () => {
+  it('only my posts can be edited or deleted', async () => {
     await openHome();
-    expect(screen.getByTestId('post-menu-mine')).toBeTruthy();
-    expect(screen.queryByTestId('post-menu-theirs')).toBeNull();
+    await press(screen.getByTestId('post-menu-theirs'));
+    expect(screen.queryByTestId('post-edit')).toBeNull();
+    expect(screen.queryByTestId('post-delete')).toBeNull();
+    expect(screen.getByTestId('post-report')).toBeTruthy();
   });
 
   it('edits the caption and comment setting', async () => {

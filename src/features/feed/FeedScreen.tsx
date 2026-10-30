@@ -3,7 +3,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { subscribeToBlocked } from '@/data/blocks';
 import { fetchUpcomingEvents, type EventSummary } from '@/data/events';
 import { fetchFeedPage, type FeedCursor, type FeedPost } from '@/data/feed';
 import { useAuth } from '@/features/auth/AuthProvider';
@@ -14,6 +13,8 @@ import { EventsStrip } from './EventsStrip';
 import { onFeedChanged } from './feedEvents';
 import { appendPage, visiblePosts } from './feedLogic';
 import { PostCard } from './PostCard';
+import { ReportedNotice } from './ReportedNotice';
+import { useHiddenContent } from './useHidden';
 
 type Feed =
   | { state: 'loading' }
@@ -26,24 +27,11 @@ type Feed =
       moreFailed: boolean;
     };
 
-function useBlockedIds(uid: string): ReadonlySet<string> {
-  const [ids, setIds] = useState<ReadonlySet<string>>(new Set());
-  useEffect(() => {
-    if (!uid) return;
-    return subscribeToBlocked(
-      uid,
-      (accounts) => setIds(new Set(accounts.map((a) => a.uid))),
-      () => {},
-    );
-  }, [uid]);
-  return ids;
-}
-
 /** Home: upcoming events, then the chapter's posts, newest first. */
 export function FeedScreen() {
   const auth = useAuth();
   const uid = auth.status === 'signedIn' ? auth.user.uid : '';
-  const blocked = useBlockedIds(uid);
+  const { blocked, hidden } = useHiddenContent(uid);
   const [feed, setFeed] = useState<Feed>({ state: 'loading' });
   const [events, setEvents] = useState<EventSummary[]>([]);
   const [refreshing, setRefreshing] = useState(false);
@@ -118,8 +106,8 @@ export function FeedScreen() {
   }
 
   const posts = useMemo(
-    () => (feed.state === 'ready' ? visiblePosts(feed.posts, blocked) : []),
-    [feed, blocked],
+    () => (feed.state === 'ready' ? visiblePosts(feed.posts, blocked, hidden) : []),
+    [feed, blocked, hidden],
   );
 
   const header = (
@@ -205,6 +193,7 @@ export function FeedScreen() {
         }}
         testID="feed"
       />
+      <ReportedNotice />
     </SafeAreaView>
   );
 }

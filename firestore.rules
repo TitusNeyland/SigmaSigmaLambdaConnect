@@ -362,6 +362,22 @@ service cloud.firestore {
         && isNow(incoming().createdAt);
     }
 
+    // ---------- Hidden content (#36) ----------
+
+    // Posts and comments a member reported, which the app hides for them. Only they see it.
+    match /hidden/{userId}/items/{key} {
+      allow read, delete: if isSelf(userId);
+      allow create: if isSelf(userId)
+        && isApproved()
+        && incoming().keys().hasOnly(['targetType', 'postId', 'commentId', 'createdAt'])
+        && incoming().postId is string
+        && ((incoming().targetType == 'post' && key == 'post_' + incoming().postId)
+            || (incoming().targetType == 'comment'
+                && incoming().commentId is string
+                && key == 'comment_' + incoming().postId + '_' + incoming().commentId))
+        && isNow(incoming().createdAt);
+    }
+
     // ---------- Push tokens (#25) ----------
 
     // Each phone a member signs in on. Only they can see or change theirs; Cloud Functions

@@ -3,10 +3,12 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
 import { deleteComment, type PostComment } from '@/data/comments';
+import { reportContent } from '@/data/reports';
 import { colors, MIN_TOUCH, spacing } from '@/theme';
 import { AppText, Avatar, BottomSheet, Button } from '@/ui';
 
 import { likesLabel, timeAgo } from './feedLogic';
+import { ReportSheet } from './ReportSheet';
 import { useCommentLike } from './useLike';
 
 function SmallHeart({ filled }: { filled: boolean }) {
@@ -48,6 +50,7 @@ export function CommentItem({
     count: comment.likeCount,
   });
   const [confirm, setConfirm] = useState(false);
+  const [reporting, setReporting] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteFailed, setDeleteFailed] = useState(false);
 
@@ -110,6 +113,19 @@ export function CommentItem({
               </AppText>
             </Pressable>
           ) : null}
+          {comment.authorId !== me ? (
+            <Pressable
+              onPress={() => setReporting(true)}
+              accessibilityRole="button"
+              accessibilityLabel="Report comment"
+              hitSlop={spacing.md}
+              testID={`comment-report-${comment.id}`}
+            >
+              <AppText variant="caption" weight="600" color={colors.textSecondary}>
+                Report
+              </AppText>
+            </Pressable>
+          ) : null}
           {canReply ? (
             <Pressable
               onPress={() => onReply(comment)}
@@ -135,6 +151,21 @@ export function CommentItem({
       >
         <SmallHeart filled={like.liked} />
       </Pressable>
+
+      <ReportSheet
+        visible={reporting}
+        what="comment"
+        onClose={() => setReporting(false)}
+        onReport={(reason) =>
+          reportContent(me, {
+            targetType: 'comment',
+            postId,
+            commentId: comment.id,
+            targetAuthorId: comment.authorId,
+            reason,
+          })
+        }
+      />
 
       <BottomSheet
         visible={confirm}
