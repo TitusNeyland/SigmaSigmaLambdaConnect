@@ -84,3 +84,13 @@ SEED_PASSWORD=... npm run seed:dev -- --yes   # also creates sample sign-in acco
 ```
 
 On the emulators, every sample account signs in with its `@example.com` email and the password `sample-password`. Useful ones: `sample-andre@example.com` (admin, President), `sample-jordan@example.com` (officer, Service Chair), `sample-marcus@example.com` (member), `sample-isaiah@example.com` (pending). Running the seed again overwrites the same documents.
+
+## Public site (#54)
+
+The support page, privacy policy, terms and guidelines are built from `tools/site` and served by Firebase Hosting on the prod project, at the `SITE_URL` in `src/config/app.ts`. Deploying builds the pages first:
+
+```sh
+npx firebase deploy --only hosting --project prod
+```
+
+The support email and guidelines come from the app's source, so change them there. Update `POLICIES_UPDATED` in `tools/site/build.ts` whenever the policy wording changes.

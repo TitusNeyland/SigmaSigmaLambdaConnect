@@ -60,3 +60,6 @@ jest-results.json
 rules-results.json
 coverage/
 tools-results.json
+
+# Public site, built from tools/site (#54)
+build/
