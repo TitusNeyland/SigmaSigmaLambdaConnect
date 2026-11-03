@@ -25,9 +25,9 @@ export type DeletionSummary = {
 const BATCH = 400;
 
 /**
- * Removes everything that identifies a member. Kept on purpose: attendance records
- * (memberId only, no name, so chapter metrics stay accurate) and reports officers have
- * already reviewed.
+ * Removes everything that identifies a member. Kept on purpose, with no name on them:
+ * attendance records (so chapter metrics stay accurate), reports, and the officers'
+ * decision log.
  */
 export async function deleteUserData(
   uid: string,
@@ -67,8 +67,24 @@ export async function deleteUserData(
     await batch.commit();
   }
 
-  // Their block list, push tokens, role and profile (with its private contact doc).
+  // Names and words in the officers' decision log (#48, #50). The decision itself stays,
+  // keyed by ID only, like attendance.
+  const scrubs: [field: string, removes: string][] = [
+    ['subjectId', 'subjectName'],
+    ['targetAuthorId', 'removedComment'],
+    ['by', 'byName'],
+  ];
+  for (const [field, removes] of scrubs) {
+    const snap = await db.collection('decisions').where(field, '==', uid).get();
+    for (const d of snap.docs) await d.ref.update({ [removes]: FieldValue.delete() });
+  }
+
+  // Their block list, push tokens, read marks, hidden items, any posting pause, role and
+  // profile (with its private contact doc).
   await db.recursiveDelete(db.doc(`blocks/${uid}`));
+  await db.recursiveDelete(db.doc(`reads/${uid}`));
+  await db.recursiveDelete(db.doc(`hidden/${uid}`));
+  await db.doc(`restrictions/${uid}`).delete();
   await db.recursiveDelete(db.doc(`pushTokens/${uid}`));
   await db.recursiveDelete(db.doc(`likeDigests/${uid}`));
   await db.doc(`roles/${uid}`).delete();
