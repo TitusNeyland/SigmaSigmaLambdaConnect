@@ -8,7 +8,6 @@
     "scheme": "sslconnect",
     "userInterfaceStyle": "light",
     "ios": {
-      "icon": "./assets/expo.icon",
       "supportsTablet": false,
       "bundleIdentifier": "com.sigmasigmalambda.connect",
       "config": {
@@ -40,7 +39,7 @@
         {
           "backgroundColor": "#111111",
           "image": "./assets/images/splash-icon.png",
-          "imageWidth": 76
+          "imageWidth": 200
         }
       ],
       [
