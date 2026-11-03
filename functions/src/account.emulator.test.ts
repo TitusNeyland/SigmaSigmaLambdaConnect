@@ -110,6 +110,41 @@ async function seed() {
       { memberId: 'gone', checkedInBy: 'stays', checkedInAt: now(), serviceHours: 4 },
     ],
     ['events/e1/attendance/stays', { memberId: 'stays', checkedInBy: 'stays', checkedInAt: now() }],
+    ['reads/gone/announcements/a1', { readAt: now() }],
+    ['hidden/gone/items/post_theirs', { targetType: 'post', postId: 'theirs', createdAt: now() }],
+    ['restrictions/gone', { until: now(), by: 'stays', decisionId: 'd2' }],
+    [
+      'decisions/d1',
+      {
+        kind: 'membership',
+        subjectId: 'gone',
+        subjectName: 'Sample Gone',
+        decision: 'approved',
+        by: 'stays',
+      },
+    ],
+    [
+      'decisions/d2',
+      {
+        kind: 'report',
+        action: 'removed',
+        targetType: 'comment',
+        targetAuthorId: 'gone',
+        removedComment: { authorId: 'gone', text: 'Sample removed words' },
+        by: 'stays',
+        byName: 'Sample Stays',
+      },
+    ],
+    [
+      'decisions/d3',
+      {
+        kind: 'membership',
+        subjectId: 'stays',
+        subjectName: 'Sample Stays',
+        by: 'gone',
+        byName: 'Sample Gone',
+      },
+    ],
   ];
   for (const [path, data] of writes) await db.doc(path).set(data);
 
@@ -131,7 +166,16 @@ afterAll(async () => {
 
 beforeEach(async () => {
   await db.recursiveDelete(db.collection('members'));
-  for (const name of ['roles', 'blocks', 'posts', 'events']) {
+  for (const name of [
+    'roles',
+    'blocks',
+    'posts',
+    'events',
+    'reads',
+    'hidden',
+    'restrictions',
+    'decisions',
+  ]) {
     await db.recursiveDelete(db.collection(name));
   }
   const { users } = await auth.listUsers();
@@ -181,6 +225,27 @@ describe('deleteUserData', () => {
     const kept = (await db.doc('events/e1/attendance/gone').get()).data()!;
     expect(kept).toMatchObject({ memberId: 'gone', serviceHours: 4 });
     expect(Object.keys(kept)).not.toContain('displayName');
+  });
+
+  it('removes their read marks, hidden items and any posting pause', async () => {
+    await run();
+    expect(await exists('reads/gone/announcements/a1')).toBe(false);
+    expect(await exists('hidden/gone/items/post_theirs')).toBe(false);
+    expect(await exists('restrictions/gone')).toBe(false);
+  });
+
+  it('takes their name and words out of the decision log but keeps the decisions', async () => {
+    await run();
+    const d1 = (await db.doc('decisions/d1').get()).data()!;
+    expect(d1).toMatchObject({ subjectId: 'gone', decision: 'approved' });
+    expect(d1).not.toHaveProperty('subjectName');
+    const d2 = (await db.doc('decisions/d2').get()).data()!;
+    expect(d2).not.toHaveProperty('removedComment');
+    // The officer who decided is someone else; their name stays.
+    expect(d2.byName).toBe('Sample Stays');
+    const d3 = (await db.doc('decisions/d3').get()).data()!;
+    expect(d3).not.toHaveProperty('byName');
+    expect(d3.subjectName).toBe('Sample Stays');
   });
 
   it('removes their photos and nobody else’s', async () => {
