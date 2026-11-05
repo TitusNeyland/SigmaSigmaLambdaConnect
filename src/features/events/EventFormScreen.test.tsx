@@ -138,6 +138,7 @@ describe('create', () => {
     await type('event-form-location', 'Riverside Park');
     await type('event-form-address', '1 Park Rd');
     await type('event-form-fee', '10');
+    await type('event-form-slots', '15');
     await type('event-form-description', 'Sample cookout for families.');
     const start = inDays(14, 16);
     await act(async () => {
@@ -154,6 +155,7 @@ describe('create', () => {
         location: 'Riverside Park',
         address: '1 Park Rd',
         feeCents: 1000,
+        slots: 15,
         description: 'Sample cookout for families.',
         startsAt: start,
         photoURL: null,
@@ -169,7 +171,9 @@ describe('create', () => {
   it('shows what’s missing and saves nothing', async () => {
     await openNew();
     await type('event-form-fee', 'abc');
+    await type('event-form-slots', '0');
     await press(screen.getByTestId('event-form-save'));
+    expect(screen.getByText('Enter a number from 1 to 500, or leave it empty.')).toBeTruthy();
     expect(screen.getByText('Give the event a name.')).toBeTruthy();
     expect(screen.getByText('Where is it?')).toBeTruthy();
     expect(screen.getByText('Enter a price like 25 or 12.50, or leave it empty.')).toBeTruthy();
@@ -243,6 +247,7 @@ describe('edit and cancel', () => {
     expect(screen.getByTestId('event-form-title').props.value).toBe('Sample scholarship gala');
     expect(screen.getByTestId('event-form-location').props.value).toBe('Hotel ballroom');
     expect(screen.getByTestId('event-form-fee').props.value).toBe('25');
+    expect(screen.getByTestId('event-form-slots').props.value).toBe('');
     expect(
       screen.getByRole('button', { name: 'Fundraiser' }).props.accessibilityState,
     ).toMatchObject({

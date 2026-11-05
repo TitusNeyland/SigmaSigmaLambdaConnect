@@ -92,7 +92,20 @@ describe('toEventSummary', () => {
       photoURL: 'https://cdn.test/e1.jpg',
       cancelled: true,
       myRsvp: 'going',
+      slots: null,
+      goingCount: null,
     });
+  });
+
+  it('reads how many brothers it needs, if it’s a usable number', () => {
+    const base = { title: 'X', startsAt: ts('2026-11-07T14:00:00Z') };
+    expect(toEventSummary('e', { ...base, slots: 10 }, null, 4)).toMatchObject({
+      slots: 10,
+      goingCount: 4,
+    });
+    for (const slots of [0, 501, 2.5, '10']) {
+      expect(toEventSummary('e', { ...base, slots }, null)?.slots).toBeNull();
+    }
   });
 
   it('fills in safe defaults and skips events without a title or start', () => {
@@ -150,6 +163,21 @@ describe('fetchUpcomingEvents', () => {
       ['b', null],
       ['c', null],
     ]);
+  });
+
+  it('counts Going only for events that need a number of brothers', async () => {
+    respond({
+      needs: { title: 'Needs', startsAt: ts('2026-11-01T00:00:00Z'), slots: 10 },
+      open: { title: 'Open', startsAt: ts('2026-11-02T00:00:00Z') },
+    });
+    jest.mocked(getAggregateFromServer).mockResolvedValue({ data: () => ({ count: 6 }) } as never);
+    const events = await fetchUpcomingEvents('me', NOW);
+    expect(events.map((e) => [e.id, e.slots, e.goingCount])).toEqual([
+      ['needs', 10, 6],
+      ['open', null, null],
+    ]);
+    expect(getAggregateFromServer).toHaveBeenCalledTimes(1);
+    expect(where).toHaveBeenCalledWith('status', '==', 'going');
   });
 
   it('keeps an event that is still going on and drops ones that are over', async () => {

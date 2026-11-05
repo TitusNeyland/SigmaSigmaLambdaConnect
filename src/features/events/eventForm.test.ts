@@ -7,6 +7,7 @@ import {
   hasErrors,
   moveStart,
   parseFee,
+  parseSlots,
   toEventInput,
   validateEventForm,
   type EventForm,
@@ -134,6 +135,8 @@ describe('to and from saved events', () => {
       photoURL: 'https://example.test/g.jpg',
       cancelled: false,
       myRsvp: null,
+      slots: 12,
+      goingCount: 3,
       address: '200 Sample Ave',
       feeCents: 2500,
       rsvpDeadline: null,
@@ -152,6 +155,20 @@ describe('to and from saved events', () => {
       rsvpDeadline: new Date(2026, 10, 6, 19),
       fee: '25',
       photoURL: 'https://example.test/g.jpg',
+      slots: '12',
     });
   });
+});
+
+describe('brothers needed', () => {
+  it.each([
+    ['', null],
+    [' 10 ', 10],
+    ['1', 1],
+    ['500', 500],
+  ])('parseSlots(%j) is %p', (slots, n) => expect(parseSlots(slots)).toBe(n));
+
+  it.each(['0', '501', '2.5', '-3', 'ten'])('rejects %j', (slots) =>
+    expect(parseSlots(slots)).toBeUndefined(),
+  );
 });

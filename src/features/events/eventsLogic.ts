@@ -77,6 +77,35 @@ export function emptyMessage(search: string): string {
     : 'Nothing on the calendar yet. Check back soon.';
 }
 
+export type Coverage = {
+  going: number;
+  slots: number;
+  /** Going over slots, rounded. Can pass 100: nobody is turned away. */
+  percent: number;
+  full: boolean;
+};
+
+/** How covered an event is, or null when it isn't asking for a number of brothers. */
+export function coverage(
+  event: { slots: number | null; goingCount: number | null },
+  going = event.goingCount,
+): Coverage | null {
+  if (!event.slots || going === null) return null;
+  return {
+    going,
+    slots: event.slots,
+    percent: Math.round((going / event.slots) * 100),
+    full: going >= event.slots,
+  };
+}
+
+/** "6 of 10 brothers · 60%", with "· Full" once every slot is filled. */
+export function coverageLine(c: Coverage): string {
+  return [`${c.going} of ${c.slots} brothers`, `${c.percent}%`, c.full ? 'Full' : '']
+    .filter(Boolean)
+    .join(' · ');
+}
+
 /** "Free", "$25" or "$12.50". */
 export function formatFee(cents: number): string {
   if (cents <= 0) return 'Free';

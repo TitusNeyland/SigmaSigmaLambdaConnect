@@ -20,6 +20,8 @@ export function sampleEvent(overrides: Partial<EventSummary> = {}): EventSummary
     photoURL: null,
     cancelled: false,
     myRsvp: null,
+    slots: null,
+    goingCount: null,
     ...overrides,
   };
 }
@@ -95,6 +97,10 @@ export const setRsvp = jest.fn(async (eventId: string, _uid: string, status: Rsv
     ...detail,
     myRsvp: status,
     going: { ...detail.going, count: detail.going.count + (isGoing ? 1 : 0) - (wasGoing ? 1 : 0) },
+  };
+  details[eventId] = {
+    ...details[eventId]!,
+    goingCount: details[eventId]!.going.count,
   };
 });
 

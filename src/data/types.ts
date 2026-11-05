@@ -92,6 +92,9 @@ export const EVENT_CATEGORIES: readonly EventCategory[] = [
   'public',
 ];
 
+/** Most brothers an event can ask for (its slots). Matches the rules. */
+export const MAX_SLOTS = 500;
+
 /** events/{eventId} */
 export type ChapterEvent = {
   title: string;

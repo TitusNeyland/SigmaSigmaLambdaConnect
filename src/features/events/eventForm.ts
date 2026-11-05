@@ -1,6 +1,6 @@
 import type { EventDetail } from '@/data/events';
 import type { EventInput } from '@/data/eventAdmin';
-import type { EventCategory } from '@/data/types';
+import { MAX_SLOTS, type EventCategory } from '@/data/types';
 
 /** What the create and edit form holds while it's being filled in. */
 export type EventForm = {
@@ -16,6 +16,8 @@ export type EventForm = {
   /** Typed dollars, like "25" or "12.50". Empty means free. */
   fee: string;
   photoURL: string | null;
+  /** Typed number of brothers needed, like "10". Empty means no number. */
+  slots: string;
 };
 
 export type EventFormErrors = Partial<Record<keyof EventForm, string>>;
@@ -45,6 +47,7 @@ export function blankForm(now: Date): EventForm {
     rsvpDeadline: new Date(start.getTime() - 24 * HOUR),
     fee: '',
     photoURL: null,
+    slots: '',
   };
 }
 
@@ -60,7 +63,17 @@ export function formFromEvent(event: EventDetail): EventForm {
     rsvpDeadline: event.rsvpDeadline ?? new Date(event.startsAt.getTime() - 24 * HOUR),
     fee: event.feeCents > 0 ? centsToDollars(event.feeCents) : '',
     photoURL: event.photoURL,
+    slots: event.slots ? String(event.slots) : '',
   };
+}
+
+/** "10" -> 10, "" -> null (no number). Undefined when it isn't a whole number 1 to 500. */
+export function parseSlots(slots: string): number | null | undefined {
+  const cleaned = slots.trim();
+  if (cleaned === '') return null;
+  if (!/^\d+$/.test(cleaned)) return undefined;
+  const n = Number(cleaned);
+  return n >= 1 && n <= MAX_SLOTS ? n : undefined;
 }
 
 export function centsToDollars(cents: number): string {
@@ -125,6 +138,9 @@ export function validateEventForm(
   if (cents === null) errors.fee = 'Enter a price like 25 or 12.50, or leave it empty.';
   else if (cents > MAX_FEE_DOLLARS * 100)
     errors.fee = `Fees over $${MAX_FEE_DOLLARS} aren’t allowed.`;
+  if (parseSlots(form.slots) === undefined) {
+    errors.slots = `Enter a number from 1 to ${MAX_SLOTS}, or leave it empty.`;
+  }
   return errors;
 }
 
@@ -143,5 +159,6 @@ export function toEventInput(form: EventForm): EventInput {
     rsvpDeadline: form.rsvpDeadline,
     feeCents: parseFee(form.fee) ?? 0,
     photoURL: form.photoURL,
+    slots: parseSlots(form.slots) ?? null,
   };
 }

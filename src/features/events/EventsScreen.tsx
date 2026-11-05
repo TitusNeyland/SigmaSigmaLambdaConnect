@@ -19,10 +19,13 @@ import {
 
 import { CalendarView } from './CalendarView';
 
+import { CoverageBar } from './CoverageBar';
 import { EventRow, openEvent, StatusBadge } from './EventRow';
 import {
   arrangeEvents,
   CATEGORY_LABELS,
+  coverage,
+  coverageLine,
   emptyMessage,
   eventMeta,
   RSVP_LABELS,
@@ -38,10 +41,12 @@ const VIEWS = [
 type State = { state: 'loading' } | { state: 'ready'; events: EventSummary[] } | { state: 'error' };
 
 function FeaturedEvent({ event, now }: { event: EventSummary; now: Date }) {
+  const covered = event.cancelled ? null : coverage(event);
   const label = [
     'Next up',
     event.title,
     eventMeta(event, now),
+    covered ? coverageLine(covered) : '',
     event.myRsvp ? RSVP_LABELS[event.myRsvp] : '',
   ]
     .filter(Boolean)
@@ -71,6 +76,7 @@ function FeaturedEvent({ event, now }: { event: EventSummary; now: Date }) {
         <AppText variant="subhead" color={colors.textSecondary}>
           {eventMeta(event, now)}
         </AppText>
+        {covered ? <CoverageBar coverage={covered} testID="featured-coverage" /> : null}
         <StatusBadge event={event} />
       </View>
     </Pressable>

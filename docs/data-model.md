@@ -77,6 +77,7 @@ Anything not listed is denied.
 - Contact details (#18): the real email and phone live in `members/{uid}/private/contact`, which only that member can read. `members/{uid}` holds `email` and `phone` only while the matching show switch is on, so a hidden value never reaches other members
 - Report `targetType`: `post`, `comment` or `member`. Member reports (from a profile) have no `postId`; `targetAuthorId` is the person reported
 - RSVP `status`: `going`, `maybe` or `not_going`
+- Event `slots`: optional whole number 1 to 500, how many brothers it needs. Going RSVPs fill it; coverage can pass 100% (nobody is turned away)
 - Report `reason`: `spam`, `harassment`, `inappropriate` or `other`. Report `status`: `open`, `kept`, `removed` or `restricted`
 - Program and goal `status`: `not_started`, `in_progress`, `at_risk` or `completed`
 - Member `notificationPrefs`: optional map of `events`, `announcements`, `social`, `tasks` (true or false). Missing keys use the defaults in `src/data/types.ts`. Cloud Functions read it before sending push (#25)

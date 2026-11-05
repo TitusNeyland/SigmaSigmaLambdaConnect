@@ -7,6 +7,8 @@ import {
   emptyMessage,
   eventMeta,
   formatDay,
+  coverage,
+  coverageLine,
   formatFee,
   formatTime,
   formatTimeRange,
@@ -29,7 +31,36 @@ const event = (overrides: Partial<EventSummary>): EventSummary => ({
   photoURL: null,
   cancelled: false,
   myRsvp: null,
+  slots: null,
+  goingCount: null,
   ...overrides,
+});
+
+describe('coverage', () => {
+  it('is going over slots, and can pass 100%', () => {
+    expect(coverage({ slots: 10, goingCount: 6 })).toEqual({
+      going: 6,
+      slots: 10,
+      percent: 60,
+      full: false,
+    });
+    expect(coverageLine(coverage({ slots: 10, goingCount: 6 })!)).toBe('6 of 10 brothers · 60%');
+    expect(coverageLine(coverage({ slots: 10, goingCount: 12 })!)).toBe(
+      '12 of 10 brothers · 120% · Full',
+    );
+    expect(coverage({ slots: 3, goingCount: 0 })?.percent).toBe(0);
+    expect(coverage({ slots: 3, goingCount: 1 })?.percent).toBe(33);
+  });
+
+  it('uses a fresher Going count when given one', () => {
+    expect(coverage({ slots: 4, goingCount: null }, 2)?.percent).toBe(50);
+  });
+
+  it('is nothing without slots or a count', () => {
+    expect(coverage({ slots: null, goingCount: 4 })).toBeNull();
+    expect(coverage({ slots: 4, goingCount: null })).toBeNull();
+    expect(coverage(event({}))).toBeNull();
+  });
 });
 
 describe('formatting', () => {

@@ -22,6 +22,8 @@ const GALA: EventDetail = {
   photoURL: null,
   cancelled: false,
   myRsvp: null,
+  slots: null,
+  goingCount: null,
   address: '200 Sample Ave, Nashville, TN',
   feeCents: 0,
   rsvpDeadline: null,
