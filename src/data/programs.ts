@@ -29,6 +29,8 @@ export type ProgramSummary = {
   ownerTitle: string;
   ownerId: string | null;
   dueAt: Date | null;
+  /** When the program was set up. Chapter health measures its pace from here. */
+  createdAt: Date | null;
   status: ProgressStatus;
   chapterYear: string;
   milestones: ProgramMilestone[];
@@ -58,6 +60,7 @@ export function toProgram(
     ownerTitle: text(data.ownerTitle),
     ownerId: text(data.ownerId) || null,
     dueAt: data.dueAt instanceof Timestamp ? data.dueAt.toDate() : null,
+    createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : null,
     status: STATUSES.includes(data.status as ProgressStatus)
       ? (data.status as ProgressStatus)
       : 'not_started',

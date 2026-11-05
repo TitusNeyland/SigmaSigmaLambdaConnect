@@ -43,7 +43,7 @@ beforeEach(() => jest.clearAllMocks());
 
 it('maps a program with safe defaults and milestones in order', () => {
   expect(
-    toProgram('p', { name: ' Gala ', status: 'weird', dueAt: ts(5) }, [
+    toProgram('p', { name: ' Gala ', status: 'weird', dueAt: ts(5), createdAt: ts(2) }, [
       { id: 'b', name: 'B', order: 2, done: false },
       { id: 'a', name: 'A', order: 1, done: true },
     ]),
@@ -54,6 +54,7 @@ it('maps a program with safe defaults and milestones in order', () => {
     ownerTitle: '',
     ownerId: null,
     dueAt: new Date(5),
+    createdAt: new Date(2),
     status: 'not_started',
     chapterYear: '',
     milestones: [

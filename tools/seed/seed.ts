@@ -154,7 +154,7 @@ export function buildSeedDocs(now: Date = new Date()): SeedDoc[] {
         dueAt: dayAt(now, program.dueInDays, 17),
         status: program.status,
         chapterYear: CHAPTER_YEAR,
-        createdAt: created,
+        createdAt: at(now, -program.startedDaysAgo * DAY),
       },
     });
     program.milestones.forEach(([name, done], i) => {
@@ -185,6 +185,15 @@ export function buildSeedDocs(now: Date = new Date()): SeedDoc[] {
   });
 
   return docs;
+}
+
+/**
+ * Keeps only the docs in the named top-level collections, with their subcollections, e.g.
+ * `programs,goals` for chapter health without adding sample members, events or posts.
+ */
+export function onlyCollections(docs: SeedDoc[], collections: string[]): SeedDoc[] {
+  const keep = new Set(collections.map((c) => c.trim()).filter(Boolean));
+  return docs.filter((d) => keep.has(d.path.split('/')[0]));
 }
 
 /** Refuses production and requires an explicit yes before touching a real project. */

@@ -60,6 +60,22 @@ async function openLeadership() {
 
 const value = (key: string) => screen.getByTestId(`kpi-${key}-value`);
 
+describe('chapter health', () => {
+  it('sums up programs and goals and opens chapter health', async () => {
+    const r = await openLeadership();
+    // The at-risk book drive is red; the other sample program and the met goal are green.
+    await waitFor(() =>
+      expect(screen.getByTestId('health-entry')).toHaveTextContent(/Chapter health/),
+    );
+    expect(screen.getByTestId('health-entry')).toHaveTextContent(/at risk/);
+    await press(screen.getByTestId('health-entry'));
+    expect(r.getPathname()).toBe('/chapter/health');
+    await waitFor(() =>
+      expect(screen.getByRole('header', { name: 'Chapter health' })).toBeTruthy(),
+    );
+  });
+});
+
 describe('KPIs', () => {
   it('shows the goals ring and four KPI tiles for the semester', async () => {
     await openLeadership();

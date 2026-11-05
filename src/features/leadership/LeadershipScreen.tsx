@@ -13,6 +13,7 @@ import { fetchPrograms, type ProgramSummary } from '@/data/programs';
 import { decideRequest, fetchPendingRequests, type MembershipRequest } from '@/data/requests';
 import type { KpiPeriodKind } from '@/data/types';
 import { useAuth } from '@/features/auth/AuthProvider';
+import { chapterHealth, healthLine } from '@/features/health/healthLogic';
 import { RequestRow } from '@/features/requests/RequestRow';
 import { useCan, useRole } from '@/features/roles/RoleProvider';
 import { colors, palette, radius, spacing } from '@/theme';
@@ -71,7 +72,7 @@ export function LeadershipScreen() {
   const [period, setPeriod] = useState<KpiPeriodKind>('semester');
   const [loaded, setLoaded] = useState<Loaded>({ state: 'loading' });
   const [waiting, setWaiting] = useState<WaitingCounts | null>(null);
-  const [atRisk, setAtRisk] = useState<ProgramSummary[]>([]);
+  const [programs, setPrograms] = useState<ProgramSummary[] | null>(null);
   const [pending, setPending] = useState<MembershipRequest[]>([]);
   const [attempt, setAttempt] = useState(0);
   const [now, setNow] = useState(() => new Date());
@@ -93,7 +94,7 @@ export function LeadershipScreen() {
         () => {},
       );
       fetchPrograms().then(
-        (p) => live && setAtRisk(p.filter((x) => x.status === 'at_risk')),
+        (p) => live && setPrograms(p),
         () => {},
       );
       if (canApprove) {
@@ -128,7 +129,13 @@ export function LeadershipScreen() {
   const current = kpis?.periods[period] ?? null;
   const requests = canApprove ? pending.length : 0;
   const reports = canReview ? (waiting?.openReports ?? 0) : 0;
+  const atRisk = (programs ?? []).filter((x) => x.status === 'at_risk');
   const nothingNeeded = requests === 0 && reports === 0 && atRisk.length === 0;
+  // The chapter year's programs and goals, green, yellow or red, for the Chapter health row.
+  const health =
+    programs && loaded.state === 'ready'
+      ? healthLine(chapterHealth(programs, kpis?.periods.year ?? null, now).counts)
+      : null;
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -142,6 +149,16 @@ export function LeadershipScreen() {
             Signed in as {label}
           </AppText>
         </View>
+
+        <ListSection>
+          <ListRow
+            title="Chapter health"
+            subtitle={health ?? 'Programs and goals, green, yellow or red'}
+            showChevron
+            onPress={() => router.push('/chapter/health')}
+            testID="health-entry"
+          />
+        </ListSection>
 
         <SegmentedControl
           segments={PERIODS}

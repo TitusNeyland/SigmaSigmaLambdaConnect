@@ -108,6 +108,8 @@ describe('toKpis', () => {
     ).toEqual({
       period: 'x',
       label: 'x',
+      start: null,
+      end: null,
       participationRate: null,
       attendanceRate: null,
       serviceHours: 0,
@@ -128,6 +130,12 @@ describe('toKpis', () => {
       goalsDone: 1,
       goalsTotal: 1,
     });
+  });
+
+  it('reads when the period starts and ends', () => {
+    const k = toKpis({ period: '2026-27', start: ts(1000), end: ts(2000) });
+    expect(k?.start).toEqual(new Date(1000));
+    expect(k?.end).toEqual(new Date(2000));
   });
 
   it('rejects things that are not a period', () => {

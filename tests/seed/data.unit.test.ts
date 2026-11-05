@@ -10,7 +10,12 @@ import {
   PROGRAMS,
   SAMPLE_EMAIL_DOMAIN,
 } from '../../tools/seed/data';
-import { assertSafeTarget, buildSeedDocs, PRODUCTION_PROJECT_ID } from '../../tools/seed/seed';
+import {
+  assertSafeTarget,
+  buildSeedDocs,
+  onlyCollections,
+  PRODUCTION_PROJECT_ID,
+} from '../../tools/seed/seed';
 
 const NOW = new Date('2026-10-29T12:00:00Z');
 const memberIds = new Set(MEMBERS.map((m) => m.uid));
@@ -65,6 +70,18 @@ describe('sample data covers what the app needs to show', () => {
   it('has past and upcoming events', () => {
     expect(EVENTS.some((e) => e.startsInDays < 0)).toBe(true);
     expect(EVENTS.some((e) => e.startsInDays > 0)).toBe(true);
+  });
+
+  it('can seed just some collections, with their subcollections', () => {
+    const docs = onlyCollections(buildSeedDocs(NOW), ['programs', ' goals']);
+    expect(docs.length).toBeGreaterThan(0);
+    expect(docs.every((d) => /^(programs|goals)\//.test(d.path))).toBe(true);
+    expect(docs.some((d) => d.path.includes('/milestones/'))).toBe(true);
+    expect(docs.some((d) => d.path.startsWith('goals/'))).toBe(true);
+  });
+
+  it('programs start before they are due', () => {
+    for (const p of PROGRAMS) expect(-p.startedDaysAgo).toBeLessThan(p.dueInDays);
   });
 
   it('has programs in every status', () => {

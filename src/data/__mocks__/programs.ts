@@ -12,6 +12,7 @@ export function sampleProgram(overrides: Partial<ProgramSummary> = {}): ProgramS
     ownerTitle: 'Director of Education',
     ownerId: null,
     dueAt: new Date(Date.now() + 30 * 86_400_000),
+    createdAt: null,
     status: 'in_progress',
     chapterYear: '2026-27',
     milestones: [
