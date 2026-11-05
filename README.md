@@ -6,7 +6,7 @@ Built with Expo SDK 58, React Native, TypeScript and Expo Router, on Firebase (A
 
 ## Requirements
 
-- Node.js 20 or later (22 recommended) and npm
+- Node.js 24.12 or later and npm (Firebase requires it). Cloud Functions run on Node 22 separately.
 - For iOS: a Mac with Xcode and an iOS simulator installed
 - For Android: Android Studio with an emulator set up
 - Or the Expo Go app on a physical phone
