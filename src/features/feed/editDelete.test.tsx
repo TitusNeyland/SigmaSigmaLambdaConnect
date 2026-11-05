@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
 
 jest.mock('@/data/auth');
@@ -122,7 +123,7 @@ describe('my posts', () => {
   it('deleting from the post’s own screen goes back to a refreshed feed', async () => {
     await renderRouter('src/app', { initialUrl: '/home' });
     await waitFor(() => expect(screen.getByTestId('post-mine')).toBeTruthy());
-    await press(screen.getByTestId('comment-mine'));
+    await act(async () => router.push('/home/post/mine'));
     await waitFor(() => expect(screen.getByTestId('comment-count')).toBeTruthy());
     feed.setMockPosts([theirs()]);
     await press(screen.getByTestId('post-menu-mine'));

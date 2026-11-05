@@ -1,3 +1,5 @@
+import type { CommentPreview } from '@/data/types';
+
 /** A tiny signal so Home reloads after the member shares a post elsewhere in the app. */
 const listeners = new Set<() => void>();
 
@@ -37,4 +39,25 @@ export function onBlocked(listener: (name: string) => void): () => void {
 
 export function notifyBlocked(name: string) {
   for (const l of blockedListeners) l(name);
+}
+
+export type CommentsUpdate = { commentCount: number; previewComments: CommentPreview[] };
+
+const commentsListeners = new Set<(postId: string, update: CommentsUpdate) => void>();
+
+/**
+ * Lets the feed show a post's live comment count and previews while its comments are open,
+ * so a new comment shows up under the post right away.
+ */
+export function onCommentsChanged(
+  listener: (postId: string, update: CommentsUpdate) => void,
+): () => void {
+  commentsListeners.add(listener);
+  return () => {
+    commentsListeners.delete(listener);
+  };
+}
+
+export function notifyCommentsChanged(postId: string, update: CommentsUpdate) {
+  for (const l of commentsListeners) l(postId, update);
 }

@@ -10,7 +10,7 @@ import { colors, spacing } from '@/theme';
 import { AppText, Button } from '@/ui';
 
 import { EventsStrip } from './EventsStrip';
-import { onFeedChanged } from './feedEvents';
+import { onCommentsChanged, onFeedChanged } from './feedEvents';
 import { appendPage, visiblePosts } from './feedLogic';
 import { PostCard } from './PostCard';
 import { ReportedNotice } from './ReportedNotice';
@@ -67,6 +67,18 @@ export function FeedScreen() {
 
   // Sharing a post reloads the feed so it shows at the top.
   useEffect(() => onFeedChanged(loadFirst), [loadFirst]);
+  // Comments added or deleted in the comments sheet show on the post right away.
+  useEffect(
+    () =>
+      onCommentsChanged((postId, update) =>
+        setFeed((f) =>
+          f.state === 'ready'
+            ? { ...f, posts: f.posts.map((p) => (p.id === postId ? { ...p, ...update } : p)) }
+            : f,
+        ),
+      ),
+    [],
+  );
 
   // Load the first time Home is shown; after that, pull to refresh.
   const loadedOnce = useRef(false);

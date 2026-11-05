@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
 
 jest.mock('@/data/auth');
@@ -168,10 +169,10 @@ it('says when a post is gone, and retries a failed load', async () => {
   await waitFor(() => expect(screen.getByTestId('caption-p1')).toBeTruthy());
 });
 
-it('opens from the feed and goes back', async () => {
+it('goes back to the feed', async () => {
   await renderRouter('src/app', { initialUrl: '/home' });
-  await waitFor(() => expect(screen.getByTestId('comments-p1')).toBeTruthy());
-  await press(screen.getByTestId('comments-p1'));
+  await waitFor(() => expect(screen.getByTestId('post-p1')).toBeTruthy());
+  await act(async () => router.push('/home/post/p1'));
   await waitFor(() => expect(screen.getByTestId('comment-count')).toBeTruthy());
   await press(screen.getByTestId('post-back'));
   await waitFor(() => expect(screen).toHavePathname('/home'));

@@ -14,7 +14,9 @@ import {
 
 import { db } from './firebase';
 import { parseRoleDoc } from './roles';
-import type { RoleDoc } from './types';
+import { PREVIEW_COMMENTS, type CommentPreview, type RoleDoc } from './types';
+
+export { PREVIEW_COMMENTS, type CommentPreview };
 
 /** Who wrote a post, as the author line shows them. */
 export type FeedAuthor = {
@@ -42,6 +44,8 @@ export type FeedPost = {
   createdAt: Date;
   /** Whether the signed-in member liked it. */
   likedByMe: boolean;
+  /** The newest top-level comments, oldest first, shown under the caption in the feed. */
+  previewComments: CommentPreview[];
 };
 
 /** Opaque: pass it back to get the next page. Null when there are no more posts. */
@@ -98,7 +102,41 @@ export function toFeedPost(
     commentCount: count(data.commentCount),
     createdAt,
     likedByMe,
+    previewComments: [],
   };
+}
+
+/**
+ * A post's newest top-level comments, oldest first. Reads a few extra so replies can be
+ * skipped. Hiding blocked authors and reported comments happens on the screen.
+ */
+export async function fetchCommentPreview(
+  postId: string,
+  authorOf: (uid: string) => Promise<FeedAuthor | null>,
+): Promise<CommentPreview[]> {
+  const snap = await getDocs(
+    query(
+      collection(db, 'posts', postId, 'comments'),
+      orderBy('createdAt', 'desc'),
+      limit(PREVIEW_COMMENTS * 3),
+    ),
+  );
+  const newest = snap.docs
+    .filter((d) => !d.data().replyToId && text(d.data().text).trim())
+    .slice(0, PREVIEW_COMMENTS)
+    .reverse();
+  return Promise.all(
+    newest.map(async (d) => {
+      const authorId = text(d.data().authorId);
+      const author = authorId ? await authorOf(authorId) : null;
+      return {
+        id: d.id,
+        authorId,
+        authorName: author?.displayName ?? 'Former member',
+        text: text(d.data().text).trim(),
+      };
+    }),
+  );
 }
 
 /**
@@ -120,19 +158,25 @@ export async function fetchFeedPage(
     ),
   );
 
-  const authorIds = [...new Set(snap.docs.map((d) => text(d.data().authorId)).filter(Boolean))];
-  const authors = new Map(
-    await Promise.all(authorIds.map(async (id) => [id, await fetchAuthor(id)] as const)),
-  );
+  // Each person is looked up once per page, whether they posted or commented.
+  const authors = new Map<string, Promise<FeedAuthor | null>>();
+  const authorOf = (id: string) => {
+    if (!authors.has(id)) authors.set(id, fetchAuthor(id));
+    return authors.get(id)!;
+  };
   const posts = await Promise.all(
     snap.docs.map(async (d) => {
-      const liked = await getDoc(doc(db, 'posts', d.id, 'likes', uid));
-      return toFeedPost(
-        d.id,
-        d.data(),
-        authors.get(text(d.data().authorId)) ?? null,
-        liked.exists(),
-      );
+      const data = d.data();
+      const [liked, author, previewComments] = await Promise.all([
+        getDoc(doc(db, 'posts', d.id, 'likes', uid)),
+        text(data.authorId) ? authorOf(text(data.authorId)) : Promise.resolve(null),
+        // A preview that fails to load just isn't shown; the post still is.
+        data.allowComments !== false
+          ? fetchCommentPreview(d.id, (id) => authorOf(id).catch(() => null)).catch(() => [])
+          : Promise.resolve([]),
+      ]);
+      const post = toFeedPost(d.id, data, author, liked.exists());
+      return post ? { ...post, previewComments } : null;
     }),
   );
   return {

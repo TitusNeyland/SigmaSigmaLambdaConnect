@@ -20,7 +20,14 @@ const author = (overrides: Partial<FeedAuthor> = {}): FeedAuthor => ({
   ...overrides,
 });
 
-const post = (id: string, authorId = 'm') => ({ id, authorId }) as FeedPost;
+const post = (id: string, authorId = 'm', previewComments: FeedPost['previewComments'] = []) =>
+  ({ id, authorId, previewComments }) as FeedPost;
+const preview = (id: string, authorId: string) => ({
+  id,
+  authorId,
+  authorName: 'Sample',
+  text: 'Sample comment',
+});
 
 describe('authorLine', () => {
   it('reads like LinkedIn: role, initiation year, job', () => {
@@ -82,6 +89,15 @@ describe('lists', () => {
     expect(visiblePosts([post('a', 'x'), post('b', 'y')], new Set(['x'])).map((p) => p.id)).toEqual(
       ['b'],
     );
+  });
+
+  it('hides previewed comments from blocked members and ones the member reported', () => {
+    const [shown] = visiblePosts(
+      [post('a', 'm', [preview('c1', 'x'), preview('c2', 'y'), preview('c3', 'z')])],
+      new Set(['x']),
+      new Set(['comment_a_c3']),
+    );
+    expect(shown.previewComments.map((c) => c.id)).toEqual(['c2']);
   });
 
   it('adds the next page without repeating posts', () => {

@@ -277,3 +277,15 @@ export type KpiSnapshot = {
   goalsTotal: number;
   computedAt: Timestamp;
 };
+
+/** A comment as previewed under a post in the feed. */
+export type CommentPreview = {
+  id: string;
+  authorId: string;
+  /** "Former member" when the author's profile is gone. */
+  authorName: string;
+  text: string;
+};
+
+/** How many comments the feed previews under a post, like Instagram. */
+export const PREVIEW_COMMENTS = 2;

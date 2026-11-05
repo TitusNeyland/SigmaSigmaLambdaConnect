@@ -114,10 +114,10 @@ it('a single tap on a photo does nothing', async () => {
   expect(likes.likePost).not.toHaveBeenCalled();
 });
 
-it('the comment button opens the post, and is hidden when comments are off', async () => {
+it('the comment button opens the comments sheet', async () => {
   await openHome({});
   await press(screen.getByTestId('comment-p1'));
-  await waitFor(() => expect(screen).toHavePathname('/home/post/p1'));
+  await waitFor(() => expect(screen).toHavePathname('/home/comments/p1'));
 });
 
 it('hides the comment button when comments are off', async () => {
