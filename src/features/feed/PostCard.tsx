@@ -73,8 +73,6 @@ function openComments(id: string) {
 }
 
 const AVATAR = 36;
-/** Where the author's name starts: card padding, avatar, gap. */
-const TEXT_INDENT = spacing.lg + AVATAR + spacing.sm;
 
 /**
  * One post in the feed. Photo posts read Instagram style: author line, photos, counts,
@@ -182,7 +180,8 @@ export function PostCard({
         />
       )}
 
-      <View style={[styles.actions, textOnly && styles.textPostActions]}>
+      {/* Actions and comments line up down the feed, with or without photos. */}
+      <View style={styles.actions} testID={`actions-${post.id}`}>
         <Pressable
           onPress={like.toggle}
           accessibilityRole="button"
@@ -215,7 +214,7 @@ export function PostCard({
         ) : null}
       </View>
 
-      <View style={[styles.body, textOnly && styles.textPostBody]}>
+      <View style={styles.body} testID={`post-body-${post.id}`}>
         {like.count > 0 ? (
           <AppText variant="subhead" weight="600" testID={`likes-${post.id}`}>
             {likesLabel(like.count)}
@@ -301,8 +300,6 @@ const styles = StyleSheet.create({
   },
   body: { paddingHorizontal: spacing.lg, gap: spacing.xs },
   commentsLink: { minHeight: MIN_TOUCH - spacing.md, justifyContent: 'center' },
-  // Text-only posts line up with the author's name, past the avatar, like a tweet.
-  textPost: { paddingLeft: TEXT_INDENT, paddingRight: spacing.lg },
-  textPostActions: { paddingLeft: TEXT_INDENT - spacing.md },
-  textPostBody: { paddingLeft: TEXT_INDENT },
+  // A text-only post's text starts at the left edge, in line with the avatar and actions.
+  textPost: { paddingHorizontal: spacing.lg },
 });
