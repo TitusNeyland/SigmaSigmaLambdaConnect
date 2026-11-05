@@ -1,7 +1,7 @@
 import { sampleEntry } from '@/data/__mocks__/directory';
 import { sampleProgram } from '@/data/__mocks__/programs';
 
-import { officersOf, progressSummary, waitingSummary } from './hubLogic';
+import { chapterStats, officersOf, progressSummary, waitingSummary } from './hubLogic';
 
 describe('officersOf', () => {
   it('keeps only members with a role, admins first, then by last name', () => {
@@ -52,5 +52,15 @@ describe('waitingSummary', () => {
     [3, 2, '3 membership requests · 2 reports'],
   ])('%i requests and %i reports reads "%s"', (membershipRequests, openReports, text) => {
     expect(waitingSummary({ membershipRequests, openReports })).toBe(text);
+  });
+});
+
+describe('chapterStats', () => {
+  it('counts brothers, officers and programs, with a dash while loading', () => {
+    expect(chapterStats({ brothers: 24, officers: 1, programs: null })).toEqual([
+      { key: 'brothers', value: '24', label: 'Brothers' },
+      { key: 'officers', value: '1', label: 'Officer' },
+      { key: 'programs', value: '–', label: 'Programs' },
+    ]);
   });
 });

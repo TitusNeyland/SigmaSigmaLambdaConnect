@@ -9,11 +9,11 @@ import { colors, spacing } from '@/theme';
 import {
   AppText,
   Avatar,
+  BackButton,
   Button,
   FilterChips,
   ListRow,
   ListSection,
-  NavHeader,
   SearchField,
   StatusChip,
 } from '@/ui';
@@ -69,11 +69,13 @@ export function DirectoryScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <NavHeader onBack={goBackToChapter} backTestID="directory-back" />
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <View style={styles.header} testID="directory-header">
+        <BackButton onPress={goBackToChapter} testID="directory-back" />
         <AppText variant="largeTitle" accessibilityRole="header">
           Directory
         </AppText>
+      </View>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <SearchField
           value={search}
           onChangeText={setSearch}
@@ -147,6 +149,14 @@ export function DirectoryScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.backgroundGrouped },
+  // The back chevron sits beside the large title, on one line.
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
+  },
   content: { padding: spacing.lg, paddingTop: 0, gap: spacing.lg, paddingBottom: spacing.xxxl },
   empty: { paddingTop: spacing.xxl, gap: spacing.sm, alignItems: 'center' },
 });

@@ -23,20 +23,27 @@ function BackIcon() {
   );
 }
 
+/** The back chevron, 44 points square. */
+export function BackButton({ onPress, testID }: { onPress: () => void; testID?: string }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel="Back"
+      hitSlop={spacing.sm}
+      style={styles.back}
+      testID={testID}
+    >
+      <BackIcon />
+    </Pressable>
+  );
+}
+
 /** iOS navigation bar for pushed screens: back chevron and an optional centered title. */
 export function NavHeader({ title, onBack, backTestID, trailing }: NavHeaderProps) {
   return (
     <View style={styles.header}>
-      <Pressable
-        onPress={onBack}
-        accessibilityRole="button"
-        accessibilityLabel="Back"
-        hitSlop={spacing.sm}
-        style={styles.back}
-        testID={backTestID}
-      >
-        <BackIcon />
-      </Pressable>
+      <BackButton onPress={onBack} testID={backTestID} />
       {title ? (
         <AppText variant="headline" accessibilityRole="header">
           {title}

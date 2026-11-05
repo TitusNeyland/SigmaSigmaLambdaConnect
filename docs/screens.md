@@ -52,11 +52,11 @@ Leader --> Desktop[Desktop dashboard, later]
 
 ## Chapter flow
 
-| Screen                | What it does                                                                                                                                                                                                | Issues   |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
-| Chapter hub           | Officers only: Leadership card at the top with a waiting count. Everyone: progress ring, tiles (Directory, Programs, Calendar, Documents), announcements with unread dots that expand on tap, officers row. | #42, #43 |
-| Brotherhood directory | A to Z by last name, role badges, live search by name, job or interest, filters (All, Officers, Mentors, recent initiates), empty state.                                                                    | #17      |
-| Chapter progress      | Member view of programs grouped Needs help, On track, Completed. Tap to expand milestones. Needs help programs have an "I can help" button.                                                                 | #44, #45 |
+| Screen                | What it does                                                                                                                                                                                                                                                           | Issues   |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| Chapter hub           | Officers only: Leadership card at the top with a waiting count. Everyone: progress card (ring plus brother, officer and program counts), round shortcuts (Directory, Programs, Calendar, Documents), announcements with unread dots that expand on tap, officer cards. | #42, #43 |
+| Brotherhood directory | A to Z by last name, role badges, live search by name, job or interest, filters (All, Officers, Mentors, recent initiates), empty state.                                                                                                                               | #17      |
+| Chapter progress      | Member view of programs grouped Needs help, On track, Completed. Tap to expand milestones. Needs help programs have an "I can help" button.                                                                                                                            | #44, #45 |
 
 ## Leadership tools, mobile (officers only)
 

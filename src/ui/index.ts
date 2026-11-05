@@ -14,4 +14,5 @@ export * from './NavHeader';
 export * from './HeaderButton';
 export * from './DateTimeField';
 export * from './Monogram';
+export * from './SectionTitle';
 export * from './useKeyboardInset';
