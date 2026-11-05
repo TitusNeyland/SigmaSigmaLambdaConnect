@@ -196,7 +196,11 @@ describe('create', () => {
     await press(screen.getByTestId('event-form-pick-photo'));
     await waitFor(() => expect(screen.getByTestId('event-form-photo')).toBeTruthy());
     await press(screen.getByTestId('event-form-save'));
-    expect(admin.uploadEventPhoto).toHaveBeenCalledWith('new-event', 'file:///p.jpg');
+    expect(admin.uploadEventPhoto).toHaveBeenCalledWith(
+      'new-event',
+      'sample-marcus',
+      'file:///p.jpg',
+    );
     expect(jest.mocked(admin.createEvent).mock.calls[0][2].photoURL).toBe(
       'https://example.test/events/new-event.jpg',
     );
@@ -260,6 +264,31 @@ describe('edit and cancel', () => {
       expect.objectContaining({ title: 'Sample scholarship gala and auction', photoURL: null }),
     );
     expect(admin.createEvent).not.toHaveBeenCalled();
+    await waitFor(() => expect(screen).toHavePathname('/events/gala'));
+  });
+
+  it('a member host saves edits, including a new photo uploaded under their name', async () => {
+    signIn(null);
+    const uid = auth.sampleUser().uid;
+    events.setMockDetails({ gala: { ...GALA, createdBy: uid } });
+    jest.mocked(pickEventPhoto).mockResolvedValue({ status: 'picked', uri: 'file:///new.jpg' });
+    await renderRouter('src/app', { initialUrl: '/events/gala' });
+    await waitFor(() => expect(screen.getByTestId('edit-event')).toBeTruthy());
+    await press(screen.getByTestId('edit-event'));
+    await waitFor(() => expect(screen.getByTestId('event-form-title')).toBeTruthy());
+    await type('event-form-location', 'New ballroom');
+    await press(screen.getByTestId('event-form-remove-photo'));
+    await press(screen.getByTestId('event-form-pick-photo'));
+    await waitFor(() => expect(screen.getByTestId('event-form-photo')).toBeTruthy());
+    await press(screen.getByTestId('event-form-save'));
+    expect(admin.uploadEventPhoto).toHaveBeenCalledWith('gala', uid, 'file:///new.jpg');
+    expect(admin.updateEvent).toHaveBeenCalledWith(
+      'gala',
+      expect.objectContaining({
+        location: 'New ballroom',
+        photoURL: 'https://example.test/events/gala.jpg',
+      }),
+    );
     await waitFor(() => expect(screen).toHavePathname('/events/gala'));
   });
 

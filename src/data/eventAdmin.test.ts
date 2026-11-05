@@ -98,8 +98,10 @@ it('cancels by marking it cancelled', async () => {
 
 it('uploads the photo under the event and returns its URL', async () => {
   global.fetch = jest.fn(async () => ({ blob: async () => ({ size: 1 }) })) as never;
-  expect(await uploadEventPhoto('gala', 'file:///photo.jpg')).toBe('https://cdn.test/e.jpg');
-  expect(jest.mocked(ref).mock.calls[0][1]).toMatch(/^events\/gala\/\d+\.jpg$/);
+  expect(await uploadEventPhoto('gala', 'sample-marcus', 'file:///photo.jpg')).toBe(
+    'https://cdn.test/e.jpg',
+  );
+  expect(jest.mocked(ref).mock.calls[0][1]).toMatch(/^events\/gala\/sample-marcus-\d+\.jpg$/);
   expect(uploadBytes).toHaveBeenCalledWith(
     expect.anything(),
     { size: 1 },

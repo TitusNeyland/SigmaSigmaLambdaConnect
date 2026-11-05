@@ -3,11 +3,10 @@ import {
   assertSucceeds,
   type RulesTestEnvironment,
 } from '@firebase/rules-unit-testing';
-import { doc, setDoc } from 'firebase/firestore';
 import { deleteObject, getBytes, ref, uploadBytes, type FirebaseStorage } from 'firebase/storage';
 import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest';
 
-import { createTestEnv, eventDoc, seedBase, USERS } from './helpers';
+import { createTestEnv, seedBase, USERS } from './helpers';
 
 let env: RulesTestEnvironment;
 
@@ -116,15 +115,14 @@ describe('event photos', () => {
     await assertSucceeds(uploadBytes(ref(as(USERS.olivia), 'events/open/2.jpg'), image(), jpeg));
   });
 
-  it('members upload a photo for a new event or one they host, not someone else’s', async () => {
-    await env.withSecurityRulesDisabled((ctx) =>
-      setDoc(doc(ctx.firestore(), 'events/alices'), eventDoc({ createdBy: USERS.alice })),
-    );
-    // A new event's photo uploads before the event is saved.
-    await assertSucceeds(uploadBytes(ref(as(USERS.alice), 'events/new/hero.jpg'), image(), jpeg));
-    await assertSucceeds(uploadBytes(ref(as(USERS.alice), 'events/alices/2.jpg'), image(), jpeg));
-    // events/open is hosted by an officer.
-    await assertFails(uploadBytes(ref(as(USERS.alice), 'events/open/2.jpg'), image(), jpeg));
+  it('members upload event photos named after themselves, and nothing else', async () => {
+    // A new event's photo uploads before the event is saved (src/data/eventAdmin.ts).
+    const mine = ref(as(USERS.alice), 'events/new/alice-1793888727089.jpg');
+    await assertSucceeds(uploadBytes(mine, image(), jpeg));
+    // Not someone else's file, and not the officer's existing photo.
+    await assertFails(uploadBytes(ref(as(USERS.alice), 'events/new/bob-1.jpg'), image(), jpeg));
+    await assertFails(uploadBytes(ref(as(USERS.alice), 'events/open/hero.jpg'), image(), jpeg));
+    await assertFails(uploadBytes(ref(as(USERS.alice), 'events/new/hero.jpg'), image(), jpeg));
   });
 
   it('pending members cannot upload event photos', async () => {
@@ -133,7 +131,7 @@ describe('event photos', () => {
 
   it('event photos are images up to 10 MB', async () => {
     await assertFails(
-      uploadBytes(ref(as(USERS.alice), 'events/new/big.jpg'), image(10 * MB + 1), jpeg),
+      uploadBytes(ref(as(USERS.alice), 'events/new/alice-big.jpg'), image(10 * MB + 1), jpeg),
     );
   });
 

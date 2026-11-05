@@ -6,7 +6,7 @@ export const createEvent = jest.fn(async (_id: string, _uid: string, _input: Eve
 export const updateEvent = jest.fn(async (_id: string, _input: EventInput) => {});
 export const cancelEvent = jest.fn(async (_id: string) => {});
 export const uploadEventPhoto = jest.fn(
-  async (id: string, _uri: string) => `https://example.test/events/${id}.jpg`,
+  async (id: string, _uid: string, _uri: string) => `https://example.test/events/${id}.jpg`,
 );
 
 export function resetEventAdminMock() {
