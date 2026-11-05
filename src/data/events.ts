@@ -111,6 +111,8 @@ export type EventDetail = EventSummary & {
   address: string;
   feeCents: number;
   rsvpDeadline: Date | null;
+  /** Uid of the member who made it. The host or an officer may edit it. */
+  createdBy: string;
   host: Attendee | null;
   going: { count: number; preview: Attendee[] };
 };
@@ -160,6 +162,7 @@ export async function fetchEventDetail(eventId: string, uid: string): Promise<Ev
     address: text(data.address),
     feeCents: typeof data.feeCents === 'number' && data.feeCents > 0 ? data.feeCents : 0,
     rsvpDeadline: toDate(data.rsvpDeadline),
+    createdBy: hostId,
     host,
     going: {
       count: goingCount.data().count,

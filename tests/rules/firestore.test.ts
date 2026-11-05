@@ -444,10 +444,14 @@ describe('roles', () => {
   });
 
   it('an officer loses officer access as soon as the role is removed', async () => {
-    const newEvent = { ...eventDoc(), createdAt: serverTimestamp() };
-    await assertSucceeds(setDoc(doc(as(USERS.olivia), 'events/before'), newEvent));
+    // Editing someone else's event takes an officer (any approved member can create one).
+    await env.withSecurityRulesDisabled((ctx) =>
+      setDoc(doc(ctx.firestore(), 'events/alices'), eventDoc({ createdBy: USERS.alice })),
+    );
+    const alices = doc(as(USERS.olivia), 'events/alices');
+    await assertSucceeds(updateDoc(alices, { title: 'Before' }));
     await assertSucceeds(deleteDoc(doc(as(USERS.adam), 'roles/olivia')));
-    await assertFails(setDoc(doc(as(USERS.olivia), 'events/after'), newEvent));
+    await assertFails(updateDoc(alices, { title: 'After' }));
   });
 });
 
@@ -504,9 +508,23 @@ describe('events', () => {
     await assertSucceeds(setDoc(doc(as(USERS.olivia), 'events/new'), newEvent()));
   });
 
-  it('members cannot create events', async () => {
-    await assertFails(
+  it('approved members can create events they host', async () => {
+    await assertSucceeds(
       setDoc(doc(as(USERS.alice), 'events/new'), { ...newEvent(), createdBy: USERS.alice }),
+    );
+  });
+
+  it('pending, declined and profileless accounts cannot create events', async () => {
+    for (const uid of [USERS.pete, USERS.dee, USERS.stranger, USERS.rogue]) {
+      await assertFails(
+        setDoc(doc(as(uid), `events/by-${uid}`), { ...newEvent(), createdBy: uid }),
+      );
+    }
+  });
+
+  it('nobody can create an event in someone else’s name', async () => {
+    await assertFails(
+      setDoc(doc(as(USERS.alice), 'events/new'), { ...newEvent(), createdBy: USERS.bob }),
     );
   });
 
@@ -516,11 +534,30 @@ describe('events', () => {
     );
   });
 
-  it('officers can edit and delete events; members cannot', async () => {
+  it('officers can edit and delete any event; other members cannot', async () => {
     await assertFails(updateDoc(doc(as(USERS.alice), 'events/open'), { title: 'Changed' }));
     await assertSucceeds(updateDoc(doc(as(USERS.olivia), 'events/open'), { title: 'Changed' }));
     await assertFails(deleteDoc(doc(as(USERS.alice), 'events/open')));
     await assertSucceeds(deleteDoc(doc(as(USERS.olivia), 'events/open')));
+  });
+
+  it('a member host can edit and cancel their own event, but not delete it or hand it off', async () => {
+    await env.withSecurityRulesDisabled((ctx) =>
+      setDoc(doc(ctx.firestore(), 'events/mine'), eventDoc({ createdBy: USERS.alice })),
+    );
+    const mine = doc(as(USERS.alice), 'events/mine');
+    await assertSucceeds(updateDoc(mine, { title: 'Changed' }));
+    await assertSucceeds(updateDoc(mine, { cancelled: true }));
+    await assertFails(updateDoc(mine, { createdBy: USERS.bob }));
+    await assertFails(deleteDoc(mine));
+    await assertFails(updateDoc(doc(as(USERS.bob), 'events/mine'), { title: 'Taken' }));
+  });
+
+  it('a host who is no longer approved cannot edit their event', async () => {
+    await env.withSecurityRulesDisabled((ctx) =>
+      setDoc(doc(ctx.firestore(), 'events/petes'), eventDoc({ createdBy: USERS.pete })),
+    );
+    await assertFails(updateDoc(doc(as(USERS.pete), 'events/petes'), { title: 'Changed' }));
   });
 
   it('accepts the exact event the officer form creates (src/data/eventAdmin.ts)', async () => {

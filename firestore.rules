@@ -187,12 +187,14 @@ service cloud.firestore {
 
     match /events/{eventId} {
       allow read: if isApproved();
-      allow create: if isOfficer()
+      // Any approved member can host an event.
+      allow create: if isApproved()
         && eventValid(incoming())
         && incoming().createdBy == request.auth.uid
         && isNow(incoming().createdAt);
-      // Officers edit or cancel. Who made it and when never change.
-      allow update: if isOfficer()
+      // The host or an officer edits or cancels. Who made it and when never change.
+      allow update: if (isOfficer()
+          || (isApproved() && resource.data.createdBy == request.auth.uid))
         && eventValid(incoming())
         && !changed().hasAny(['createdBy', 'createdAt']);
       allow delete: if isOfficer();

@@ -6,7 +6,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { fetchUpcomingEvents, type EventSummary } from '@/data/events';
 import { useAuth } from '@/features/auth/AuthProvider';
-import { RequireCapability } from '@/features/roles/RoleProvider';
 import { colors, palette, radius, spacing } from '@/theme';
 import { AppText, Button, FilterChips, ListSection, SearchField, SegmentedControl } from '@/ui';
 
@@ -143,17 +142,15 @@ export function EventsScreen() {
           <AppText variant="largeTitle" accessibilityRole="header">
             Events
           </AppText>
-          {/* Officers only. The rules only let officers create events. */}
-          <RequireCapability capability="events.manage">
-            <Button
-              title="New"
-              variant="secondary"
-              size="small"
-              accessibilityLabel="New event"
-              onPress={() => router.push('/events/new')}
-              testID="new-event"
-            />
-          </RequireCapability>
+          {/* Any approved member can host an event. */}
+          <Button
+            title="New"
+            variant="secondary"
+            size="small"
+            accessibilityLabel="New event"
+            onPress={() => router.push('/events/new')}
+            testID="new-event"
+          />
         </View>
         <SearchField
           value={search}

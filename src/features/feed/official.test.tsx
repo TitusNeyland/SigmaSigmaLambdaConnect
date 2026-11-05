@@ -80,7 +80,7 @@ describe('in the feed', () => {
       /^Sigma Sigma Lambda, verified, Official chapter post, /,
     );
     expect(screen.getByLabelText('Verified chapter account')).toBeTruthy();
-    expect(screen.getByTestId('caption-official')).toHaveTextContent(/^Sigma Sigma Lambda Sample/);
+    expect(screen.getByTestId('caption-official')).toHaveTextContent(/^Sample/);
     // Ordinary posts keep their author.
     expect(screen.getByTestId('post-author-normal').props.accessibilityLabel).toMatch(
       /^Marcus Reed/,

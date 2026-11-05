@@ -93,20 +93,35 @@ describe('who can create and edit', () => {
     await waitFor(() => expect(screen).toHavePathname('/events/gala/edit'));
   });
 
-  it('members see neither, and the form turns them away', async () => {
+  it('members can create events', async () => {
+    signIn(null);
+    await renderRouter('src/app', { initialUrl: '/events' });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'New event' })).toBeTruthy());
+    await press(screen.getByRole('button', { name: 'New event' }));
+    await waitFor(() => expect(screen.getByRole('header', { name: 'New event' })).toBeTruthy());
+  });
+
+  it('members cannot edit someone else’s event', async () => {
     signIn(null);
     await renderRouter('src/app', { initialUrl: '/events/gala' });
     await waitFor(() => expect(screen.getByText('Hosted by Jordan Hill')).toBeTruthy());
     expect(screen.queryByTestId('edit-event')).toBeNull();
 
-    await renderRouter('src/app', { initialUrl: '/events' });
-    await waitFor(() => expect(screen.getByRole('header', { name: 'Events' })).toBeTruthy());
-    expect(screen.queryByRole('button', { name: 'New event' })).toBeNull();
-
-    await renderRouter('src/app', { initialUrl: '/events/new' });
+    await renderRouter('src/app', { initialUrl: '/events/gala/edit' });
     await waitFor(() =>
-      expect(screen.getByText('Only chapter officers can create and edit events.')).toBeTruthy(),
+      expect(
+        screen.getByText('Only the host or a chapter officer can edit this event.'),
+      ).toBeTruthy(),
     );
+  });
+
+  it('members can edit an event they host', async () => {
+    signIn(null);
+    events.setMockDetails({ gala: { ...GALA, createdBy: auth.sampleUser().uid } });
+    await renderRouter('src/app', { initialUrl: '/events/gala' });
+    await waitFor(() => expect(screen.getByTestId('edit-event')).toBeTruthy());
+    await press(screen.getByTestId('edit-event'));
+    await waitFor(() => expect(screen.getByRole('header', { name: 'Edit event' })).toBeTruthy());
   });
 });
 

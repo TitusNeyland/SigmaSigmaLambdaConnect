@@ -82,7 +82,7 @@ const rows = () =>
 
 it('shows the post, then its comments with replies threaded', async () => {
   await openPost();
-  expect(screen.getByTestId('caption-p1')).toHaveTextContent('Marcus Reed Sample gala photos');
+  expect(screen.getByTestId('caption-p1')).toHaveTextContent(/^Sample gala photos$/);
   expect(screen.getByTestId('comment-count')).toHaveTextContent('2 comments');
   expect(rows()).toEqual(['c1', 'c2']);
   expect(screen.getByTestId('comment-text-c1')).toHaveTextContent('Chris Baptiste Great night');

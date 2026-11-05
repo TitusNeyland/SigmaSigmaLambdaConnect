@@ -137,6 +137,7 @@ describe('to and from saved events', () => {
       address: '200 Sample Ave',
       feeCents: 2500,
       rsvpDeadline: null,
+      createdBy: 'sample-jordan',
       host: null,
       going: { count: 0, preview: [] },
     } satisfies EventDetail;

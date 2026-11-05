@@ -39,7 +39,7 @@ kpis[kpis/periodId]
 | `members/{uid}/private/contact`                 | Email, phone and the show switches          | The person themself only                                    | The person themself                                                                                                          |
 | `pushTokens/{uid}/tokens/{tokenId}`             | One per phone the member signs in on        | The person themself only                                    | The person themself. Cloud Functions read them to send push                                                                  |
 | `roles/{uid}`                                   | `officer` or `admin`, plus an officer title | The person themself; approved members (to show role badges) | Admins only                                                                                                                  |
-| `events/{eventId}`                              | Event details                               | Approved members                                            | Officers                                                                                                                     |
+| `events/{eventId}`                              | Event details                               | Approved members                                            | Approved members create, as host. The host or officers edit or cancel. Officers delete                                       |
 | `events/{eventId}/rsvps/{uid}`                  | Going, maybe or not going                   | Approved members                                            | The member, for themself, until the RSVP deadline                                                                            |
 | `events/{eventId}/attendance/{uid}`             | Officer check-in, service hours, `memberId` | Officers; the member for their own record                   | Officers                                                                                                                     |
 | `posts/{postId}`                                | Photo post                                  | Approved members (removed posts: author and officers only)  | Approved members who accepted the guidelines create their own. Authors edit the caption or delete. Officers remove or delete |
@@ -59,11 +59,11 @@ Anything not listed is denied.
 
 ## Storage
 
-| Path                          | Read             | Write                                                      |
-| ----------------------------- | ---------------- | ---------------------------------------------------------- |
-| `avatars/{uid}/{file}`        | Approved members | The person themself. Images only, up to 5 MB               |
-| `posts/{uid}/{postId}/{file}` | Approved members | The person themself, if approved. Images only, up to 10 MB |
-| `events/{eventId}/{file}`     | Approved members | Officers. Images only, up to 10 MB                         |
+| Path                          | Read             | Write                                                                                 |
+| ----------------------------- | ---------------- | ------------------------------------------------------------------------------------- |
+| `avatars/{uid}/{file}`        | Approved members | The person themself. Images only, up to 5 MB                                          |
+| `posts/{uid}/{postId}/{file}` | Approved members | The person themself, if approved. Images only, up to 10 MB                            |
+| `events/{eventId}/{file}`     | Approved members | Officers, or the host (any approved member for a new event). Images only, up to 10 MB |
 
 ## Key fields and limits
 
