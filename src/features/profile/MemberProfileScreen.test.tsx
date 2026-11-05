@@ -153,9 +153,10 @@ describe('contact details follow his privacy settings', () => {
     await openMember();
     expect(screen.queryByTestId('contact-email')).toBeNull();
     expect(screen.queryByTestId('contact-phone')).toBeNull();
+    expect(screen.queryByTestId('contact-text')).toBeNull();
   });
 
-  it('offers email and call when he shows them', async () => {
+  it('offers call, text and email when he shows them', async () => {
     const open = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined as never);
     profile.setMockProfilesFor({
       [OTHER]: chris({ email: 'chris@example.com', phone: '(555) 010-0123' }),
@@ -165,6 +166,8 @@ describe('contact details follow his privacy settings', () => {
     expect(open).toHaveBeenCalledWith('mailto:chris@example.com');
     await press(screen.getByRole('button', { name: 'Call Chris Baptiste' }));
     expect(open).toHaveBeenCalledWith('tel:5550100123');
+    await press(screen.getByRole('button', { name: 'Text Chris Baptiste' }));
+    expect(open).toHaveBeenCalledWith('sms:5550100123');
     open.mockRestore();
   });
 
@@ -173,6 +176,16 @@ describe('contact details follow his privacy settings', () => {
     await openMember();
     expect(screen.queryByTestId('contact-email')).toBeNull();
     expect(screen.getByTestId('contact-phone')).toBeTruthy();
+    expect(screen.getByTestId('contact-text')).toBeTruthy();
+  });
+
+  it('keeps a + for international numbers', async () => {
+    const open = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined as never);
+    profile.setMockProfilesFor({ [OTHER]: chris({ phone: '+44 20 7946 0958' }) });
+    await openMember();
+    await press(screen.getByRole('button', { name: 'Text Chris Baptiste' }));
+    expect(open).toHaveBeenCalledWith('sms:+442079460958');
+    open.mockRestore();
   });
 });
 

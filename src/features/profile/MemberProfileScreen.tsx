@@ -29,6 +29,14 @@ function MoreIcon() {
   );
 }
 
+/** Opens the phone's dialer, Messages or mail app. Does nothing if it can't. */
+function open(url: string) {
+  Linking.openURL(url).catch(() => {});
+}
+
+/** "(555) 010-0123" -> "5550100123", keeping a leading + for international numbers. */
+const dialable = (phone: string) => phone.replace(/[^\d+]/g, '');
+
 function goBack() {
   if (router.canGoBack()) router.back();
   else router.replace('/chapter/directory');
@@ -142,30 +150,40 @@ export function MemberProfileScreen({ uid }: { uid: string }) {
             activity={extras.activity}
             onRefresh={extras.reload}
             actions={
+              // Only what he chose to show in Edit profile; the rules keep the rest private.
               data.email || data.phone ? (
                 <>
+                  {data.phone ? (
+                    <>
+                      <Button
+                        title="Call"
+                        variant="secondary"
+                        size="small"
+                        onPress={() => open(`tel:${dialable(data.phone)}`)}
+                        accessibilityLabel={`Call ${data.displayName}`}
+                        style={styles.flex}
+                        testID="contact-phone"
+                      />
+                      <Button
+                        title="Text"
+                        variant="secondary"
+                        size="small"
+                        onPress={() => open(`sms:${dialable(data.phone)}`)}
+                        accessibilityLabel={`Text ${data.displayName}`}
+                        style={styles.flex}
+                        testID="contact-text"
+                      />
+                    </>
+                  ) : null}
                   {data.email ? (
                     <Button
                       title="Email"
                       variant="secondary"
                       size="small"
-                      onPress={() => Linking.openURL(`mailto:${data.email}`).catch(() => {})}
+                      onPress={() => open(`mailto:${data.email}`)}
                       accessibilityLabel={`Email ${data.displayName}`}
                       style={styles.flex}
                       testID="contact-email"
-                    />
-                  ) : null}
-                  {data.phone ? (
-                    <Button
-                      title="Call"
-                      variant="secondary"
-                      size="small"
-                      onPress={() =>
-                        Linking.openURL(`tel:${data.phone.replace(/[^\d+]/g, '')}`).catch(() => {})
-                      }
-                      accessibilityLabel={`Call ${data.displayName}`}
-                      style={styles.flex}
-                      testID="contact-phone"
                     />
                   ) : null}
                 </>
