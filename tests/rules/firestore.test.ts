@@ -534,6 +534,21 @@ describe('events', () => {
     );
   });
 
+  it('an event can ask for 1 to 500 brothers (slots), as a whole number', async () => {
+    const db = as(USERS.alice);
+    await assertSucceeds(
+      setDoc(doc(db, 'events/needs10'), { ...newEvent(), createdBy: USERS.alice, slots: 10 }),
+    );
+    for (const slots of [0, 501, 2.5, '10', null]) {
+      await assertFails(
+        setDoc(doc(db, 'events/bad'), { ...newEvent(), createdBy: USERS.alice, slots }),
+      );
+    }
+    // The host changes it, or clears it, when editing.
+    await assertSucceeds(updateDoc(doc(db, 'events/needs10'), { slots: 12 }));
+    await assertSucceeds(updateDoc(doc(db, 'events/needs10'), { slots: deleteField() }));
+  });
+
   it('officers can edit and delete any event; other members cannot', async () => {
     await assertFails(updateDoc(doc(as(USERS.alice), 'events/open'), { title: 'Changed' }));
     await assertSucceeds(updateDoc(doc(as(USERS.olivia), 'events/open'), { title: 'Changed' }));

@@ -24,6 +24,8 @@ export type EventInput = {
   rsvpDeadline: Date;
   feeCents: number;
   photoURL: string | null;
+  /** How many brothers it needs. Null for no number. */
+  slots: number | null;
 };
 
 /** A new event's ID, made up front so its photo can be uploaded under it before saving. */
@@ -50,18 +52,20 @@ export async function createEvent(id: string, uid: string, input: EventInput): P
     ...fields(input),
     ...(input.address ? { address: input.address } : {}),
     ...(input.endsAt ? { endsAt: Timestamp.fromDate(input.endsAt) } : {}),
+    ...(input.slots ? { slots: input.slots } : {}),
     cancelled: false,
     createdBy: uid,
     createdAt: serverTimestamp(),
   });
 }
 
-/** Saves edits. Clearing the address or end time removes them. */
+/** Saves edits. Clearing the address, end time or brothers needed removes them. */
 export async function updateEvent(id: string, input: EventInput): Promise<void> {
   await updateDoc(doc(db, 'events', id), {
     ...fields(input),
     address: input.address ? input.address : deleteField(),
     endsAt: input.endsAt ? Timestamp.fromDate(input.endsAt) : deleteField(),
+    slots: input.slots ? input.slots : deleteField(),
   });
 }
 

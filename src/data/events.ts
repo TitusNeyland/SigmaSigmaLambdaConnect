@@ -15,7 +15,7 @@ import {
 } from 'firebase/firestore';
 
 import { db } from './firebase';
-import { EVENT_CATEGORIES, type EventCategory, type RsvpStatus } from './types';
+import { EVENT_CATEGORIES, MAX_SLOTS, type EventCategory, type RsvpStatus } from './types';
 
 export { EVENT_CATEGORIES };
 
@@ -32,7 +32,18 @@ export type EventSummary = {
   cancelled: boolean;
   /** Null when the member hasn't RSVPed. */
   myRsvp: RsvpStatus | null;
+  /** How many brothers the event needs. Null when the host didn't set a number. */
+  slots: number | null;
+  /** Going RSVPs, counted only for events with slots. Null otherwise. */
+  goingCount: number | null;
 };
+
+/** The event's slot count, if it has a usable one. */
+export function toSlots(value: unknown): number | null {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= MAX_SLOTS
+    ? value
+    : null;
+}
 
 const text = (value: unknown) => (typeof value === 'string' ? value : '');
 const toDate = (value: unknown) => (value instanceof Timestamp ? value.toDate() : null);
@@ -43,6 +54,7 @@ export function toEventSummary(
   id: string,
   data: Record<string, unknown>,
   myRsvp: RsvpStatus | null,
+  goingCount: number | null = null,
 ): EventSummary | null {
   const startsAt = toDate(data.startsAt);
   const title = text(data.title).trim();
@@ -60,7 +72,15 @@ export function toEventSummary(
     photoURL: typeof data.photoURL === 'string' && data.photoURL ? data.photoURL : null,
     cancelled: data.cancelled === true,
     myRsvp,
+    slots: toSlots(data.slots),
+    goingCount,
   };
+}
+
+/** How many brothers RSVPed Going to an event. */
+async function countGoing(eventId: string): Promise<number> {
+  const going = query(collection(db, 'events', eventId, 'rsvps'), where('status', '==', 'going'));
+  return (await getAggregateFromServer(going, { count: count() })).data().count;
 }
 
 /** A chapter's calendar is small, so one page covers any range we ask for. */
@@ -78,9 +98,18 @@ async function fetchEvents(uid: string, from: Date, to: Date | null): Promise<Ev
   );
   const events = await Promise.all(
     snap.docs.map(async (d) => {
-      const rsvp = await getDoc(doc(db, 'events', d.id, 'rsvps', uid));
+      // Only events asking for a number of brothers need their Going count.
+      const [rsvp, going] = await Promise.all([
+        getDoc(doc(db, 'events', d.id, 'rsvps', uid)),
+        toSlots(d.data().slots) ? countGoing(d.id) : Promise.resolve(null),
+      ]);
       const status = rsvp.exists() ? (rsvp.data().status as RsvpStatus) : null;
-      return toEventSummary(d.id, d.data(), status && RSVPS.includes(status) ? status : null);
+      return toEventSummary(
+        d.id,
+        d.data(),
+        status && RSVPS.includes(status) ? status : null,
+        going,
+      );
     }),
   );
   return events.filter((e): e is EventSummary => e !== null);
@@ -149,7 +178,12 @@ export async function fetchEventDetail(eventId: string, uid: string): Promise<Ev
   if (!eventSnap.exists()) return null;
   const data = eventSnap.data();
   const status = mine.exists() ? (mine.data().status as RsvpStatus) : null;
-  const summary = toEventSummary(eventId, data, status && RSVPS.includes(status) ? status : null);
+  const summary = toEventSummary(
+    eventId,
+    data,
+    status && RSVPS.includes(status) ? status : null,
+    goingCount.data().count,
+  );
   if (!summary) return null;
 
   const hostId = text(data.createdBy);

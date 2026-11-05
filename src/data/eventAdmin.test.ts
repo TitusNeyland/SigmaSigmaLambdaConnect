@@ -44,6 +44,7 @@ const input = {
   rsvpDeadline: new Date(start.getTime() - 24 * 3600_000),
   feeCents: 2500,
   photoURL: null,
+  slots: null,
 };
 const ts = (d: Date) => Timestamp.fromDate(d);
 

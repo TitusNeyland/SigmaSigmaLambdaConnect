@@ -5,7 +5,7 @@ import type { EventSummary } from '@/data/events';
 import { colors, MIN_TOUCH, radius } from '@/theme';
 import { AppText, ListRow, StatusChip, type ChipTone } from '@/ui';
 
-import { dateBlock, formatTime, RSVP_LABELS } from './eventsLogic';
+import { coverage, coverageLine, dateBlock, formatTime, RSVP_LABELS } from './eventsLogic';
 
 const RSVP_TONES: Record<NonNullable<EventSummary['myRsvp']>, ChipTone> = {
   going: 'success',
@@ -46,12 +46,21 @@ export function DateBlock({ date }: { date: Date }) {
   );
 }
 
-/** One event in a grouped list: date block, title, time and place, RSVP state. */
+/**
+ * One event in a grouped list: date block, title, time and place, how covered it is when
+ * it needs a number of brothers, and the member's RSVP.
+ */
 export function EventRow({ event, showDate = true }: { event: EventSummary; showDate?: boolean }) {
+  const covered = event.cancelled ? null : coverage(event);
   return (
     <ListRow
       title={event.title}
-      subtitle={[formatTime(event.startsAt), event.location].filter(Boolean).join(' · ')}
+      subtitle={[
+        [formatTime(event.startsAt), event.location].filter(Boolean).join(' · '),
+        covered ? coverageLine(covered) : '',
+      ]
+        .filter(Boolean)
+        .join('\n')}
       leading={showDate ? <DateBlock date={event.startsAt} /> : undefined}
       trailing={<StatusBadge event={event} />}
       showChevron

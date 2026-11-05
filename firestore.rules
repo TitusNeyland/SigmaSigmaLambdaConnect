@@ -173,7 +173,10 @@ service cloud.firestore {
             || (data.endsAt is timestamp && data.endsAt > data.startsAt))
         && data.rsvpDeadline <= data.startsAt
         && (!('photoURL' in data) || data.photoURL == null || data.photoURL is string)
-        && (!('cancelled' in data) || data.cancelled is bool);
+        && (!('cancelled' in data) || data.cancelled is bool)
+        // How many brothers it needs (slots). Going RSVPs fill them.
+        && (!('slots' in data)
+            || (data.slots is int && data.slots >= 1 && data.slots <= 500));
     }
 
     function eventPath(eventId) {

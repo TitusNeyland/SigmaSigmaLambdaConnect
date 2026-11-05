@@ -329,6 +329,16 @@ function Form({ uid, existing }: { uid: string; existing: EventDetail | null }) 
               error={errors.fee}
               testID="event-form-fee"
             />
+            <TextField
+              label="Brothers needed (optional)"
+              value={form.slots}
+              onChangeText={(v) => set('slots', v)}
+              placeholder="No number"
+              keyboardType="number-pad"
+              hint="Each Going RSVP fills a slot, and the event shows how covered it is."
+              error={errors.slots}
+              testID="event-form-slots"
+            />
           </View>
 
           <View style={styles.group}>

@@ -25,8 +25,10 @@ import {
   openDirections,
   type AddToCalendarResult,
 } from './eventActions';
+import { CoverageBar } from './CoverageBar';
 import {
   CATEGORY_LABELS,
+  coverage,
   deadlineText,
   formatDay,
   formatFee,
@@ -323,6 +325,14 @@ export function EventDetailScreen({ id }: { id: string }) {
           </AppText>
         ) : null}
 
+        {!event.cancelled && coverage(event, event.going.count) ? (
+          <ListSection header="Coverage">
+            <View style={styles.coverage}>
+              <CoverageBar coverage={coverage(event, event.going.count)!} testID="event-coverage" />
+            </View>
+          </ListSection>
+        ) : null}
+
         <ListSection header="Who’s going">
           <View style={styles.going} testID="event-going">
             {event.going.preview.length > 0 ? (
@@ -389,6 +399,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
   },
+  coverage: { paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
   faces: { flexDirection: 'row' },
   face: { borderRadius: radius.pill, borderWidth: 2, borderColor: colors.surface },
   faceOverlap: { marginLeft: -spacing.sm },

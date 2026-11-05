@@ -117,6 +117,26 @@ it('shows my RSVP state on each row, and marks cancelled events', async () => {
   expect(screen.getByText('9:00 AM · Riverside Park')).toBeTruthy();
 });
 
+it('shows coverage on the Next up card and on rows that need a number of brothers', async () => {
+  events.resetEventsMock(
+    EVENTS.map((e) =>
+      e.id === 'meeting'
+        ? { ...e, slots: 10, goingCount: 6 }
+        : e.id === 'gala'
+          ? { ...e, slots: 20, goingCount: 25 }
+          : e,
+    ),
+  );
+  await openEvents();
+  expect(screen.getByTestId('featured-coverage-line')).toHaveTextContent('6 of 10 brothers · 60%');
+  expect(screen.getByTestId('featured-event').props.accessibilityLabel).toMatch(
+    /Chapter house, 6 of 10 brothers · 60%, Going$/,
+  );
+  expect(screen.getByText(/25 of 20 brothers · 125% · Full/)).toBeTruthy();
+  // Rows without a number show no coverage.
+  expect(screen.getByText('9:00 AM · Riverside Park')).toBeTruthy();
+});
+
 it('has no category chips, and a plus for a new event', async () => {
   await openEvents();
   expect(screen.queryByTestId('events-category')).toBeNull();

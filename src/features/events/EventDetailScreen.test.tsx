@@ -140,6 +140,41 @@ it('handles nobody going and no description', async () => {
   expect(screen.queryByTestId('event-about')).toBeNull();
 });
 
+describe('coverage', () => {
+  it('shows how many of the brothers needed are going, and updates on RSVP', async () => {
+    events.setMockDetails({ gala: { ...GALA, slots: 20 } });
+    await openEvent();
+    expect(screen.getByTestId('event-coverage-line')).toHaveTextContent('12 of 20 brothers · 60%');
+    expect(screen.getByTestId('event-coverage').props.accessibilityLabel).toBe(
+      'Coverage, 12 of 20 brothers · 60%',
+    );
+    await act(async () => {
+      fireEvent.press(screen.getByRole('tab', { name: 'Going' }));
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId('event-coverage-line')).toHaveTextContent(
+        '13 of 20 brothers · 65%',
+      ),
+    );
+  });
+
+  it('keeps counting past 100% and says Full', async () => {
+    events.setMockDetails({ gala: { ...GALA, slots: 10 } });
+    await openEvent();
+    expect(screen.getByTestId('event-coverage-line')).toHaveTextContent(
+      '12 of 10 brothers · 120% · Full',
+    );
+  });
+
+  it('isn’t shown without a number, or on a cancelled event', async () => {
+    await openEvent();
+    expect(screen.queryByTestId('event-coverage')).toBeNull();
+    events.setMockDetails({ gala: { ...GALA, slots: 20, cancelled: true } });
+    await openEvent();
+    expect(screen.queryByTestId('event-coverage')).toBeNull();
+  });
+});
+
 it('flags a cancelled event', async () => {
   events.setMockDetails({ gala: { ...GALA, cancelled: true } });
   await openEvent();

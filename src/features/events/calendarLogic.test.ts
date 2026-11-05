@@ -23,6 +23,8 @@ const event = (id: string, startsAt: Date): EventSummary => ({
   photoURL: null,
   cancelled: false,
   myRsvp: null,
+  slots: null,
+  goingCount: null,
 });
 
 const NOV_2026 = { year: 2026, month: 10 };
