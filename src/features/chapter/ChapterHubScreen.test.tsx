@@ -121,11 +121,11 @@ describe('everyone', () => {
     expect(r.getSearchParams()).toMatchObject({ view: 'calendar' });
   });
 
-  it('Documents is marked coming soon and does nothing', async () => {
-    await openChapter();
-    const tile = screen.getByTestId('tile-documents');
-    expect(tile.props.accessibilityLabel).toBe('Documents, Coming soon');
-    expect(tile.props.accessibilityState).toMatchObject({ disabled: true });
+  it('Documents tile opens Documents', async () => {
+    const r = await openChapter();
+    expect(screen.getByTestId('tile-documents').props.accessibilityLabel).toBe('Documents');
+    await press(screen.getByTestId('tile-documents'));
+    expect(r.getPathname()).toBe('/chapter/documents');
   });
 
   it('tapping an officer opens their profile', async () => {

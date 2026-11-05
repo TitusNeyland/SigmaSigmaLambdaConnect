@@ -22,6 +22,7 @@ Compose --> PostDetail
 Profile --> EditProfile[Edit profile]
 Profile --> Settings[Settings]
 Chapter --> Directory[Brotherhood directory]
+Chapter --> Documents[Documents: committee reports]
 Chapter --> Goals[Chapter progress]
 Chapter --> Leader[Leadership home, officers only]
 Leader --> Health[Chapter health]
@@ -58,6 +59,7 @@ Leader --> Desktop[Desktop dashboard, later]
 
 | Screen                | What it does                                                                                                                                                                                                                                                           | Issues   |
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| Documents             | Committee reports. Submit one (committee, reporting period, summary, an optional PDF, Word file or photo); it's emailed to the VPs. Members see their own, officers see all with email status. Admins set the recipients.                                              |          |
 | Chapter hub           | Officers only: Leadership card at the top with a waiting count. Everyone: progress card (ring plus brother, officer and program counts), round shortcuts (Directory, Programs, Calendar, Documents), announcements with unread dots that expand on tap, officer cards. | #42, #43 |
 | Brotherhood directory | A to Z by last name, role badges, live search by name, job or interest, filters (All, Officers, Mentors, recent initiates), empty state.                                                                                                                               | #17      |
 | Chapter progress      | Member view of programs grouped Needs help, On track, Completed. Tap to expand milestones. Needs help programs have an "I can help" button.                                                                                                                            | #44, #45 |

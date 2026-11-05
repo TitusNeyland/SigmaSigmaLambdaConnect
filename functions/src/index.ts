@@ -22,6 +22,7 @@ export {
   removeLikeActivity,
   removePostActivity,
 } from './activity.js';
+export { emailCommitteeReport } from './committeeReports.js';
 export { logMemberDecision } from './decisions.js';
 export { notifyAnnouncement } from './announcements.js';
 export { eventNotifications, notifyEventCancelled, notifyNewEvent } from './events.js';

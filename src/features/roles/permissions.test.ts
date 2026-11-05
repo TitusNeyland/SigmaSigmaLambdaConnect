@@ -9,7 +9,10 @@ const OFFICER_TOOLS: Capability[] = [
   'posts.official',
   'reports.review',
   'programs.manage',
+  'committeeReports.review',
 ];
+
+const ADMIN_TOOLS: Capability[] = ['roles.manage', 'committeeReports.recipients'];
 
 describe('accessLevelFor', () => {
   it('treats no role document as a regular member', () => {
@@ -24,7 +27,7 @@ describe('accessLevelFor', () => {
 });
 
 describe('can', () => {
-  it.each([...OFFICER_TOOLS, 'roles.manage' as const])('members cannot %s', (capability) => {
+  it.each([...OFFICER_TOOLS, ...ADMIN_TOOLS])('members cannot %s', (capability) => {
     expect(can('member', capability)).toBe(false);
   });
 
@@ -32,11 +35,11 @@ describe('can', () => {
     expect(can('officer', capability)).toBe(true);
   });
 
-  it('officers cannot change roles', () => {
-    expect(can('officer', 'roles.manage')).toBe(false);
+  it.each(ADMIN_TOOLS)('officers cannot %s', (capability) => {
+    expect(can('officer', capability)).toBe(false);
   });
 
-  it.each([...OFFICER_TOOLS, 'roles.manage' as const])('admins can %s', (capability) => {
+  it.each([...OFFICER_TOOLS, ...ADMIN_TOOLS])('admins can %s', (capability) => {
     expect(can('admin', capability)).toBe(true);
   });
 });
