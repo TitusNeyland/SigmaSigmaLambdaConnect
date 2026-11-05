@@ -2,11 +2,13 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing';
-import { doc, setDoc, Timestamp, type Firestore } from 'firebase/firestore';
+import { doc, setDoc, setLogLevel, Timestamp, type Firestore } from 'firebase/firestore';
 
 export const PROJECT_ID = 'demo-ssl-rules';
 
 export async function createTestEnv(): Promise<RulesTestEnvironment> {
+  // Tests that expect a denial log each refusal as a warning. Keep real errors only.
+  setLogLevel('error');
   const root = resolve(__dirname, '..', '..');
   return initializeTestEnvironment({
     projectId: PROJECT_ID,
