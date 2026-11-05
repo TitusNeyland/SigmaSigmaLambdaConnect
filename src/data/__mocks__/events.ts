@@ -58,6 +58,7 @@ export function sampleDetail(overrides: Partial<EventDetail> = {}): EventDetail 
     address: '100 Sample St',
     feeCents: 0,
     rsvpDeadline: new Date(Date.now() + 86_400_000),
+    createdBy: 'sample-jordan',
     host: { uid: 'sample-jordan', displayName: 'Jordan Hill', photoURL: null },
     going: { count: 0, preview: [] },
     ...overrides,

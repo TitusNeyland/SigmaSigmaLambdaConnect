@@ -25,6 +25,7 @@ const GALA: EventDetail = {
   address: '200 Sample Ave, Nashville, TN',
   feeCents: 0,
   rsvpDeadline: null,
+  createdBy: 'sample-jordan',
   host: null,
   going: { count: 0, preview: [] },
 };

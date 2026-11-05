@@ -184,7 +184,7 @@ export function EventDetailScreen({ id }: { id: string }) {
         onBack={goBack}
         backTestID="event-back"
         trailing={
-          canManage ? (
+          canManage || event.createdBy === uid ? (
             <HeaderButton
               title="Edit"
               onPress={() => router.push({ pathname: '/events/[id]/edit', params: { id } })}

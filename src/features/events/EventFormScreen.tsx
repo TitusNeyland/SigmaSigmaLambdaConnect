@@ -56,7 +56,10 @@ function goBack(fallback: string) {
 type Loaded =
   { state: 'loading' } | { state: 'ready'; event: EventDetail | null } | { state: 'error' };
 
-/** Create (no id) or edit an event. Officers only; the rules enforce the same. */
+/**
+ * Create (no id) or edit an event. Any approved member can create one; only its host or an
+ * officer can edit it. The rules enforce the same.
+ */
 export function EventFormScreen({ id }: { id?: string }) {
   const canManage = useCan('events.manage');
   const auth = useAuth();
@@ -77,14 +80,6 @@ export function EventFormScreen({ id }: { id?: string }) {
     };
   }, [id, uid]);
 
-  if (!canManage) {
-    return (
-      <Message
-        text="Only chapter officers can create and edit events."
-        onBack={() => goBack('/events')}
-      />
-    );
-  }
   if (loaded.state === 'loading')
     return <Message text="Loading…" onBack={() => goBack('/events')} />;
   if (loaded.state === 'error') {
@@ -92,6 +87,14 @@ export function EventFormScreen({ id }: { id?: string }) {
   }
   if (id && !loaded.event) {
     return <Message text="This event isn’t available." onBack={() => goBack('/events')} />;
+  }
+  if (loaded.event && !canManage && loaded.event.createdBy !== uid) {
+    return (
+      <Message
+        text="Only the host or a chapter officer can edit this event."
+        onBack={() => goBack('/events')}
+      />
+    );
   }
   return <Form uid={uid} existing={loaded.event} />;
 }

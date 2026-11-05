@@ -3,10 +3,11 @@ import {
   assertSucceeds,
   type RulesTestEnvironment,
 } from '@firebase/rules-unit-testing';
+import { doc, setDoc } from 'firebase/firestore';
 import { deleteObject, getBytes, ref, uploadBytes, type FirebaseStorage } from 'firebase/storage';
 import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest';
 
-import { createTestEnv, seedBase, USERS } from './helpers';
+import { createTestEnv, eventDoc, seedBase, USERS } from './helpers';
 
 let env: RulesTestEnvironment;
 
@@ -110,9 +111,35 @@ describe('post photos', () => {
 });
 
 describe('event photos', () => {
-  it('officers upload event photos; members cannot', async () => {
+  it('officers upload photos to any event', async () => {
     await assertSucceeds(uploadBytes(ref(as(USERS.olivia), 'events/new/hero.jpg'), image(), jpeg));
-    await assertFails(uploadBytes(ref(as(USERS.alice), 'events/new/hero.jpg'), image(), jpeg));
+    await assertSucceeds(uploadBytes(ref(as(USERS.olivia), 'events/open/2.jpg'), image(), jpeg));
+  });
+
+  it('members upload a photo for a new event or one they host, not someone else’s', async () => {
+    await env.withSecurityRulesDisabled((ctx) =>
+      setDoc(doc(ctx.firestore(), 'events/alices'), eventDoc({ createdBy: USERS.alice })),
+    );
+    // A new event's photo uploads before the event is saved.
+    await assertSucceeds(uploadBytes(ref(as(USERS.alice), 'events/new/hero.jpg'), image(), jpeg));
+    await assertSucceeds(uploadBytes(ref(as(USERS.alice), 'events/alices/2.jpg'), image(), jpeg));
+    // events/open is hosted by an officer.
+    await assertFails(uploadBytes(ref(as(USERS.alice), 'events/open/2.jpg'), image(), jpeg));
+  });
+
+  it('pending members cannot upload event photos', async () => {
+    await assertFails(uploadBytes(ref(as(USERS.pete), 'events/new/hero.jpg'), image(), jpeg));
+  });
+
+  it('event photos are images up to 10 MB', async () => {
+    await assertFails(
+      uploadBytes(ref(as(USERS.alice), 'events/new/big.jpg'), image(10 * MB + 1), jpeg),
+    );
+  });
+
+  it('only officers delete event photos', async () => {
+    await assertFails(deleteObject(ref(as(USERS.alice), 'events/open/hero.jpg')));
+    await assertSucceeds(deleteObject(ref(as(USERS.olivia), 'events/open/hero.jpg')));
   });
 
   it('approved members can view event photos', async () => {

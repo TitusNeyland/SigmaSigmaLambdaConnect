@@ -33,6 +33,10 @@ service firebase.storage {
         && firestore.get(rolePath()).data.role in ['officer', 'admin'];
     }
 
+    function eventPath(eventId) {
+      return /databases/(default)/documents/events/$(eventId);
+    }
+
     function isImageUnder(maxBytes) {
       return request.resource.contentType.matches('image/.*')
         && request.resource.size < maxBytes;
@@ -55,7 +59,13 @@ service firebase.storage {
     // Event hero photos.
     match /events/{eventId}/{fileName} {
       allow read: if isApproved();
-      allow create, update: if isOfficer() && isImageUnder(10 * 1024 * 1024);
+      // Officers, or the host. A new event's photo uploads before the event is saved, so
+      // any approved member may add one to an id that has no event yet.
+      allow create, update: if isImageUnder(10 * 1024 * 1024)
+        && (isOfficer()
+            || (isApproved()
+                && (!firestore.exists(eventPath(eventId))
+                    || firestore.get(eventPath(eventId)).data.createdBy == request.auth.uid)));
       allow delete: if isOfficer();
     }
 
