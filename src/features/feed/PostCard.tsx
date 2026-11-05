@@ -64,7 +64,15 @@ function openPost(id: string) {
   router.push({ pathname: '/home/post/[id]', params: { id } });
 }
 
-/** One post in the feed: author line, photos, counts and caption, Instagram style. */
+const AVATAR = 36;
+/** Where the author's name starts: card padding, avatar, gap. */
+const TEXT_INDENT = spacing.lg + AVATAR + spacing.sm;
+
+/**
+ * One post in the feed. Photo posts read Instagram style: author line, photos, counts,
+ * then "Name caption". Text-only posts read like a tweet: the text sits right under the
+ * author line, lined up with the name, and the actions follow it.
+ */
 export function PostCard({
   post: original,
   now,
@@ -82,6 +90,22 @@ export function PostCard({
   const tappable = !post.official && !!post.author;
   const caption = captionPreview(post.caption);
   const like = useLike(post.id, me, { liked: post.likedByMe, count: post.likeCount });
+  const textOnly = post.photoPaths.length === 0;
+
+  const more =
+    caption.truncated && !expanded ? (
+      <AppText
+        variant={textOnly ? 'body' : 'subhead'}
+        color={colors.textSecondary}
+        onPress={() => setExpanded(true)}
+        accessibilityRole="button"
+        testID={`more-${post.id}`}
+      >
+        {' '}
+        more
+      </AppText>
+    ) : null;
+  const shownCaption = expanded ? post.caption.trim() : caption.text;
 
   return (
     <View style={styles.card} testID={`post-${post.id}`}>
@@ -102,9 +126,9 @@ export function PostCard({
           testID={`post-author-${post.id}`}
         >
           {post.official ? (
-            <Monogram size={36} />
+            <Monogram size={AVATAR} />
           ) : (
-            <Avatar name={name} uri={post.author?.photoURL} size={36} />
+            <Avatar name={name} uri={post.author?.photoURL} size={AVATAR} />
           )}
           <View style={styles.flex}>
             <View style={styles.nameRow}>
@@ -134,9 +158,22 @@ export function PostCard({
         />
       </View>
 
-      <PhotoCarousel paths={post.photoPaths} label={`Photo from ${name}`} onDoubleTap={like.like} />
+      {textOnly ? (
+        caption.text ? (
+          <AppText style={styles.textPost} testID={`caption-${post.id}`}>
+            {shownCaption}
+            {more}
+          </AppText>
+        ) : null
+      ) : (
+        <PhotoCarousel
+          paths={post.photoPaths}
+          label={`Photo from ${name}`}
+          onDoubleTap={like.like}
+        />
+      )}
 
-      <View style={styles.actions}>
+      <View style={[styles.actions, textOnly && styles.textPostActions]}>
         <Pressable
           onPress={like.toggle}
           accessibilityRole="button"
@@ -160,7 +197,7 @@ export function PostCard({
         ) : null}
       </View>
 
-      <View style={styles.body}>
+      <View style={[styles.body, textOnly && styles.textPostBody]}>
         {like.count > 0 ? (
           <AppText variant="subhead" weight="600" testID={`likes-${post.id}`}>
             {likesLabel(like.count)}
@@ -171,24 +208,13 @@ export function PostCard({
             Couldn’t save your like. Try again.
           </AppText>
         ) : null}
-        {caption.text ? (
+        {!textOnly && caption.text ? (
           <AppText variant="subhead" testID={`caption-${post.id}`}>
             <AppText variant="subhead" weight="600">
               {name}{' '}
             </AppText>
-            {expanded ? post.caption.trim() : caption.text}
-            {caption.truncated && !expanded ? (
-              <AppText
-                variant="subhead"
-                color={colors.textSecondary}
-                onPress={() => setExpanded(true)}
-                accessibilityRole="button"
-                testID={`more-${post.id}`}
-              >
-                {' '}
-                more
-              </AppText>
-            ) : null}
+            {shownCaption}
+            {more}
           </AppText>
         ) : null}
         {post.allowComments && post.commentCount > 0 ? (
@@ -230,4 +256,8 @@ const styles = StyleSheet.create({
   action: { width: MIN_TOUCH, height: MIN_TOUCH, alignItems: 'center', justifyContent: 'center' },
   body: { paddingHorizontal: spacing.lg, gap: spacing.xs },
   commentsLink: { minHeight: MIN_TOUCH - spacing.md, justifyContent: 'center' },
+  // Text-only posts line up with the author's name, past the avatar, like a tweet.
+  textPost: { paddingLeft: TEXT_INDENT, paddingRight: spacing.lg },
+  textPostActions: { paddingLeft: TEXT_INDENT - spacing.md },
+  textPostBody: { paddingLeft: TEXT_INDENT },
 });

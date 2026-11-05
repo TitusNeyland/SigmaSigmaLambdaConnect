@@ -85,7 +85,26 @@ it('shows the newest posts first with LinkedIn-style author lines', async () => 
   expect(screen.getByTestId('post-author-p1').props.accessibilityLabel).toBe(
     'Marcus Reed, Treasurer · Initiated 2019 · Software engineer, 1h',
   );
-  expect(screen.getByTestId('caption-p1')).toHaveTextContent('Marcus Reed Sample post 1');
+  expect(screen.getByTestId('caption-p1')).toHaveTextContent(/^Sample post 1$/);
+});
+
+it('shows a text-only post like a tweet, with the text right under the author', async () => {
+  feed.resetFeedMock([feed.samplePost({ id: 'p1', caption: 'Chapter meeting moved to 7' })]);
+  await openHome();
+  const text = screen.getByTestId('caption-p1');
+  // No "Name caption" prefix and no photo area.
+  expect(text).toHaveTextContent(/^Chapter meeting moved to 7$/);
+  expect(screen.queryByTestId(/^photo-/)).toBeNull();
+  expect(screen.getByTestId('like-p1')).toBeTruthy();
+});
+
+it('keeps the Instagram-style caption on photo posts', async () => {
+  feed.resetFeedMock([
+    feed.samplePost({ id: 'p1', caption: 'Gala night', photoPaths: ['posts/a/p1/0.jpg'] }),
+  ]);
+  await openHome();
+  await waitFor(() => expect(screen.getByTestId('photo-posts/a/p1/0.jpg')).toBeTruthy());
+  expect(screen.getByTestId('caption-p1')).toHaveTextContent('Marcus Reed Gala night');
 });
 
 it('loads the next page as you scroll, without repeats', async () => {
