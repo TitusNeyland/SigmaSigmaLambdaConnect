@@ -1,5 +1,6 @@
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 
+import { centerCrop, cropRect } from './cropLogic';
 import type { DraftPhoto } from './draft';
 
 /** Post photos are stored at most this long on their longer side. */
@@ -17,13 +18,15 @@ export function targetSize(
 }
 
 /**
- * Shrinks and compresses a picked photo before upload, so posts work on a weak connection.
- * Always re-encodes as JPEG, which also turns HEIC from iPhones into a format every phone
- * can show.
+ * Crops a picked photo to how it was framed (the middle, if it wasn't edited) at the post's
+ * shape, then shrinks and compresses it, so posts work on a weak connection. Always
+ * re-encodes as JPEG, which also turns HEIC from iPhones into a format every phone can show.
  */
-export async function preparePhoto(photo: DraftPhoto): Promise<string> {
+export async function preparePhoto(photo: DraftPhoto, aspect: number): Promise<string> {
   const manip = ImageManipulator.manipulate(photo.uri);
-  const size = targetSize(photo.width, photo.height);
+  const rect = cropRect(photo.crop ?? centerCrop(photo, aspect), photo);
+  manip.crop(rect);
+  const size = targetSize(rect.width, rect.height);
   if (size) manip.resize(size);
   const image = await manip.renderAsync();
   const saved = await image.saveAsync({ format: SaveFormat.JPEG, compress: JPEG_QUALITY });

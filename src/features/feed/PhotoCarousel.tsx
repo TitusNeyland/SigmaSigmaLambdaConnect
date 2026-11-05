@@ -9,10 +9,20 @@ import { useStorageUrl } from './useStorageUrl';
 /** Two taps this close together count as a double-tap. */
 const DOUBLE_TAP_MS = 300;
 
-function Photo({ path, width, label }: { path: string; width: number; label: string }) {
+function Photo({
+  path,
+  width,
+  height,
+  label,
+}: {
+  path: string;
+  width: number;
+  height: number;
+  label: string;
+}) {
   const uri = useStorageUrl(path);
   return (
-    <View style={[styles.photo, { width }]}>
+    <View style={[styles.photo, { width, height }]} testID={`photo-frame-${path}`}>
       {uri ? (
         <Image
           source={{ uri }}
@@ -26,14 +36,20 @@ function Photo({ path, width, label }: { path: string; width: number; label: str
   );
 }
 
-/** Full-width square photos you swipe through, with dots when there's more than one. */
+/**
+ * Full-width photos you swipe through, with dots when there's more than one. They show at
+ * the post's shape, so a wide photo shows wide; posts from before framing are square.
+ */
 export function PhotoCarousel({
   paths,
   label,
+  aspectRatio = 1,
   onDoubleTap,
 }: {
   paths: string[];
   label: string;
+  /** Width over height. Photos were cropped to it when posted. */
+  aspectRatio?: number;
   /** Double-tap a photo to like it. */
   onDoubleTap?: () => void;
 }) {
@@ -64,6 +80,7 @@ export function PhotoCarousel({
             <Photo
               path={path}
               width={width}
+              height={Math.round(width / aspectRatio)}
               label={paths.length > 1 ? `${label}, photo ${i + 1} of ${paths.length}` : label}
             />
           </Pressable>
@@ -81,7 +98,7 @@ export function PhotoCarousel({
 }
 
 const styles = StyleSheet.create({
-  photo: { aspectRatio: 1, backgroundColor: colors.fill },
+  photo: { backgroundColor: colors.fill },
   dots: { flexDirection: 'row', justifyContent: 'center', gap: spacing.xs, paddingTop: spacing.sm },
   dot: {
     width: spacing.xs + 2,

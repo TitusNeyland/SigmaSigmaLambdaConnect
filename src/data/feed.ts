@@ -46,6 +46,8 @@ export type FeedPost = {
   likedByMe: boolean;
   /** The newest top-level comments, oldest first, shown under the caption in the feed. */
   previewComments: CommentPreview[];
+  /** Width over height the photos show at. Posts from before framing are square. */
+  aspectRatio: number;
 };
 
 /** Opaque: pass it back to get the next page. Null when there are no more posts. */
@@ -78,6 +80,12 @@ export async function fetchAuthor(uid: string): Promise<FeedAuthor | null> {
   };
 }
 
+/** A post's photo shape, kept in the allowed range; square for older posts. */
+export function postAspect(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) return 1;
+  return Math.min(1.91, Math.max(0.8, value));
+}
+
 export function toFeedPost(
   id: string,
   data: Record<string, unknown>,
@@ -103,6 +111,7 @@ export function toFeedPost(
     createdAt,
     likedByMe,
     previewComments: [],
+    aspectRatio: postAspect(data.aspectRatio),
   };
 }
 

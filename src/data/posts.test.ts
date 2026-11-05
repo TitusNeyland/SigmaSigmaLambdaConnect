@@ -79,6 +79,7 @@ it('creates the post with exactly the fields the rules allow', async () => {
     taggedMemberIds: ['a'],
     allowComments: false,
     official: true,
+    aspectRatio: 1.5,
   });
   expect(setDoc).toHaveBeenCalledWith(
     { path: 'posts/p1' },
@@ -90,6 +91,7 @@ it('creates the post with exactly the fields the rules allow', async () => {
       taggedMemberIds: ['a'],
       allowComments: false,
       official: true,
+      aspectRatio: 1.5,
       removed: false,
       likeCount: 0,
       commentCount: 0,

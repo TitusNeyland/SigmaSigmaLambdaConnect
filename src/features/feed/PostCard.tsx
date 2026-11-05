@@ -176,6 +176,7 @@ export function PostCard({
       ) : (
         <PhotoCarousel
           paths={post.photoPaths}
+          aspectRatio={post.aspectRatio}
           label={`Photo from ${name}`}
           onDoubleTap={like.like}
         />

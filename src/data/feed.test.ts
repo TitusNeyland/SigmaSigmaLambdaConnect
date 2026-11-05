@@ -1,6 +1,6 @@
 import { getDoc, getDocs, limit, orderBy, startAfter, Timestamp, where } from 'firebase/firestore';
 
-import { fetchFeedPage, toFeedPost } from './feed';
+import { fetchFeedPage, postAspect, toFeedPost } from './feed';
 
 jest.mock('./firebase', () => ({ db: { name: 'db' } }));
 jest.mock('firebase/firestore', () => {
@@ -77,8 +77,19 @@ describe('toFeedPost', () => {
       createdAt: new Date(1000),
       likedByMe: false,
       previewComments: [],
+      aspectRatio: 1,
     });
     expect(toFeedPost('p', { authorId: 'a' }, null, false)).toBeNull();
+  });
+});
+
+describe('postAspect', () => {
+  it('keeps a post’s shape in the allowed range, and older posts square', () => {
+    expect(postAspect(16 / 9)).toBeCloseTo(16 / 9);
+    expect(postAspect(0.5)).toBe(0.8);
+    expect(postAspect(3)).toBe(1.91);
+    expect(postAspect(undefined)).toBe(1);
+    expect(postAspect('wide')).toBe(1);
   });
 });
 

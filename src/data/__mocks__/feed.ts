@@ -30,6 +30,7 @@ export function samplePost(overrides: Partial<FeedPost> = {}): FeedPost {
     createdAt: new Date(Date.now() - 2 * 3600_000),
     likedByMe: false,
     previewComments: [],
+    aspectRatio: 1,
     ...overrides,
   };
 }

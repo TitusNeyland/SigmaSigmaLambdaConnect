@@ -13,6 +13,8 @@ export type NewPost = {
   allowComments: boolean;
   /** Posted as Sigma Sigma Lambda (#39). Officers only; the rules check. */
   official: boolean;
+  /** Width over height of the photos' frame, 4:5 to 1.91:1. The feed shows them at it. */
+  aspectRatio: number;
 };
 
 /** A new post's ID, made up front so its photos can be uploaded under it first. */
@@ -63,6 +65,7 @@ export async function createPost(id: string, uid: string, post: NewPost): Promis
     taggedMemberIds: post.taggedMemberIds,
     allowComments: post.allowComments,
     official: post.official,
+    aspectRatio: post.aspectRatio,
     removed: false,
     likeCount: 0,
     commentCount: 0,

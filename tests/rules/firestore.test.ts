@@ -844,6 +844,7 @@ describe('posts', () => {
       taggedMemberIds: [],
       allowComments: true,
       official: false,
+      aspectRatio: 16 / 9,
       removed: false,
       likeCount: 0,
       commentCount: 0,
@@ -852,6 +853,12 @@ describe('posts', () => {
     });
     const db = as(USERS.alice);
     await assertSucceeds(setDoc(doc(db, 'posts/photos'), shared({})));
+    // The photos' frame: 4:5 portrait up to 1.91:1 landscape, like Instagram.
+    await assertSucceeds(setDoc(doc(db, 'posts/tallest'), shared({ aspectRatio: 0.8 })));
+    await assertSucceeds(setDoc(doc(db, 'posts/widest'), shared({ aspectRatio: 1.91 })));
+    await assertFails(setDoc(doc(db, 'posts/tooTall'), shared({ aspectRatio: 0.5 })));
+    await assertFails(setDoc(doc(db, 'posts/tooWide'), shared({ aspectRatio: 3 })));
+    await assertFails(setDoc(doc(db, 'posts/notANumber'), shared({ aspectRatio: 'wide' })));
     await assertSucceeds(
       setDoc(
         doc(db, 'posts/textOnly'),

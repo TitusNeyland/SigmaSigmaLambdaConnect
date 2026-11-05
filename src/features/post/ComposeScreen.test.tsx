@@ -1,4 +1,5 @@
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
+import { StyleSheet } from 'react-native';
 
 jest.mock('@/data/auth');
 const auth = jest.requireMock<typeof import('@/data/__mocks__/auth')>('@/data/auth');
@@ -36,6 +37,25 @@ const picker = jest.requireMock<typeof import('./pickPhotos')>('./pickPhotos');
 
 const photos = (...ns: number[]) =>
   ns.map((n) => ({ uri: `file:///${n}.jpg`, width: 1000, height: 1000 }));
+
+// The camera roll mock (jest.setup.js): photo "n" resolves to file:///n.jpg.
+const roll = jest.requireMock<{
+  __setPhotos: (
+    photos: { id: string; width: number; height: number; favorite?: boolean; albumId?: string }[],
+  ) => void;
+  __setAlbums: (albums: { id: string; title: string; type: string | null }[]) => void;
+  __setPermission: (permission: object) => void;
+  presentPermissionsPicker: jest.Mock;
+}>('expo-media-library');
+const rollPhotos = (count: number) =>
+  Array.from({ length: count }, (_, i) => ({ id: String(i + 1), width: 1000, height: 1000 }));
+const access = (granted: boolean, extra: object = {}) => ({
+  granted,
+  canAskAgain: true,
+  accessPrivileges: granted ? 'all' : 'none',
+  status: granted ? 'granted' : 'undetermined',
+  ...extra,
+});
 const me = () => auth.sampleUser().uid;
 
 async function press(target: Parameters<typeof fireEvent.press>[0]) {
@@ -74,30 +94,35 @@ beforeEach(() => {
     directory.sampleEntry({ uid: 'z', displayName: 'Zed Allen' }),
     directory.sampleEntry({ uid: me(), displayName: 'Me' }),
   ]);
+  roll.__setPhotos(rollPhotos(12));
+  roll.__setPermission(access(true));
+  roll.__setAlbums([]);
   auth.setMockUser(auth.sampleUser());
 });
 
-/** Opens the flow from Home, picks photos and goes to compose. */
+/** Opens the Post tab, which goes straight to compose, and taps photos in the camera roll. */
 async function compose(...ns: number[]) {
   await renderRouter('src/app', { initialUrl: '/home' });
   await waitFor(() => expect(screen.getByTestId('tab-post')).toBeTruthy());
   await press(screen.getByTestId('tab-post'));
-  await waitFor(() => expect(screen.getByTestId('post-choose')).toBeTruthy());
-  if (ns.length) {
-    jest
-      .mocked(picker.pickFromLibrary)
-      .mockResolvedValue({ status: 'picked', photos: photos(...ns) });
-    await press(screen.getByTestId('post-choose'));
-    await press(screen.getByTestId('post-next'));
-  } else {
-    await press(screen.getByTestId('post-text-only'));
-  }
   await waitFor(() => expect(screen.getByTestId('compose-caption')).toBeTruthy());
+  if (screen.queryByTestId('camera-roll')) {
+    await waitFor(() => expect(screen.getByTestId('roll-1')).toBeTruthy());
+  }
+  for (const [i, n] of ns.entries()) {
+    await press(screen.getByTestId(`roll-${n}`));
+    await waitFor(() => expect(screen.getByTestId(`compose-photo-${i + 1}`)).toBeTruthy());
+  }
 }
 
 it('shares photos, caption, event, tags and the comments setting, cover first', async () => {
   await compose(1, 2, 3);
+  // Tapping a photo opens the editor, which can make it the cover.
   await press(screen.getByTestId('compose-photo-3'));
+  await waitFor(() => expect(screen.getByTestId('editor-make-cover')).toBeTruthy());
+  await press(screen.getByTestId('editor-make-cover'));
+  await press(screen.getByTestId('editor-done'));
+  await waitFor(() => expect(screen.getByTestId('compose-caption')).toBeTruthy());
   expect(screen.getByTestId('compose-photo-1').props.accessibilityLabel).toBe('Photo 1, cover');
   await type('compose-caption', '  Great turnout at the gala ');
 
@@ -135,6 +160,8 @@ it('shares photos, caption, event, tags and the comments setting, cover first', 
     taggedMemberIds: ['b', 'z'],
     allowComments: false,
     official: false,
+    // The roll photos are square, and Original follows the cover.
+    aspectRatio: 1,
   });
   await waitFor(() => expect(screen.getByTestId('posted')).toBeTruthy());
 });
@@ -192,10 +219,272 @@ it('Posted links to the new post', async () => {
   await waitFor(() => expect(screen).toHavePathname('/home/post/new-post'));
 });
 
-it('Back returns to the photos with the picks kept', async () => {
-  await compose(1, 2);
-  await press(screen.getByTestId('compose-back'));
-  await waitFor(() => expect(screen.getByTestId('thumb-2')).toBeTruthy());
+describe('photos', () => {
+  it('the Post tab opens straight to compose, with the camera roll below', async () => {
+    await compose();
+    expect(screen.getByRole('header', { name: 'New post' })).toBeTruthy();
+    expect(screen.getByText('Recents')).toBeTruthy();
+    expect(screen.getByTestId('roll-camera')).toBeTruthy();
+    expect(screen.getByTestId('roll-12')).toBeTruthy();
+    expect(screen.queryByTestId('compose-photo-1')).toBeNull();
+  });
+
+  it('puts the guidelines under the caption, and photos last, under who can see posts', async () => {
+    await compose();
+    // Every testID in the order it renders, top to bottom.
+    type Node = { props?: { testID?: unknown }; children?: unknown[] | null };
+    const order: string[] = [];
+    const walk = (node: unknown) => {
+      if (!node || typeof node !== 'object') return;
+      if (Array.isArray(node)) return node.forEach(walk);
+      const { props, children } = node as Node;
+      if (typeof props?.testID === 'string') order.push(props.testID);
+      children?.forEach(walk);
+    };
+    walk(screen.toJSON());
+    const at = (id: string) => order.indexOf(id);
+    expect(at('compose-caption')).toBeLessThan(at('compose-guidelines'));
+    expect(at('compose-guidelines')).toBeLessThan(at('compose-tag-event'));
+    expect(at('compose-comments')).toBeLessThan(at('camera-roll'));
+    expect(at('camera-roll')).toBeGreaterThan(-1);
+  });
+
+  it('picks from the camera roll in order, and tapping again unpicks', async () => {
+    await compose(3, 1);
+    expect(screen.getByTestId('roll-3').props.accessibilityLabel).toBe('Photo, picked 1');
+    expect(screen.getByTestId('roll-1').props.accessibilityLabel).toBe('Photo, picked 2');
+    await press(screen.getByTestId('roll-3'));
+    expect(screen.getByTestId('roll-3').props.accessibilityLabel).toBe('Photo');
+    expect(screen.getByTestId('roll-1').props.accessibilityLabel).toBe('Photo, picked 1');
+    expect(screen.queryByTestId('compose-photo-2')).toBeNull();
+  });
+
+  it('stops at 10 photos', async () => {
+    await compose(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
+    expect(screen.getByTestId('roll-11').props.accessibilityState).toMatchObject({
+      disabled: true,
+    });
+    await press(screen.getByTestId('roll-11'));
+    expect(screen.queryByTestId('compose-photo-11')).toBeNull();
+  });
+
+  it('removing from the strip unpicks it in the camera roll too', async () => {
+    await compose(1, 2);
+    await press(screen.getByTestId('compose-remove-1'));
+    expect(screen.getByTestId('roll-1').props.accessibilityLabel).toBe('Photo');
+    expect(screen.getByTestId('compose-photo-1').props.accessibilityLabel).toBe('Photo 1, cover');
+  });
+
+  it('the camera tile takes a photo, and explains when the camera is off', async () => {
+    await compose();
+    jest.mocked(picker.takePhoto).mockResolvedValueOnce({ status: 'denied' });
+    await press(screen.getByTestId('roll-camera'));
+    expect(screen.getByTestId('compose-photo-note')).toHaveTextContent(
+      'Allow camera access in Settings to take a photo.',
+    );
+    jest.mocked(picker.takePhoto).mockResolvedValueOnce({ status: 'picked', photos: photos(77) });
+    await press(screen.getByTestId('roll-camera'));
+    await waitFor(() => expect(screen.getByTestId('compose-photo-1')).toBeTruthy());
+    expect(screen.queryByTestId('compose-photo-note')).toBeNull();
+  });
+
+  it('loads more of the camera roll on request', async () => {
+    roll.__setPhotos(rollPhotos(70));
+    await compose();
+    expect(screen.queryByTestId('roll-61')).toBeNull();
+    await press(screen.getByTestId('roll-more'));
+    await waitFor(() => expect(screen.getByTestId('roll-70')).toBeTruthy());
+    expect(screen.queryByTestId('roll-more')).toBeNull();
+  });
+
+  describe('choosing which photos to show', () => {
+    beforeEach(() => {
+      roll.__setPhotos([
+        { id: '1', width: 1000, height: 1000, favorite: true },
+        { id: '2', width: 1000, height: 1000, albumId: 'trip' },
+        { id: '3', width: 1000, height: 1000, favorite: true, albumId: 'trip' },
+        { id: '4', width: 1000, height: 1000 },
+      ]);
+      roll.__setAlbums([
+        { id: 'trip', title: 'Spring trip', type: 'album' },
+        { id: 'shots', title: 'Screenshots', type: 'smartAlbum' },
+        { id: 'chapter', title: 'Chapter', type: null },
+      ]);
+    });
+
+    const shown = () =>
+      ['1', '2', '3', '4'].filter((id) => screen.queryByTestId(`roll-${id}`) !== null);
+
+    it('starts on Recents and switches to Favorites', async () => {
+      await compose();
+      expect(screen.getByTestId('roll-source')).toHaveTextContent('Recents');
+      expect(shown()).toEqual(['1', '2', '3', '4']);
+      await press(screen.getByTestId('roll-source'));
+      await press(screen.getByTestId('roll-show-favorites'));
+      await waitFor(() => expect(shown()).toEqual(['1', '3']));
+      expect(screen.getByTestId('roll-source')).toHaveTextContent('Favorites');
+    });
+
+    it('lists the member’s own albums by name, and shows one', async () => {
+      await compose();
+      await press(screen.getByTestId('roll-source'));
+      await press(screen.getByTestId('roll-show-albums'));
+      await waitFor(() => expect(screen.getByTestId('roll-album-trip')).toBeTruthy());
+      // Smart albums like Screenshots aren't listed; the rest are by name.
+      expect(screen.queryByTestId('roll-album-shots')).toBeNull();
+      expect(screen.getByTestId('roll-album-chapter')).toBeTruthy();
+      await press(screen.getByTestId('roll-album-trip'));
+      await waitFor(() => expect(shown()).toEqual(['2', '3']));
+      expect(screen.getByTestId('roll-source')).toHaveTextContent('Spring trip');
+      // And back to everything.
+      await press(screen.getByTestId('roll-source'));
+      await press(screen.getByTestId('roll-show-recents'));
+      await waitFor(() => expect(shown()).toEqual(['1', '2', '3', '4']));
+    });
+
+    it('keeps picks when switching, and says when there’s nothing to show', async () => {
+      roll.__setPhotos([{ id: '1', width: 1000, height: 1000 }]);
+      await compose(1);
+      await press(screen.getByTestId('roll-source'));
+      await press(screen.getByTestId('roll-show-favorites'));
+      await waitFor(() =>
+        expect(screen.getByTestId('roll-empty')).toHaveTextContent('No favorite photos yet.'),
+      );
+      expect(screen.getByTestId('compose-photo-1')).toBeTruthy();
+    });
+  });
+
+  it('with only some photos shared, offers to select more', async () => {
+    roll.__setPermission({ ...access(true), accessPrivileges: 'limited' });
+    await compose();
+    await press(screen.getByTestId('roll-select-more'));
+    expect(roll.presentPermissionsPicker).toHaveBeenCalled();
+  });
+
+  it('without access, asks for it, and the system picker still works', async () => {
+    roll.__setPermission(access(false));
+    await compose();
+    expect(screen.queryByTestId('camera-roll')).toBeNull();
+    expect(screen.getByTestId('roll-allow')).toBeTruthy();
+    jest.mocked(picker.pickFromLibrary).mockResolvedValueOnce({ status: 'canceled' });
+    await press(screen.getByTestId('roll-library'));
+    expect(picker.pickFromLibrary).toHaveBeenLastCalledWith(10);
+    expect(screen.queryByTestId('compose-photo-1')).toBeNull();
+    jest
+      .mocked(picker.pickFromLibrary)
+      .mockResolvedValueOnce({ status: 'picked', photos: photos(5, 6) });
+    await press(screen.getByTestId('roll-library'));
+    await waitFor(() => expect(screen.getByTestId('compose-photo-2')).toBeTruthy());
+    // Granting access shows the camera roll.
+    roll.__setPermission(access(true));
+    await press(screen.getByTestId('roll-allow'));
+    await waitFor(() => expect(screen.getByTestId('camera-roll')).toBeTruthy());
+  });
+
+  it('when access was turned off, points to Settings', async () => {
+    roll.__setPermission({ ...access(false), canAskAgain: false, status: 'denied' });
+    await compose();
+    expect(screen.getByTestId('roll-settings')).toBeTruthy();
+    expect(screen.queryByTestId('roll-allow')).toBeNull();
+  });
+
+  describe('framing photos', () => {
+    beforeEach(() => {
+      roll.__setPhotos([
+        { id: '1', width: 1920, height: 1080 },
+        { id: '2', width: 1080, height: 1920 },
+      ]);
+    });
+
+    async function share() {
+      await press(screen.getByTestId('compose-share'));
+      await waitFor(() => expect(posts.createPost).toHaveBeenCalled());
+      return jest.mocked(posts.createPost).mock.calls[0][2];
+    }
+
+    it('a wide photo posts wide, so the feed shows all of it', async () => {
+      await compose(1);
+      expect((await share()).aspectRatio).toBeCloseTo(16 / 9);
+      // Uploaded at that shape, uncut.
+      expect(preparePhoto).toHaveBeenCalledWith(
+        expect.objectContaining({ uri: 'file:///1.jpg' }),
+        expect.closeTo(16 / 9, 6),
+      );
+    });
+
+    it('a tall photo posts at 4:5, the tallest the feed shows', async () => {
+      await compose(2);
+      expect((await share()).aspectRatio).toBe(0.8);
+    });
+
+    it('the editor sets the post’s shape for every photo', async () => {
+      await compose(1, 2);
+      await press(screen.getByTestId('compose-photo-2'));
+      await waitFor(() => expect(screen.getByTestId('editor-frame')).toBeTruthy());
+      // The frame is the screen's width at the post's shape (Original: the 16:9 cover).
+      const frame = () => StyleSheet.flatten(screen.getByTestId('editor-frame').props.style);
+      expect(frame().height).toBe(Math.round(frame().width / (16 / 9)));
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('editor-shape-square'));
+      });
+      expect(frame().height).toBe(frame().width);
+      await press(screen.getByTestId('editor-done'));
+      await waitFor(() => expect(screen.getByTestId('compose-caption')).toBeTruthy());
+      expect((await share()).aspectRatio).toBe(1);
+      expect(preparePhoto).toHaveBeenCalledWith(
+        expect.objectContaining({ uri: 'file:///2.jpg' }),
+        1,
+      );
+    });
+
+    it('Cancel in the editor keeps things as they were', async () => {
+      await compose(1);
+      await press(screen.getByTestId('compose-photo-1'));
+      await waitFor(() => expect(screen.getByTestId('editor-is-cover')).toBeTruthy());
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('editor-shape-portrait'));
+      });
+      await press(screen.getByTestId('editor-cancel'));
+      await waitFor(() => expect(screen.getByTestId('compose-caption')).toBeTruthy());
+      expect((await share()).aspectRatio).toBeCloseTo(16 / 9);
+    });
+
+    it('dragging the photo saves where it was framed', async () => {
+      await compose(1);
+      await press(screen.getByTestId('compose-photo-1'));
+      await waitFor(() => expect(screen.getByTestId('editor-frame')).toBeTruthy());
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('editor-shape-square'));
+      });
+      const frame = screen.getByTestId('editor-frame');
+      const touch = (pageX: number) => ({ nativeEvent: { touches: [{ pageX, pageY: 0 }] } });
+      await act(async () => {
+        frame.props.onResponderGrant(touch(200));
+        frame.props.onResponderMove(touch(260));
+        frame.props.onResponderRelease();
+      });
+      await press(screen.getByTestId('editor-done'));
+      await waitFor(() => expect(screen.getByTestId('compose-caption')).toBeTruthy());
+      await share();
+      const [photo] = jest.mocked(preparePhoto).mock.calls[0] as unknown as [
+        { crop?: { x: number; width: number } },
+      ];
+      // Dragged right, so it keeps more of the left side than the centered crop would.
+      expect(photo.crop?.width).toBeCloseTo(9 / 16);
+      expect(photo.crop?.x).toBeLessThan((1 - 9 / 16) / 2);
+    });
+  });
+
+  it('Cancel closes posting and starts fresh next time', async () => {
+    await compose(1);
+    await type('compose-caption', 'Not this one');
+    await press(screen.getByTestId('compose-cancel'));
+    await waitFor(() => expect(screen).toHavePathname('/home'));
+    await press(screen.getByTestId('tab-post'));
+    await waitFor(() => expect(screen.getByTestId('compose-caption')).toBeTruthy());
+    expect(screen.getByTestId('compose-caption').props.value).toBe('');
+    expect(screen.queryByTestId('compose-photo-1')).toBeNull();
+  });
 });
 
 describe('upload progress and retry', () => {
@@ -203,7 +492,10 @@ describe('upload progress and retry', () => {
     await compose(1, 2);
     await press(screen.getByTestId('compose-share'));
     expect(preparePhoto).toHaveBeenCalledTimes(2);
-    expect(preparePhoto).toHaveBeenCalledWith({ uri: 'file:///1.jpg', width: 1000, height: 1000 });
+    expect(preparePhoto).toHaveBeenCalledWith(
+      expect.objectContaining({ uri: 'file:///1.jpg', width: 1000, height: 1000 }),
+      1,
+    );
   });
 
   it('shows which photo is uploading and how far along it is', async () => {

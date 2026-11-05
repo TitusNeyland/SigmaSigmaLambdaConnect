@@ -1,1 +1,1 @@
-export { PickPhotosScreen as default } from '@/features/post/PickPhotosScreen';
+export { ComposeScreen as default } from '@/features/post/ComposeScreen';

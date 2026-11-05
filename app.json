@@ -50,6 +50,15 @@
         }
       ],
       [
+        "expo-media-library",
+        {
+          "photosPermission": "Choose a profile photo or photos for your posts.",
+          "savePhotosPermission": false,
+          "granularPermissions": ["photo"],
+          "preventAutomaticLimitedAccessAlert": true
+        }
+      ],
+      [
         "expo-notifications",
         {
           "color": "#111111",

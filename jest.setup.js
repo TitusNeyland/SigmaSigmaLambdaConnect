@@ -18,6 +18,99 @@ jest.mock('expo-notifications', () => ({
   getExpoPushTokenAsync: jest.fn(async () => ({ type: 'expo', data: 'ExponentPushToken[test]' })),
   AndroidImportance: { DEFAULT: 3 },
 }));
+// The camera roll is native. By default access is granted and the roll is empty; tests set
+// photos (with optional favorite and albumId), albums and permission through the mock's
+// helpers (__setPhotos, __setAlbums, __setPermission).
+jest.mock('expo-media-library', () => {
+  const state = {
+    photos: [],
+    albums: [],
+    permission: { granted: true, canAskAgain: true, accessPrivileges: 'all', status: 'granted' },
+  };
+  class Query {
+    constructor() {
+      this.from = 0;
+      this.count = Infinity;
+      this.favorites = false;
+      this.albumId = null;
+    }
+    eq(field, value) {
+      if (field === 'isFavorite') this.favorites = value;
+      return this;
+    }
+    album(album) {
+      this.albumId = album.id;
+      return this;
+    }
+    orderBy() {
+      return this;
+    }
+    offset(n) {
+      this.from = n;
+      return this;
+    }
+    limit(n) {
+      this.count = n;
+      return this;
+    }
+    async exeForMetadata() {
+      return state.photos
+        .filter(
+          (p) => (!this.favorites || p.favorite) && (!this.albumId || p.albumId === this.albumId),
+        )
+        .slice(this.from, this.from + this.count);
+    }
+  }
+  class Asset {
+    constructor(id) {
+      this.id = id;
+    }
+    async getUri() {
+      return `file:///${this.id}.jpg`;
+    }
+  }
+  class Album {
+    constructor(id) {
+      this.id = id;
+    }
+    static async getAlbumsMetadata() {
+      return state.albums;
+    }
+  }
+  const getPermission = jest.fn(async () => state.permission);
+  return {
+    Query,
+    Asset,
+    Album,
+    AlbumType: { ALBUM: 'album', SMART_ALBUM: 'smartAlbum' },
+    AssetField: {
+      MEDIA_TYPE: 'mediaType',
+      CREATION_TIME: 'creationTime',
+      IS_FAVORITE: 'isFavorite',
+    },
+    MediaType: { IMAGE: 'image' },
+    usePermissions: () => {
+      const React = jest.requireActual('react');
+      const [value, setValue] = React.useState(state.permission);
+      const refresh = React.useCallback(async () => {
+        const next = await getPermission();
+        setValue({ ...next });
+        return next;
+      }, []);
+      return [value, refresh, refresh];
+    },
+    presentPermissionsPicker: jest.fn(async () => {}),
+    __setPhotos: (photos) => {
+      state.photos = photos;
+    },
+    __setAlbums: (albums) => {
+      state.albums = albums;
+    },
+    __setPermission: (permission) => {
+      state.permission = permission;
+    },
+  };
+});
 jest.mock('expo-device', () => ({ isDevice: false }));
 jest.mock('@/data/push');
 
