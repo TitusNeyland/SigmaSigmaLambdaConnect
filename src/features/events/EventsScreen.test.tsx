@@ -117,13 +117,12 @@ it('shows my RSVP state on each row, and marks cancelled events', async () => {
   expect(screen.getByText('9:00 AM · Riverside Park')).toBeTruthy();
 });
 
-it('filters by category chip', async () => {
+it('has no category chips, and a plus for a new event', async () => {
   await openEvents();
-  await press(screen.getByRole('button', { name: 'Fundraisers' }));
-  expect(screen.getByTestId('featured-event').props.accessibilityLabel).toMatch(/gala/);
-  expect(rows()).toEqual([]);
-  await press(screen.getByRole('button', { name: 'All' }));
-  expect(rows()).toEqual(['social', 'service', 'gala']);
+  expect(screen.queryByTestId('events-category')).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Fundraisers' })).toBeNull();
+  await press(screen.getByRole('button', { name: 'New event' }));
+  await waitFor(() => expect(screen).toHavePathname('/events/new'));
 });
 
 it('searches title, place and description', async () => {
@@ -135,11 +134,11 @@ it('searches title, place and description', async () => {
   expect(screen.getByTestId('featured-event').props.accessibilityLabel).toMatch(/gala/);
 });
 
-it('shows an empty state when a category has no events', async () => {
+it('shows an empty state when nothing matches the search', async () => {
   await openEvents();
-  await press(screen.getByRole('button', { name: 'Learning' }));
+  await type('nothing like this');
   expect(screen.getByTestId('events-empty')).toBeTruthy();
-  expect(screen.getByText('No learning events coming up.')).toBeTruthy();
+  expect(screen.getByText('No events match your search.')).toBeTruthy();
   expect(screen.queryByTestId('featured-event')).toBeNull();
 });
 

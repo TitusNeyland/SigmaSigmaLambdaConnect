@@ -1,22 +1,13 @@
 import { router } from 'expo-router';
-import type { ReactNode } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
 import { NEW_POST_ROUTE } from '@/features/navigation/TabLayout';
 import { colors, MIN_TOUCH, spacing } from '@/theme';
-import { Monogram } from '@/ui';
+import { IconButton, Monogram, PlusIcon } from '@/ui';
 
 const ICON = 26;
 const DOT = 8;
-
-function PlusIcon() {
-  return (
-    <Svg width={ICON} height={ICON} viewBox="0 0 24 24" fill="none" accessibilityElementsHidden>
-      <Path d="M12 4v16M4 12h16" stroke={colors.text} strokeWidth={1.9} strokeLinecap="round" />
-    </Svg>
-  );
-}
 
 function HeartIcon() {
   return (
@@ -28,31 +19,6 @@ function HeartIcon() {
         strokeLinejoin="round"
       />
     </Svg>
-  );
-}
-
-function IconButton({
-  label,
-  onPress,
-  testID,
-  children,
-}: {
-  label: string;
-  onPress: () => void;
-  testID: string;
-  children: ReactNode;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      hitSlop={spacing.xs}
-      style={({ pressed }) => [styles.button, pressed && styles.pressed]}
-      testID={testID}
-    >
-      {children}
-    </Pressable>
   );
 }
 
@@ -96,8 +62,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     minHeight: MIN_TOUCH + spacing.sm,
   },
-  button: { width: MIN_TOUCH, height: MIN_TOUCH, alignItems: 'center', justifyContent: 'center' },
-  pressed: { opacity: 0.6 },
   dot: {
     position: 'absolute',
     top: spacing.xs,

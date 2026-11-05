@@ -21,7 +21,7 @@ import {
   type Month,
 } from './calendarLogic';
 import { EventRow } from './EventRow';
-import { matchesSearch, type CategoryFilter } from './eventsLogic';
+import { matchesSearch } from './eventsLogic';
 
 type Loaded =
   { key: string; state: 'ready'; events: EventSummary[] } | { key: string; state: 'error' };
@@ -43,14 +43,13 @@ function Arrow({ direction }: { direction: 'left' | 'right' }) {
 
 export type CalendarViewProps = {
   uid: string;
-  category: CategoryFilter;
   search: string;
   /** Injected in tests; defaults to now. */
   today?: Date;
 };
 
 /** Month calendar with gold dots on event days. Tapping a day lists its events below. */
-export function CalendarView({ uid, category, search, today: todayProp }: CalendarViewProps) {
+export function CalendarView({ uid, search, today: todayProp }: CalendarViewProps) {
   const [today] = useState(() => todayProp ?? new Date());
   const [month, setMonth] = useState<Month>(() => monthOf(today));
   const [picked, setPicked] = useState<{ key: string; day: Date } | null>(null);
@@ -79,13 +78,9 @@ export function CalendarView({ uid, category, search, today: todayProp }: Calend
   const byDay = useMemo(
     () =>
       eventsByDay(
-        current?.state === 'ready'
-          ? current.events
-              .filter((e) => category === 'all' || e.category === category)
-              .filter((e) => matchesSearch(e, search))
-          : [],
+        current?.state === 'ready' ? current.events.filter((e) => matchesSearch(e, search)) : [],
       ),
-    [current, category, search],
+    [current, search],
   );
 
   const selected = picked?.key === key ? picked.day : defaultDay(month, today, byDay);

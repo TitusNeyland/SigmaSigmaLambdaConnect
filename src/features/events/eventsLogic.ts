@@ -1,8 +1,6 @@
 import type { EventSummary } from '@/data/events';
 import type { EventCategory, RsvpStatus } from '@/data/types';
 
-export type CategoryFilter = 'all' | EventCategory;
-
 export const CATEGORY_LABELS: Record<EventCategory, string> = {
   meeting: 'Meeting',
   service: 'Service',
@@ -12,17 +10,6 @@ export const CATEGORY_LABELS: Record<EventCategory, string> = {
   social: 'Social',
   public: 'Public',
 };
-
-export const CATEGORY_FILTERS: readonly { value: CategoryFilter; label: string }[] = [
-  { value: 'all', label: 'All' },
-  { value: 'meeting', label: 'Meetings' },
-  { value: 'service', label: 'Service' },
-  { value: 'learning', label: 'Learning' },
-  { value: 'brotherhood', label: 'Brotherhood' },
-  { value: 'fundraiser', label: 'Fundraisers' },
-  { value: 'social', label: 'Social' },
-  { value: 'public', label: 'Public' },
-];
 
 export const RSVP_LABELS: Record<RsvpStatus, string> = {
   going: 'Going',
@@ -70,25 +57,24 @@ export function matchesSearch(event: EventSummary, search: string): boolean {
 }
 
 /**
- * Applies the category and search, then splits off the featured event: the soonest one
+ * Applies the search, then splits off the featured event: the soonest one
  * that isn't cancelled. Everything else stays in date order.
  */
 export function arrangeEvents(
   events: EventSummary[],
-  options: { category: CategoryFilter; search: string },
+  search: string,
 ): { featured: EventSummary | null; rest: EventSummary[] } {
   const visible = events
-    .filter((e) => options.category === 'all' || e.category === options.category)
-    .filter((e) => matchesSearch(e, options.search))
+    .filter((e) => matchesSearch(e, search))
     .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
   const featured = visible.find((e) => !e.cancelled) ?? null;
   return { featured, rest: visible.filter((e) => e !== featured) };
 }
 
-export function emptyMessage(category: CategoryFilter, search: string): string {
-  if (search.trim()) return 'No events match your search.';
-  if (category === 'all') return 'Nothing on the calendar yet. Check back soon.';
-  return `No ${CATEGORY_LABELS[category].toLowerCase()} events coming up.`;
+export function emptyMessage(search: string): string {
+  return search.trim()
+    ? 'No events match your search.'
+    : 'Nothing on the calendar yet. Check back soon.';
 }
 
 /** "Free", "$25" or "$12.50". */

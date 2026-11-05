@@ -80,29 +80,26 @@ describe('arrangeEvents', () => {
   const cancelled = event({ title: 'Cancelled', startsAt: new Date(2026, 9, 30), cancelled: true });
 
   it('features the soonest event that is not cancelled, then lists the rest by date', () => {
-    const { featured, rest } = arrangeEvents([later, soon, cancelled], {
-      category: 'all',
-      search: '',
-    });
+    const { featured, rest } = arrangeEvents([later, soon, cancelled], '');
     expect(featured?.title).toBe('Soon');
     expect(rest.map((e) => e.title)).toEqual(['Cancelled', 'Later']);
   });
 
-  it('filters by category', () => {
-    const { featured, rest } = arrangeEvents([later, soon], { category: 'service', search: '' });
+  it('filters by search', () => {
+    const { featured, rest } = arrangeEvents([later, soon], 'soon');
     expect(featured?.title).toBe('Soon');
     expect(rest).toEqual([]);
   });
 
   it('has no featured event when everything left is cancelled', () => {
-    expect(arrangeEvents([cancelled], { category: 'all', search: '' })).toEqual({
+    expect(arrangeEvents([cancelled], '')).toEqual({
       featured: null,
       rest: [cancelled],
     });
   });
 
   it('is empty when nothing matches', () => {
-    expect(arrangeEvents([later, soon], { category: 'fundraiser', search: '' })).toEqual({
+    expect(arrangeEvents([later, soon], 'gala')).toEqual({
       featured: null,
       rest: [],
     });
@@ -111,9 +108,9 @@ describe('arrangeEvents', () => {
 
 describe('emptyMessage', () => {
   it('fits the situation', () => {
-    expect(emptyMessage('all', '')).toBe('Nothing on the calendar yet. Check back soon.');
-    expect(emptyMessage('fundraiser', '')).toBe('No fundraiser events coming up.');
-    expect(emptyMessage('service', 'gala')).toBe('No events match your search.');
+    expect(emptyMessage('')).toBe('Nothing on the calendar yet. Check back soon.');
+    expect(emptyMessage(' ')).toBe('Nothing on the calendar yet. Check back soon.');
+    expect(emptyMessage('gala')).toBe('No events match your search.');
   });
 });
 

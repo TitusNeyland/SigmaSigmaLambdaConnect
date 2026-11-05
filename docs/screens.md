@@ -36,7 +36,7 @@ Leader --> Desktop[Desktop dashboard, later]
 | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
 | Home feed            | Top bar: plus for a new post, ΣΣΛ monogram, heart for Activity. Instagram-style posts with like, comment, share, save. Official chapter posts get a gold check badge and can carry an event card with RSVP. | #29, #30, #39 |
 | Activity             | Behind the heart at the top of Home (a dot means something new). Likes, comments and replies on your posts, New then Earlier, likes on a post grouped. Tap to open the post or its comments.                |               |
-| Events + Calendar    | Search, Upcoming and Calendar segmented control, category chips, featured next event, rows with RSVP state. Calendar has gold dots on event days; tapping a day lists its events.                           | #20, #21      |
+| Events + Calendar    | Plus for a new event, search, Upcoming and Calendar segmented control, featured next event, rows with RSVP state. Calendar has gold dots on event days; tapping a day lists its events.                     | #20, #21      |
 | Event details + RSVP | Hero photo, title, host, RSVP segmented control (Going, Maybe, Can't go) with confirmation text, date and place rows with Add and Directions, fee and deadline, who's going, about, photos.                 | #22, #23, #24 |
 
 ## Posting flow
