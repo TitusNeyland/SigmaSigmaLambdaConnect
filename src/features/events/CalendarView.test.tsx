@@ -52,17 +52,10 @@ async function press(target: Parameters<typeof fireEvent.press>[0]) {
   });
 }
 
-async function renderCalendar(props: { category?: 'all' | 'service'; search?: string } = {}) {
+async function renderCalendar(props: { search?: string } = {}) {
   await renderRouter(
     {
-      index: () => (
-        <CalendarView
-          uid="me"
-          category={props.category ?? 'all'}
-          search={props.search ?? ''}
-          today={TODAY}
-        />
-      ),
+      index: () => <CalendarView uid="me" search={props.search ?? ''} today={TODAY} />,
     },
     { initialUrl: '/' },
   );
@@ -128,10 +121,10 @@ it('moves to the next and previous month', async () => {
   await waitFor(() => expect(screen.getByText('No events this day.')).toBeTruthy());
 });
 
-it('applies the category filter and search', async () => {
+it('applies the search', async () => {
   await renderRouter(
     {
-      index: () => <CalendarView uid="me" category="service" search="" today={TODAY} />,
+      index: () => <CalendarView uid="me" search="cleanup" today={TODAY} />,
     },
     { initialUrl: '/' },
   );
@@ -144,7 +137,7 @@ it('applies the category filter and search', async () => {
 it('offers a retry when a month can’t load', async () => {
   events.failEventsLoad();
   await renderRouter(
-    { index: () => <CalendarView uid="me" category="all" search="" today={TODAY} /> },
+    { index: () => <CalendarView uid="me" search="" today={TODAY} /> },
     { initialUrl: '/' },
   );
   await waitFor(() => expect(screen.getByText('Couldn’t load this month.')).toBeTruthy());

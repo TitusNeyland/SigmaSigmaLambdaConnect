@@ -7,19 +7,25 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { fetchUpcomingEvents, type EventSummary } from '@/data/events';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { colors, palette, radius, spacing } from '@/theme';
-import { AppText, Button, FilterChips, ListSection, SearchField, SegmentedControl } from '@/ui';
+import {
+  AppText,
+  Button,
+  IconButton,
+  ListSection,
+  PlusIcon,
+  SearchField,
+  SegmentedControl,
+} from '@/ui';
 
 import { CalendarView } from './CalendarView';
 
 import { EventRow, openEvent, StatusBadge } from './EventRow';
 import {
   arrangeEvents,
-  CATEGORY_FILTERS,
   CATEGORY_LABELS,
   emptyMessage,
   eventMeta,
   RSVP_LABELS,
-  type CategoryFilter,
 } from './eventsLogic';
 
 type EventsView = 'upcoming' | 'calendar';
@@ -78,7 +84,6 @@ export function EventsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const [search, setSearch] = useState('');
-  const [category, setCategory] = useState<CategoryFilter>('all');
   // The Chapter hub's Calendar tile opens /events?view=calendar.
   const params = useLocalSearchParams<{ view?: string }>();
   const [view, setView] = useState<EventsView>(
@@ -119,8 +124,8 @@ export function EventsScreen() {
   );
 
   const arranged = useMemo(
-    () => (value.state === 'ready' ? arrangeEvents(value.events, { category, search }) : null),
-    [value, category, search],
+    () => (value.state === 'ready' ? arrangeEvents(value.events, search) : null),
+    [value, search],
   );
 
   return (
@@ -143,14 +148,13 @@ export function EventsScreen() {
             Events
           </AppText>
           {/* Any approved member can host an event. */}
-          <Button
-            title="New"
-            variant="secondary"
-            size="small"
-            accessibilityLabel="New event"
+          <IconButton
+            label="New event"
             onPress={() => router.push('/events/new')}
             testID="new-event"
-          />
+          >
+            <PlusIcon />
+          </IconButton>
         </View>
         <SearchField
           value={search}
@@ -165,16 +169,9 @@ export function EventsScreen() {
           accessibilityLabel="Events view"
           testID="events-view"
         />
-        <FilterChips
-          options={CATEGORY_FILTERS}
-          value={category}
-          onChange={setCategory}
-          accessibilityLabel="Event category"
-          testID="events-category"
-        />
 
         {view === 'calendar' ? (
-          <CalendarView uid={uid} category={category} search={search} />
+          <CalendarView uid={uid} search={search} />
         ) : value.state === 'loading' ? (
           <AppText variant="callout" color={colors.textSecondary} align="center">
             Loading…
@@ -211,7 +208,7 @@ export function EventsScreen() {
               No events
             </AppText>
             <AppText variant="callout" color={colors.textSecondary} align="center">
-              {emptyMessage(category, search)}
+              {emptyMessage(search)}
             </AppText>
           </View>
         )}
