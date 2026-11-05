@@ -113,6 +113,8 @@ jest.mock('expo-media-library', () => {
 });
 jest.mock('expo-device', () => ({ isDevice: false }));
 jest.mock('@/data/push');
+// Home loads Activity for the dot on the heart, and most app tests render Home.
+jest.mock('@/data/activity');
 
 // The date picker is native. The mock renders a plain view; tests call its onChange prop.
 jest.mock('@react-native-community/datetimepicker', () => {

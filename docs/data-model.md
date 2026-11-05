@@ -21,6 +21,7 @@ The first admin is set by hand: create `roles/{uid}` with `{ role: 'admin' }` in
 flowchart TD
 members[members/uid] --> contact[private/contact]
 members --> blocked[blocks/uid/blocked/otherUid]
+members --> activity[activity/uid] --> items[items/itemId]
 roles[roles/uid]
 events[events/eventId] --> rsvps[rsvps/uid]
 events --> attendance[attendance/uid]
@@ -38,6 +39,8 @@ kpis[kpis/periodId]
 | `members/{uid}`                                 | Profile and membership status               | Approved members; the person themself; officers             | The person creates it as `pending` and edits profile fields only. Officers change `status`. Admins can delete                |
 | `members/{uid}/private/contact`                 | Email, phone and the show switches          | The person themself only                                    | The person themself                                                                                                          |
 | `pushTokens/{uid}/tokens/{tokenId}`             | One per phone the member signs in on        | The person themself only                                    | The person themself. Cloud Functions read them to send push                                                                  |
+| `activity/{uid}`                                | When the member last opened Activity        | The person themself only                                    | The person themself, `seenAt` only, set to the server time                                                                   |
+| `activity/{uid}/items/{itemId}`                 | A like, comment or reply on their posts     | The person themself, once approved                          | Cloud Functions only. Removed on unlike, comment delete and post delete                                                      |
 | `roles/{uid}`                                   | `officer` or `admin`, plus an officer title | The person themself; approved members (to show role badges) | Admins only                                                                                                                  |
 | `events/{eventId}`                              | Event details                               | Approved members                                            | Approved members create, as host. The host or officers edit or cancel. Officers delete                                       |
 | `events/{eventId}/rsvps/{uid}`                  | Going, maybe or not going                   | Approved members                                            | The member, for themself, until the RSVP deadline                                                                            |
@@ -81,7 +84,7 @@ Anything not listed is denied.
 
 Members delete their account from Settings. The app confirms their password, then calls the `deleteAccount` Cloud Function, which only accepts a sign-in from the last five minutes. It removes:
 
-- `members/{uid}` (with its private contact doc), `roles/{uid}`, `blocks/{uid}/blocked/*` and `pushTokens/{uid}/tokens/*`
+- `members/{uid}` (with its private contact doc), `roles/{uid}`, `blocks/{uid}/blocked/*`, `activity/{uid}` and `pushTokens/{uid}/tokens/*`
 - Their posts, including every comment and like on them
 - Their comments and likes on other posts (those posts' counts are lowered to match)
 - Their RSVPs

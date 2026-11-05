@@ -1299,6 +1299,53 @@ describe('like digests (#40)', () => {
   });
 });
 
+describe('activity', () => {
+  const itemPath = (uid: string) => `activity/${uid}/items/like_alicePost_bob`;
+  beforeEach(async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore() as unknown as Firestore;
+      for (const uid of [USERS.alice, USERS.pete]) {
+        await setDoc(doc(db, itemPath(uid)), { type: 'like', actorId: 'bob', postId: 'alicePost' });
+      }
+    });
+  });
+
+  it('members read only their own, newest first (src/data/activity.ts)', async () => {
+    const db = as(USERS.alice);
+    await assertSucceeds(
+      getDocs(query(collection(db, 'activity/alice/items'), orderBy('at', 'desc'), limit(50))),
+    );
+    await assertSucceeds(getDoc(doc(db, 'activity/alice')));
+    for (const uid of [USERS.bob, USERS.olivia, USERS.adam]) {
+      await assertFails(getDoc(doc(as(uid), itemPath('alice'))));
+      await assertFails(getDocs(collection(as(uid), 'activity/alice/items')));
+      await assertFails(getDoc(doc(as(uid), 'activity/alice')));
+    }
+  });
+
+  it('pending members can’t read theirs', async () => {
+    await assertFails(getDoc(doc(as(USERS.pete), itemPath('pete'))));
+  });
+
+  it('only Cloud Functions write items', async () => {
+    const item = { type: 'like', actorId: 'bob', postId: 'alicePost' };
+    for (const uid of [USERS.alice, USERS.bob, USERS.adam]) {
+      await assertFails(setDoc(doc(as(uid), 'activity/alice/items/x'), item));
+      await assertFails(deleteDoc(doc(as(uid), itemPath('alice'))));
+    }
+  });
+
+  it('members mark their own as seen, at the real time and nothing else', async () => {
+    const db = as(USERS.alice);
+    await assertSucceeds(setDoc(doc(db, 'activity/alice'), { seenAt: serverTimestamp() }));
+    await assertSucceeds(setDoc(doc(db, 'activity/alice'), { seenAt: serverTimestamp() }));
+    await assertFails(setDoc(doc(db, 'activity/alice'), { seenAt: new Date(0) }));
+    await assertFails(setDoc(doc(db, 'activity/alice'), { seenAt: serverTimestamp(), unread: 0 }));
+    await assertFails(setDoc(doc(as(USERS.bob), 'activity/alice'), { seenAt: serverTimestamp() }));
+    await assertFails(setDoc(doc(as(USERS.pete), 'activity/pete'), { seenAt: serverTimestamp() }));
+  });
+});
+
 describe('push tokens', () => {
   const token = (extra: object = {}) => ({
     token: 'ExponentPushToken[abc]',

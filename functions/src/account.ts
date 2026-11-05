@@ -79,9 +79,10 @@ export async function deleteUserData(
     for (const d of snap.docs) await d.ref.update({ [removes]: FieldValue.delete() });
   }
 
-  // Their block list, push tokens, read marks, hidden items, any posting pause, role and
-  // profile (with its private contact doc).
+  // Their block list, push tokens, read marks, hidden items, Activity, any posting pause,
+  // role and profile (with its private contact doc).
   await db.recursiveDelete(db.doc(`blocks/${uid}`));
+  await db.recursiveDelete(db.doc(`activity/${uid}`));
   await db.recursiveDelete(db.doc(`reads/${uid}`));
   await db.recursiveDelete(db.doc(`hidden/${uid}`));
   await db.doc(`restrictions/${uid}`).delete();
