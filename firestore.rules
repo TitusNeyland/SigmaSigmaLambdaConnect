@@ -393,6 +393,24 @@ service cloud.firestore {
         && isNow(incoming().createdAt);
     }
 
+    // ---------- Activity ----------
+
+    // Likes, comments and replies on a member's posts, behind the heart on Home. Cloud
+    // Functions write the items; only the member reads them. The member records when they
+    // last looked, for the dot on the heart.
+    match /activity/{userId} {
+      allow read: if isSelf(userId);
+      allow create, update: if isSelf(userId)
+        && isApproved()
+        && incoming().keys().hasOnly(['seenAt'])
+        && isNow(incoming().seenAt);
+
+      match /items/{itemId} {
+        allow read: if isSelf(userId) && isApproved();
+        allow write: if false;
+      }
+    }
+
     // ---------- Push tokens (#25) ----------
 
     // Each phone a member signs in on. Only they can see or change theirs; Cloud Functions

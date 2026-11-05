@@ -3,13 +3,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { fetchActivity, fetchActivitySeen, type ActivityItem } from '@/data/activity';
 import { fetchFeedPage, type FeedCursor, type FeedPost } from '@/data/feed';
+import { hasNewActivity } from '@/features/activity/activityLogic';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { colors, spacing } from '@/theme';
 import { AppText, Button } from '@/ui';
 
 import { onCommentsChanged, onFeedChanged } from './feedEvents';
 import { appendPage, visiblePosts } from './feedLogic';
+import { HomeHeader } from './HomeHeader';
 import { PostCard } from './PostCard';
 import { ReportedNotice } from './ReportedNotice';
 import { useHiddenContent } from './useHidden';
@@ -25,6 +28,9 @@ type Feed =
       moreFailed: boolean;
     };
 
+/** Enough recent Activity to know if there's anything new from someone not blocked. */
+const ACTIVITY_CHECK = 10;
+
 /** Home: the chapter's posts, newest first. */
 export function FeedScreen() {
   const auth = useAuth();
@@ -34,6 +40,10 @@ export function FeedScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [now, setNow] = useState(() => new Date());
   const loadId = useRef(0);
+  const [activity, setActivity] = useState<{ items: ActivityItem[]; seen: Date | null }>({
+    items: [],
+    seen: null,
+  });
 
   const loadFirst = useCallback(() => {
     if (!uid) return;
@@ -74,6 +84,22 @@ export function FeedScreen() {
       ),
     [],
   );
+
+  // The dot on the heart: checked each time Home shows, so it clears after visiting Activity.
+  useFocusEffect(
+    useCallback(() => {
+      if (!uid) return;
+      let live = true;
+      Promise.all([fetchActivity(uid, ACTIVITY_CHECK), fetchActivitySeen(uid)]).then(
+        ([items, seen]) => live && setActivity({ items, seen }),
+        () => {},
+      );
+      return () => {
+        live = false;
+      };
+    }, [uid]),
+  );
+  const hasNew = hasNewActivity(activity.items, activity.seen, blocked);
 
   // Load the first time Home is shown; after that, pull to refresh.
   const loadedOnce = useRef(false);
@@ -117,19 +143,9 @@ export function FeedScreen() {
     [feed, blocked, hidden],
   );
 
-  const header = (
-    <View>
-      <View style={styles.title}>
-        <AppText variant="title2" accessibilityRole="header">
-          Sigma Sigma Lambda
-        </AppText>
-      </View>
-      <View style={styles.divider} />
-    </View>
-  );
-
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
+      <HomeHeader hasNew={hasNew} />
       <FlatList
         data={posts}
         keyExtractor={(p) => p.id}
@@ -137,7 +153,6 @@ export function FeedScreen() {
           <PostCard post={item} now={now} me={uid} onDeleted={removePost} />
         )}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
-        ListHeaderComponent={header}
         ListEmptyComponent={
           feed.state === 'loading' ? (
             <AppText
@@ -206,8 +221,6 @@ export function FeedScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
-  title: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
-  divider: { height: StyleSheet.hairlineWidth, backgroundColor: colors.separator },
   separator: { height: spacing.sm },
   message: {
     paddingTop: spacing.xxl,

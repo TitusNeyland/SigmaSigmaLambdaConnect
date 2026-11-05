@@ -111,6 +111,8 @@ async function seed() {
     ],
     ['events/e1/attendance/stays', { memberId: 'stays', checkedInBy: 'stays', checkedInAt: now() }],
     ['reads/gone/announcements/a1', { readAt: now() }],
+    ['activity/gone', { seenAt: now() }],
+    ['activity/gone/items/like_mine_stays', { type: 'like', actorId: 'stays', postId: 'mine' }],
     ['hidden/gone/items/post_theirs', { targetType: 'post', postId: 'theirs', createdAt: now() }],
     ['restrictions/gone', { until: now(), by: 'stays', decisionId: 'd2' }],
     [
@@ -172,6 +174,7 @@ beforeEach(async () => {
     'posts',
     'events',
     'reads',
+    'activity',
     'hidden',
     'restrictions',
     'decisions',
@@ -227,9 +230,11 @@ describe('deleteUserData', () => {
     expect(Object.keys(kept)).not.toContain('displayName');
   });
 
-  it('removes their read marks, hidden items and any posting pause', async () => {
+  it('removes their read marks, hidden items, Activity and any posting pause', async () => {
     await run();
     expect(await exists('reads/gone/announcements/a1')).toBe(false);
+    expect(await exists('activity/gone')).toBe(false);
+    expect(await exists('activity/gone/items/like_mine_stays')).toBe(false);
     expect(await exists('hidden/gone/items/post_theirs')).toBe(false);
     expect(await exists('restrictions/gone')).toBe(false);
   });

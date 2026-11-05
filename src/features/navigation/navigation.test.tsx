@@ -56,13 +56,14 @@ describe('tab bar', () => {
     for (const tab of TABS) {
       expect(screen.getByTestId(`tab-${tab.name}`)).toBeTruthy();
     }
-    expect(screen.getByLabelText('Create a post')).toBeTruthy();
+    // The Post tab, and the plus at the top of Home.
+    expect(screen.getAllByLabelText('Create a post')).toHaveLength(2);
   });
 
   it('opens on Home with the Home tab active', async () => {
     await renderRouter(APP, { initialUrl: '/' });
     await waitFor(() => expect(screen).toHavePathname('/home'));
-    expect(screen.getByText('Sigma Sigma Lambda')).toBeTruthy();
+    expect(screen.getByRole('header', { name: 'Sigma Sigma Lambda' })).toBeTruthy();
     expect(screen.getByTestId('tab-home')).toBeSelected();
     expect(screen.getByTestId('tab-events')).not.toBeSelected();
   });
