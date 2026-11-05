@@ -62,7 +62,7 @@ describe('My profile', () => {
       expect.any(Function),
       { own: true },
     );
-    expect(profile.fetchProfileStats).toHaveBeenCalledWith(uid, { includeAttendance: true });
+    expect(profile.fetchProfileStats).toHaveBeenCalledWith(uid);
     expect(profile.fetchActivity).toHaveBeenCalledWith(uid);
   });
 

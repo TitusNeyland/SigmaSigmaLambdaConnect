@@ -200,18 +200,18 @@ describe('fetchProfileStats', () => {
   it('counts only visible posts by that member', async () => {
     jest.mocked(getAggregateFromServer).mockResolvedValueOnce(agg({ posts: 4 }) as never);
     jest.mocked(getDoc).mockResolvedValueOnce({ get: () => undefined } as never);
-    await fetchProfileStats('u1', { includeAttendance: false });
+    await fetchProfileStats('u1');
     expect(collection).toHaveBeenCalledWith({ name: 'db' }, 'posts');
     expect(where).toHaveBeenCalledWith('authorId', '==', 'u1');
     expect(where).toHaveBeenCalledWith('removed', '==', false);
   });
 
-  it('reads the shared totals for someone else, never their check-ins', async () => {
+  it('reads the shared totals, never the check-ins themselves', async () => {
     jest.mocked(getAggregateFromServer).mockResolvedValueOnce(agg({ posts: 4 }) as never);
     jest.mocked(getDoc).mockResolvedValueOnce({
       get: (k: string) => ({ eventsAttended: 7, serviceHours: 12.5 })[k],
     } as never);
-    await expect(fetchProfileStats('u1', { includeAttendance: false })).resolves.toEqual({
+    await expect(fetchProfileStats('u1')).resolves.toEqual({
       posts: 4,
       eventsAttended: 7,
       serviceHours: 12.5,
@@ -224,37 +224,21 @@ describe('fetchProfileStats', () => {
   it('shows zero when there are no totals yet', async () => {
     jest.mocked(getAggregateFromServer).mockResolvedValueOnce(agg({ posts: 0 }) as never);
     jest.mocked(getDoc).mockResolvedValueOnce({ get: () => undefined } as never);
-    await expect(fetchProfileStats('u1', { includeAttendance: false })).resolves.toEqual({
+    await expect(fetchProfileStats('u1')).resolves.toEqual({
       posts: 0,
       eventsAttended: 0,
       serviceHours: 0,
     });
   });
 
-  it('counts attended events and sums service hours across events', async () => {
-    jest
-      .mocked(getAggregateFromServer)
-      .mockResolvedValueOnce(agg({ posts: 2 }) as never)
-      .mockResolvedValueOnce(agg({ events: 9, hours: 32 }) as never);
-    await expect(fetchProfileStats('u1', { includeAttendance: true })).resolves.toEqual({
-      posts: 2,
-      eventsAttended: 9,
-      serviceHours: 32,
-    });
-    expect(collectionGroup).toHaveBeenCalledWith({ name: 'db' }, 'attendance');
-    expect(where).toHaveBeenCalledWith('memberId', '==', 'u1');
-    expect(jest.mocked(getAggregateFromServer).mock.calls[1][1]).toEqual({
-      events: 'COUNT',
-      hours: 'SUM(serviceHours)',
-    });
-  });
-
-  it('treats no service hours as zero', async () => {
-    jest
-      .mocked(getAggregateFromServer)
-      .mockResolvedValueOnce(agg({ posts: 0 }) as never)
-      .mockResolvedValueOnce(agg({ events: 0, hours: null }) as never);
-    await expect(fetchProfileStats('u1', { includeAttendance: true })).resolves.toMatchObject({
+  it('ignores totals that aren’t usable numbers', async () => {
+    jest.mocked(getAggregateFromServer).mockResolvedValueOnce(agg({ posts: 1 }) as never);
+    jest.mocked(getDoc).mockResolvedValueOnce({
+      get: (k: string) => ({ eventsAttended: 'lots', serviceHours: -3 })[k],
+    } as never);
+    await expect(fetchProfileStats('u1')).resolves.toEqual({
+      posts: 1,
+      eventsAttended: 0,
       serviceHours: 0,
     });
   });
