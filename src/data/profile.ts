@@ -14,7 +14,6 @@ import {
   writeBatch,
   orderBy,
   query,
-  sum,
   where,
   type Timestamp,
 } from 'firebase/firestore';
@@ -197,34 +196,21 @@ function attendanceQuery(uid: string) {
 }
 
 /**
- * Counts for the top of a profile. Attendance is private to the member and officers, so
- * pass includeAttendance only for the signed-in member's own profile (or an officer).
+ * Counts for the top of a profile, the same for everyone who looks: visible posts, and
+ * the events attended and service hours a Cloud Function keeps in memberStats from the
+ * member's check-ins. (Summing check-ins here would need a Firestore index and, for anyone
+ * but the member and officers, isn't allowed.) No memberStats doc yet means no check-ins.
  */
-export async function fetchProfileStats(
-  uid: string,
-  options: { includeAttendance: boolean },
-): Promise<ProfileStats> {
-  const posts = getAggregateFromServer(visiblePostsQuery(uid), { posts: count() });
-  if (!options.includeAttendance) {
-    // Other members' check-ins are private; their totals are shared in memberStats, kept by
-    // a Cloud Function. No doc yet means no check-ins.
-    const [p, totals] = await Promise.all([posts, getDoc(doc(db, 'memberStats', uid))]);
-    const n = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : 0);
-    return {
-      posts: p.data().posts,
-      eventsAttended: n(totals.get('eventsAttended')),
-      serviceHours: n(totals.get('serviceHours')),
-    };
-  }
-  const attendance = getAggregateFromServer(attendanceQuery(uid), {
-    events: count(),
-    hours: sum('serviceHours'),
-  });
-  const [p, a] = await Promise.all([posts, attendance]);
+export async function fetchProfileStats(uid: string): Promise<ProfileStats> {
+  const [posts, totals] = await Promise.all([
+    getAggregateFromServer(visiblePostsQuery(uid), { posts: count() }),
+    getDoc(doc(db, 'memberStats', uid)),
+  ]);
+  const n = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : 0);
   return {
-    posts: p.data().posts,
-    eventsAttended: a.data().events,
-    serviceHours: a.data().hours ?? 0,
+    posts: posts.data().posts,
+    eventsAttended: n(totals.get('eventsAttended')),
+    serviceHours: n(totals.get('serviceHours')),
   };
 }
 

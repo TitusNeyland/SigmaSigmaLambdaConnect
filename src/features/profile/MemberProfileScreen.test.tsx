@@ -104,7 +104,7 @@ describe('layout', () => {
   it('shows regular members his totals, but not which events he attended', async () => {
     profile.setMockExtras({ stats: { posts: 2, eventsAttended: 6, serviceHours: 14 } });
     await openMember();
-    expect(profile.fetchProfileStats).toHaveBeenCalledWith(OTHER, { includeAttendance: false });
+    expect(profile.fetchProfileStats).toHaveBeenCalledWith(OTHER);
     expect(profile.fetchActivity).not.toHaveBeenCalled();
     await waitFor(() => expect(screen.getByLabelText('6 Events')).toBeTruthy());
     expect(screen.getByLabelText('14 Service hrs')).toBeTruthy();
@@ -116,9 +116,7 @@ describe('layout', () => {
     roles.resetRolesMock({ role: 'officer', title: 'Secretary' });
     profile.setMockProfilesFor({ [OTHER]: chris() });
     await openMember();
-    await waitFor(() =>
-      expect(profile.fetchProfileStats).toHaveBeenCalledWith(OTHER, { includeAttendance: true }),
-    );
+    await waitFor(() => expect(profile.fetchActivity).toHaveBeenCalledWith(OTHER));
     await waitFor(() => expect(screen.getByTestId('profile-tabs')).toBeTruthy());
     await press(screen.getByRole('tab', { name: 'Activity' }));
     expect(

@@ -62,7 +62,7 @@ function useLoad<T>(key: string, load: () => Promise<T>) {
  */
 export function useProfileExtras(uid: string, includeAttendance: boolean) {
   const key = `${uid}:${includeAttendance}`;
-  const stats = useLoad<ProfileStats>(key, () => fetchProfileStats(uid, { includeAttendance }));
+  const stats = useLoad<ProfileStats>(key, () => fetchProfileStats(uid));
   const posts = useLoad<ProfilePost[]>(key, () => fetchProfilePosts(uid));
   const activity = useLoad<ActivityItem[] | null>(key, () =>
     includeAttendance ? fetchActivity(uid) : Promise.resolve(null),
