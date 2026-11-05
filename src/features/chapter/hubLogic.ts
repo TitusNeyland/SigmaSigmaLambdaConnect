@@ -41,3 +41,26 @@ export function waitingSummary({ membershipRequests, openReports }: WaitingCount
   ].filter(Boolean);
   return parts.length ? parts.join(' · ') : 'Nothing waiting';
 }
+
+export type ChapterStat = { key: string; value: string; label: string };
+
+/**
+ * The counts on the progress card: brothers, officers and programs. A count still loading
+ * shows a dash. All of them come from real chapter data.
+ */
+export function chapterStats(counts: {
+  brothers: number | null;
+  officers: number | null;
+  programs: number | null;
+}): ChapterStat[] {
+  const stat = (key: string, n: number | null, one: string, many: string): ChapterStat => ({
+    key,
+    value: n === null ? '–' : String(n),
+    label: n === 1 ? one : many,
+  });
+  return [
+    stat('brothers', counts.brothers, 'Brother', 'Brothers'),
+    stat('officers', counts.officers, 'Officer', 'Officers'),
+    stat('programs', counts.programs, 'Program', 'Programs'),
+  ];
+}

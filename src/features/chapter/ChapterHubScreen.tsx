@@ -1,5 +1,5 @@
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useState, type ReactNode } from 'react';
+import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
@@ -11,26 +11,37 @@ import { AnnouncementsSection } from '@/features/announcements/AnnouncementsSect
 import { RequireCapability, useCan, useRole } from '@/features/roles/RoleProvider';
 import { roleLabel } from '@/features/roles/permissions';
 import { colors, MIN_TOUCH, palette, radius, spacing } from '@/theme';
-import { AppText, Avatar, Chevron, ProgressRing } from '@/ui';
+import { AppText, Avatar, Chevron, ProgressRing, SectionTitle } from '@/ui';
 
-import { officersOf, progressSummary, waitingSummary } from './hubLogic';
+import { chapterStats, officersOf, progressSummary, waitingSummary } from './hubLogic';
 
-type Icon = 'people' | 'chart' | 'calendar' | 'doc';
+type Icon = 'people' | 'chart' | 'calendar' | 'doc' | 'shield' | 'plus';
 
-function TileIcon({ name }: { name: Icon }) {
-  const d: Record<Icon, string> = {
-    people:
-      'M16 19v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 17.5V19M10 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM20 19v-1.5a3.5 3.5 0 0 0-2.6-3.4M15.5 4.2a3.5 3.5 0 0 1 0 6.6',
-    chart: 'M4 20V10M10 20V4M16 20v-7M22 20H2',
-    calendar:
-      'M7 3v3M17 3v3M3.5 9h17M5 5h14a1.5 1.5 0 0 1 1.5 1.5v12A1.5 1.5 0 0 1 19 20H5a1.5 1.5 0 0 1-1.5-1.5v-12A1.5 1.5 0 0 1 5 5z',
-    doc: 'M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M9 13h6M9 17h6',
-  };
+const ICONS: Record<Icon, string> = {
+  people:
+    'M16 19v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 17.5V19M10 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM20 19v-1.5a3.5 3.5 0 0 0-2.6-3.4M15.5 4.2a3.5 3.5 0 0 1 0 6.6',
+  chart: 'M4 20V10M10 20V4M16 20v-7M22 20H2',
+  calendar:
+    'M7 3v3M17 3v3M3.5 9h17M5 5h14a1.5 1.5 0 0 1 1.5 1.5v12A1.5 1.5 0 0 1 19 20H5a1.5 1.5 0 0 1-1.5-1.5v-12A1.5 1.5 0 0 1 5 5z',
+  doc: 'M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M9 13h6M9 17h6',
+  shield: 'M12 3 5 6v5c0 4.5 3 8.3 7 10 4-1.7 7-5.5 7-10V6zM9 12l2 2 4-4',
+  plus: 'M12 5v14M5 12h14',
+};
+
+function Glyph({
+  name,
+  color = palette.ink,
+  size = 22,
+}: {
+  name: Icon;
+  color?: string;
+  size?: number;
+}) {
   return (
-    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" accessibilityElementsHidden>
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" accessibilityElementsHidden>
       <Path
-        d={d[name]}
-        stroke={palette.ink}
+        d={ICONS[name]}
+        stroke={color}
         strokeWidth={1.8}
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -39,16 +50,15 @@ function TileIcon({ name }: { name: Icon }) {
   );
 }
 
-function Tile({
+/** One of the round shortcuts under the progress card. Without onPress it's coming soon. */
+function Shortcut({
   icon,
   label,
-  note,
   onPress,
   testID,
 }: {
   icon: Icon;
   label: string;
-  note?: string;
   onPress?: () => void;
   testID: string;
 }) {
@@ -57,47 +67,22 @@ function Tile({
       onPress={onPress}
       disabled={!onPress}
       accessibilityRole="button"
-      accessibilityLabel={note ? `${label}, ${note}` : label}
+      accessibilityLabel={onPress ? label : `${label}, Coming soon`}
       accessibilityState={{ disabled: !onPress }}
-      style={({ pressed }) => [styles.tile, pressed && styles.pressed, !onPress && styles.tileOff]}
+      style={({ pressed }) => [styles.shortcut, pressed && styles.pressed]}
       testID={testID}
     >
-      <View style={styles.tileIcon}>
-        <TileIcon name={icon} />
+      <View style={[styles.shortcutIcon, !onPress && styles.off]}>
+        <Glyph name={icon} />
       </View>
-      <AppText variant="subhead" weight="600">
+      <AppText variant="caption" weight="600" align="center" numberOfLines={1}>
         {label}
       </AppText>
-      {note ? (
-        <AppText variant="caption" color={colors.textSecondary}>
-          {note}
+      {onPress ? null : (
+        <AppText variant="caption" color={colors.textSecondary} align="center">
+          Soon
         </AppText>
-      ) : null}
-    </Pressable>
-  );
-}
-
-function Card({
-  children,
-  onPress,
-  label,
-  testID,
-}: {
-  children: ReactNode;
-  onPress: () => void;
-  label: string;
-  testID: string;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      style={({ pressed }) => [styles.card, pressed && styles.pressed]}
-      testID={testID}
-    >
-      {children}
-      <Chevron />
+      )}
     </Pressable>
   );
 }
@@ -136,6 +121,12 @@ export function ChapterHubScreen() {
 
   const officers = officersOf(directory ?? []);
   const summary = programs ? progressSummary(programs) : null;
+  const stats = chapterStats({
+    brothers: directory?.length ?? null,
+    officers: directory ? officers.length : null,
+    programs: programs?.length ?? null,
+  });
+  const waitingCount = waiting ? waiting.membershipRequests + waiting.openReports : 0;
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -146,94 +137,119 @@ export function ChapterHubScreen() {
 
         {/* Officers only. Members never see leadership tools, and the rules block them anyway. */}
         <RequireCapability capability="leadership.view">
-          <Card
+          <Pressable
             onPress={() => router.push('/chapter/leadership')}
-            label={`Leadership tools, ${label}${waiting ? `, ${waitingSummary(waiting)}` : ''}`}
+            accessibilityRole="button"
+            accessibilityLabel={`Leadership tools, ${label}${waiting ? `, ${waitingSummary(waiting)}` : ''}`}
+            style={({ pressed }) => [styles.card, pressed && styles.pressed]}
             testID="leadership-entry"
           >
+            <View style={styles.leadIcon}>
+              <Glyph name="shield" color={palette.onInk} />
+            </View>
             <View style={styles.flex}>
               <AppText variant="headline">Leadership</AppText>
               <AppText variant="footnote" color={colors.textSecondary} testID="leadership-waiting">
                 {waiting ? waitingSummary(waiting) : `Signed in as ${label}`}
               </AppText>
             </View>
-            {waiting && waiting.membershipRequests + waiting.openReports > 0 ? (
+            {waitingCount > 0 ? (
               <View style={styles.badge} testID="leadership-badge">
                 <AppText variant="caption" weight="700" color={palette.onInk}>
-                  {String(waiting.membershipRequests + waiting.openReports)}
+                  {String(waitingCount)}
                 </AppText>
               </View>
             ) : null}
-          </Card>
+            <Chevron />
+          </Pressable>
         </RequireCapability>
 
-        <Card
+        <Pressable
           onPress={() => router.push('/chapter/progress')}
-          label={
+          accessibilityRole="button"
+          accessibilityLabel={[
             summary
               ? `Chapter progress, ${summary.percent} percent, ${summary.line}`
-              : 'Chapter progress'
-          }
+              : 'Chapter progress',
+            ...stats.filter((s) => s.value !== '–').map((s) => `${s.value} ${s.label}`),
+          ].join(', ')}
+          style={({ pressed }) => [styles.hero, pressed && styles.pressed]}
           testID="progress-card"
         >
-          <ProgressRing percent={summary?.percent ?? 0} size={56} />
-          <View style={styles.flex}>
-            <AppText variant="headline">Chapter progress</AppText>
-            <AppText variant="footnote" color={colors.textSecondary} testID="progress-line">
-              {summary ? summary.line : 'Loading…'}
-            </AppText>
+          <View style={styles.heroTop}>
+            <ProgressRing percent={summary?.percent ?? 0} size={72} stroke={8} />
+            <View style={styles.flex}>
+              <AppText variant="title3">Chapter progress</AppText>
+              <AppText variant="footnote" color={colors.textSecondary} testID="progress-line">
+                {summary ? summary.line : 'Loading…'}
+              </AppText>
+            </View>
+            <Chevron />
           </View>
-        </Card>
+          <View style={styles.heroDivider} />
+          <View style={styles.stats}>
+            {stats.map((s, i) => (
+              <View key={s.key} style={[styles.stat, i > 0 && styles.statDivider]}>
+                <AppText variant="title2" testID={`stat-${s.key}`}>
+                  {s.value}
+                </AppText>
+                <AppText variant="caption" color={colors.textSecondary}>
+                  {s.label}
+                </AppText>
+              </View>
+            ))}
+          </View>
+        </Pressable>
 
-        <View style={styles.tiles}>
-          <Tile
+        <View style={styles.shortcuts}>
+          <Shortcut
             icon="people"
             label="Directory"
             onPress={() => router.push('/chapter/directory')}
             testID="directory-entry"
           />
-          <Tile
+          <Shortcut
             icon="chart"
             label="Programs"
             onPress={() => router.push('/chapter/progress')}
             testID="tile-programs"
           />
-          <Tile
+          <Shortcut
             icon="calendar"
             label="Calendar"
             onPress={() => router.push({ pathname: '/events', params: { view: 'calendar' } })}
             testID="tile-calendar"
           />
-          <Tile icon="doc" label="Documents" note="Coming soon" testID="tile-documents" />
+          <Shortcut icon="doc" label="Documents" testID="tile-documents" />
         </View>
 
-        <AnnouncementsSection />
-        <RequireCapability capability="announcements.post">
-          <Pressable
-            onPress={() => router.push('/chapter/announcements/new')}
-            accessibilityRole="button"
-            style={styles.link}
-            testID="new-announcement"
-          >
-            <AppText variant="subhead" weight="600" color={colors.link}>
-              New announcement
-            </AppText>
-          </Pressable>
-        </RequireCapability>
+        <AnnouncementsSection
+          action={
+            <RequireCapability capability="announcements.post">
+              <Pressable
+                onPress={() => router.push('/chapter/announcements/new')}
+                accessibilityRole="button"
+                accessibilityLabel="New announcement"
+                hitSlop={spacing.sm}
+                style={({ pressed }) => [styles.newButton, pressed && styles.pressed]}
+                testID="new-announcement"
+              >
+                <Glyph name="plus" size={16} color={palette.onInk} />
+                <AppText variant="subhead" weight="600" color={colors.textOnInk}>
+                  New
+                </AppText>
+              </Pressable>
+            </RequireCapability>
+          }
+        />
 
         {officers.length > 0 ? (
-          <View style={styles.officers}>
-            <AppText
-              variant="sectionHeader"
-              color={colors.textSecondary}
-              accessibilityRole="header"
-              style={styles.inset}
-            >
-              OFFICERS
-            </AppText>
+          <View style={styles.section}>
+            <SectionTitle title="Officers" />
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
+              style={styles.bleed}
               contentContainerStyle={styles.officerRow}
             >
               {officers.map((o) => (
@@ -244,11 +260,13 @@ export function ChapterHubScreen() {
                   }
                   accessibilityRole="button"
                   accessibilityLabel={`${o.displayName}, ${roleLabel(o.role)}`}
-                  style={styles.officer}
+                  style={({ pressed }) => [styles.officer, pressed && styles.pressed]}
                   testID={`officer-${o.uid}`}
                 >
-                  <Avatar name={o.displayName} uri={o.photoURL} size={52} />
-                  <AppText variant="caption" weight="600" align="center" numberOfLines={1}>
+                  <View style={styles.avatarRing}>
+                    <Avatar name={o.displayName} uri={o.photoURL} size={OFFICER_AVATAR} />
+                  </View>
+                  <AppText variant="subhead" weight="600" align="center" numberOfLines={1}>
                     {o.displayName.split(' ')[0]}
                   </AppText>
                   <AppText
@@ -269,11 +287,13 @@ export function ChapterHubScreen() {
   );
 }
 
-const TILE_GAP = spacing.sm;
+const SHORTCUT_ICON = 52;
+const OFFICER_AVATAR = 56;
+const RING = 2;
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.backgroundGrouped },
-  content: { padding: spacing.lg, gap: spacing.lg, paddingBottom: spacing.xxxl },
+  content: { padding: spacing.lg, gap: spacing.xl, paddingBottom: spacing.xxxl },
   flex: { flex: 1, gap: spacing.xxs },
   pressed: { opacity: 0.8 },
   card: {
@@ -281,9 +301,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.md,
     padding: spacing.lg,
-    borderRadius: radius.lg,
+    borderRadius: radius.xl,
     backgroundColor: colors.surface,
     minHeight: MIN_TOUCH,
+  },
+  leadIcon: {
+    width: MIN_TOUCH,
+    height: MIN_TOUCH,
+    borderRadius: radius.md,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   badge: {
     minWidth: spacing.xl + spacing.xxs,
@@ -294,27 +322,62 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: TILE_GAP },
-  tile: {
-    width: `${50 - 1}%`,
-    flexGrow: 1,
-    padding: spacing.md,
-    gap: spacing.xs,
-    borderRadius: radius.lg,
+  hero: {
+    padding: spacing.xl,
+    gap: spacing.lg,
+    borderRadius: radius.sheet,
     backgroundColor: colors.surface,
   },
-  tileOff: { opacity: 0.6 },
-  tileIcon: {
-    width: MIN_TOUCH - spacing.xs,
-    height: MIN_TOUCH - spacing.xs,
-    borderRadius: radius.md,
+  heroTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
+  heroDivider: { height: StyleSheet.hairlineWidth, backgroundColor: colors.separator },
+  stats: { flexDirection: 'row' },
+  stat: { flex: 1, alignItems: 'center', gap: spacing.xxs },
+  statDivider: { borderLeftWidth: StyleSheet.hairlineWidth, borderLeftColor: colors.separator },
+  shortcuts: {
+    flexDirection: 'row',
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.xs,
+    borderRadius: radius.xl,
+    backgroundColor: colors.surface,
+  },
+  shortcut: { flex: 1, alignItems: 'center', gap: spacing.xs, minHeight: MIN_TOUCH },
+  shortcutIcon: {
+    width: SHORTCUT_ICON,
+    height: SHORTCUT_ICON,
+    borderRadius: SHORTCUT_ICON / 2,
     backgroundColor: colors.accentSoft,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: spacing.xxs,
   },
-  link: { minHeight: MIN_TOUCH, justifyContent: 'center', paddingHorizontal: spacing.lg },
-  officers: { gap: spacing.sm },
-  inset: { paddingHorizontal: spacing.lg },
-  officerRow: { gap: spacing.md, paddingHorizontal: spacing.xs },
-  officer: { width: MIN_TOUCH * 2, alignItems: 'center', gap: spacing.xxs },
+  off: { opacity: 0.5 },
+  newButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    minHeight: spacing.xxxl,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primary,
+  },
+  section: { gap: spacing.xs },
+  // Officer cards scroll edge to edge, past the screen's side padding.
+  bleed: { marginHorizontal: -spacing.lg },
+  officerRow: { gap: spacing.md, paddingHorizontal: spacing.lg },
+  officer: {
+    width: OFFICER_AVATAR * 2,
+    alignItems: 'center',
+    gap: spacing.xxs,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radius.xl,
+    backgroundColor: colors.surface,
+  },
+  avatarRing: {
+    padding: RING,
+    borderWidth: RING,
+    borderColor: colors.accent,
+    borderRadius: radius.pill,
+    marginBottom: spacing.xs,
+  },
 });

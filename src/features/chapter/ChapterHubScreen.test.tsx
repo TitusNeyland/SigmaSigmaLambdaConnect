@@ -85,6 +85,17 @@ describe('everyone', () => {
     expect(leadership.fetchWaitingCounts).not.toHaveBeenCalled();
   });
 
+  it('the progress card counts brothers, officers and programs', async () => {
+    await openChapter();
+    await waitFor(() => expect(screen.getByTestId('stat-brothers')).toHaveTextContent('2'));
+    expect(screen.getByTestId('stat-officers')).toHaveTextContent('1');
+    expect(screen.getByTestId('stat-programs')).toHaveTextContent('2');
+    expect(screen.getByTestId('progress-card').props.accessibilityLabel).toBe(
+      'Chapter progress, 50 percent, 50% of milestones done · 1 program needs help, ' +
+        '2 Brothers, 1 Officer, 2 Programs',
+    );
+  });
+
   it('progress card and Programs tile open chapter progress', async () => {
     const r = await openChapter();
     await press(screen.getByTestId('progress-card'));
@@ -130,7 +141,7 @@ describe('everyone', () => {
   it('hides the officers row when nobody has a role', async () => {
     directory.resetDirectoryMock([directory.sampleEntry()]);
     await openChapter();
-    expect(screen.queryByRole('header', { name: 'OFFICERS' })).toBeNull();
+    expect(screen.queryByRole('header', { name: 'Officers' })).toBeNull();
   });
 
   it('says so when there are no programs, and copes with a failed load', async () => {

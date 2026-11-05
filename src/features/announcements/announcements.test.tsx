@@ -82,7 +82,8 @@ describe('reading', () => {
     expect(screen.getByTestId('unread-service')).toBeTruthy();
     expect(screen.getByTestId('unread-dues')).toBeTruthy();
     expect(screen.queryByTestId('unread-old')).toBeNull();
-    expect(screen.getByRole('header', { name: 'ANNOUNCEMENTS · 2 NEW' })).toBeTruthy();
+    expect(screen.getByRole('header', { name: 'Announcements' })).toBeTruthy();
+    expect(screen.getByTestId('announcements-unread')).toHaveTextContent('2 new');
     expect(screen.getByTestId('announcement-service').props.accessibilityLabel).toMatch(
       /^Unread\. Sample service sign-ups, Pinned · President · /,
     );

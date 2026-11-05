@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import {
@@ -10,7 +10,7 @@ import {
 import { useAuth } from '@/features/auth/AuthProvider';
 import { timeAgo } from '@/features/feed/feedLogic';
 import { colors, MIN_TOUCH, palette, radius, spacing } from '@/theme';
-import { AppText } from '@/ui';
+import { AppText, SectionTitle, StatusChip } from '@/ui';
 
 import { sortAnnouncements } from './announcementLogic';
 
@@ -75,7 +75,14 @@ function Row({
  * Chapter announcements with unread dots. Tapping one expands it and marks it read. Shows
  * nothing when there are none and nothing to say.
  */
-export function AnnouncementsSection({ onUnreadChange }: { onUnreadChange?: (n: number) => void }) {
+export function AnnouncementsSection({
+  onUnreadChange,
+  action,
+}: {
+  onUnreadChange?: (n: number) => void;
+  /** Beside the heading, e.g. the officers' New button. */
+  action?: ReactNode;
+}) {
   const auth = useAuth();
   const uid = auth.status === 'signedIn' ? auth.user.uid : '';
   const [list, setList] = useState<ChapterAnnouncement[] | null>(null);
@@ -95,14 +102,15 @@ export function AnnouncementsSection({ onUnreadChange }: { onUnreadChange?: (n: 
 
   return (
     <View style={styles.wrap} testID="announcements">
-      <AppText
-        variant="sectionHeader"
-        color={colors.textSecondary}
-        accessibilityRole="header"
-        style={styles.header}
-      >
-        {unread > 0 ? `ANNOUNCEMENTS · ${unread} NEW` : 'ANNOUNCEMENTS'}
-      </AppText>
+      <SectionTitle
+        title="Announcements"
+        badge={
+          unread > 0 ? (
+            <StatusChip label={`${unread} new`} tone="gold" testID="announcements-unread" />
+          ) : null
+        }
+        trailing={action}
+      />
       <View style={styles.card}>
         {failed ? (
           <AppText variant="callout" color={colors.textSecondary} style={styles.message}>
@@ -142,9 +150,8 @@ export function AnnouncementsSection({ onUnreadChange }: { onUnreadChange?: (n: 
 }
 
 const styles = StyleSheet.create({
-  wrap: { gap: spacing.sm },
-  header: { paddingHorizontal: spacing.lg },
-  card: { borderRadius: radius.lg, backgroundColor: colors.surface, overflow: 'hidden' },
+  wrap: { gap: spacing.xs },
+  card: { borderRadius: radius.xl, backgroundColor: colors.surface, overflow: 'hidden' },
   row: {
     flexDirection: 'row',
     gap: spacing.md,

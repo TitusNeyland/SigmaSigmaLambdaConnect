@@ -1,4 +1,5 @@
-import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
+import { act, fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/testing-library';
+import { StyleSheet } from 'react-native';
 
 jest.mock('@/data/auth');
 const auth = jest.requireMock<typeof import('@/data/__mocks__/auth')>('@/data/auth');
@@ -85,6 +86,14 @@ it('is reachable from the Chapter tab', async () => {
   await press(screen.getByTestId('directory-entry'));
   await waitFor(() => expect(screen).toHavePathname('/chapter/directory'));
   expect(screen.getByRole('header', { name: 'Directory' })).toBeTruthy();
+});
+
+it('shows the back arrow beside the title, on one line', async () => {
+  await openDirectory();
+  const row = screen.getByTestId('directory-header');
+  expect(StyleSheet.flatten(row.props.style)).toMatchObject({ flexDirection: 'row' });
+  expect(within(row).getByTestId('directory-back')).toBeTruthy();
+  expect(within(row).getByRole('header', { name: 'Directory' })).toBeTruthy();
 });
 
 it('lists brothers A to Z by last name under letter headers, with role badges', async () => {
