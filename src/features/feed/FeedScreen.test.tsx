@@ -99,6 +99,19 @@ it('shows a text-only post like a tweet, with the text right under the author', 
   expect(screen.getByTestId('like-p1')).toBeTruthy();
 });
 
+it('lines up likes and comments the same on text and photo posts', async () => {
+  feed.resetFeedMock([
+    feed.samplePost({ id: 'p1', caption: 'Chapter meeting moved to 7' }),
+    feed.samplePost({ id: 'p2', caption: 'Gala night', photoPaths: ['posts/a/p2/0.jpg'] }),
+  ]);
+  await openHome();
+  const style = (id: string) => StyleSheet.flatten(screen.getByTestId(id).props.style);
+  expect(style('actions-p1')).toEqual(style('actions-p2'));
+  expect(style('post-body-p1')).toEqual(style('post-body-p2'));
+  // The text of a post without photos starts at the same left edge as the comments.
+  expect(style('caption-p1').paddingHorizontal).toBe(style('post-body-p1').paddingHorizontal);
+});
+
 it('keeps the Instagram-style caption on photo posts', async () => {
   feed.resetFeedMock([
     feed.samplePost({ id: 'p1', caption: 'Gala night', photoPaths: ['posts/a/p1/0.jpg'] }),
