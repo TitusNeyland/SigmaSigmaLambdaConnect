@@ -154,7 +154,7 @@ function Form({ uid, existing }: { uid: string; existing: EventDetail | null }) 
     setSaving(true);
     try {
       const id = existing?.id ?? newEventId();
-      const photoURL = photoUri ? await uploadEventPhoto(id, photoUri) : form.photoURL;
+      const photoURL = photoUri ? await uploadEventPhoto(id, uid, photoUri) : form.photoURL;
       const input = toEventInput({ ...form, photoURL });
       if (existing) await updateEvent(id, input);
       else await createEvent(id, uid, input);

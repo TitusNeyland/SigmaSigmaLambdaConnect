@@ -581,6 +581,76 @@ describe('events', () => {
     );
   });
 
+  describe('the exact edit the form saves (updateEvent in src/data/eventAdmin.ts)', () => {
+    // updateEvent sends every field, and removes the address or end time when cleared.
+    const edit = (start: Date, extra: object = {}) => ({
+      title: 'Scholarship gala (moved)',
+      category: 'fundraiser',
+      location: 'New ballroom',
+      description: 'Updated details.',
+      startsAt: start,
+      rsvpDeadline: new Date(start.getTime() - 24 * 3600_000),
+      feeCents: 3000,
+      photoURL: 'https://example.test/events/alices/alice-1.jpg',
+      address: '300 Sample Ave',
+      endsAt: new Date(start.getTime() + 3 * 3600_000),
+      ...extra,
+    });
+
+    beforeEach(async () => {
+      await env.withSecurityRulesDisabled((ctx) =>
+        setDoc(
+          doc(ctx.firestore(), 'events/alices'),
+          eventDoc({
+            createdBy: USERS.alice,
+            address: '200 Sample Ave',
+            endsAt: hoursFromNow(51),
+            photoURL: null,
+            cancelled: false,
+          }),
+        ),
+      );
+    });
+
+    it('saves for the host and for an officer', async () => {
+      const start = new Date(Date.now() + 96 * 3600_000);
+      await assertSucceeds(updateDoc(doc(as(USERS.alice), 'events/alices'), edit(start)));
+      await assertSucceeds(updateDoc(doc(as(USERS.olivia), 'events/alices'), edit(start)));
+    });
+
+    it('saves with the address and end time cleared, and the photo removed', async () => {
+      const start = new Date(Date.now() + 96 * 3600_000);
+      await assertSucceeds(
+        updateDoc(
+          doc(as(USERS.alice), 'events/alices'),
+          edit(start, { address: deleteField(), endsAt: deleteField(), photoURL: null }),
+        ),
+      );
+    });
+
+    it('saves edits to an event that already started', async () => {
+      await env.withSecurityRulesDisabled((ctx) =>
+        updateDoc(doc(ctx.firestore(), 'events/alices'), {
+          startsAt: hoursFromNow(-2),
+          rsvpDeadline: hoursFromNow(-26),
+          endsAt: hoursFromNow(1),
+        }),
+      );
+      const start = new Date(Date.now() - 2 * 3600_000);
+      await assertSucceeds(
+        updateDoc(doc(as(USERS.alice), 'events/alices'), edit(start, { title: 'Fixed typo' })),
+      );
+    });
+
+    it('saves edits to a cancelled event', async () => {
+      await env.withSecurityRulesDisabled((ctx) =>
+        updateDoc(doc(ctx.firestore(), 'events/alices'), { cancelled: true }),
+      );
+      const start = new Date(Date.now() + 96 * 3600_000);
+      await assertSucceeds(updateDoc(doc(as(USERS.alice), 'events/alices'), edit(start)));
+    });
+  });
+
   it('rejects an end before the start, a deadline after it, and a long address', async () => {
     const db = as(USERS.olivia);
     const start = hoursFromNow(72);

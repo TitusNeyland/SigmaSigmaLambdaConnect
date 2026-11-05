@@ -33,10 +33,6 @@ service firebase.storage {
         && firestore.get(rolePath()).data.role in ['officer', 'admin'];
     }
 
-    function eventPath(eventId) {
-      return /databases/(default)/documents/events/$(eventId);
-    }
-
     function isImageUnder(maxBytes) {
       return request.resource.contentType.matches('image/.*')
         && request.resource.size < maxBytes;
@@ -59,13 +55,15 @@ service firebase.storage {
     // Event hero photos.
     match /events/{eventId}/{fileName} {
       allow read: if isApproved();
-      // Officers, or the host. A new event's photo uploads before the event is saved, so
-      // any approved member may add one to an id that has no event yet.
+      // Any approved member can host an event, and its photo uploads before the event is
+      // saved. Members write only files named after themselves (`<uid>-<time>.jpg`), so
+      // nobody can replace someone else's photo. Officers write any file. Which photo an
+      // event shows is its photoURL, guarded by the Firestore rules.
+      // Storage rules may read at most two Firestore documents per request (member and
+      // role here), so this can't also look up the event's host.
       allow create, update: if isImageUnder(10 * 1024 * 1024)
         && (isOfficer()
-            || (isApproved()
-                && (!firestore.exists(eventPath(eventId))
-                    || firestore.get(eventPath(eventId)).data.createdBy == request.auth.uid)));
+            || (isApproved() && fileName.matches(request.auth.uid + '-.*')));
       allow delete: if isOfficer();
     }
 

@@ -73,10 +73,13 @@ export async function cancelEvent(id: string): Promise<void> {
   await updateDoc(doc(db, 'events', id), { cancelled: true });
 }
 
-/** Uploads a prepared JPEG as the event's photo and returns its URL. */
-export async function uploadEventPhoto(id: string, localUri: string): Promise<string> {
+/**
+ * Uploads a prepared JPEG as the event's photo and returns its URL. The file name starts
+ * with the uploader's uid: the Storage rules only let members write their own files.
+ */
+export async function uploadEventPhoto(id: string, uid: string, localUri: string): Promise<string> {
   const blob = await (await fetch(localUri)).blob();
-  const fileRef = ref(storage, `events/${id}/${Date.now()}.jpg`);
+  const fileRef = ref(storage, `events/${id}/${uid}-${Date.now()}.jpg`);
   await uploadBytes(fileRef, blob, { contentType: 'image/jpeg' });
   return getDownloadURL(fileRef);
 }
