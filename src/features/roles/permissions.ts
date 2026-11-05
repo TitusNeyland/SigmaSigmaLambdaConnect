@@ -17,6 +17,10 @@ export type Capability =
   | 'posts.official'
   | 'reports.review'
   | 'programs.manage'
+  /** Read every committee report, not just your own. Rules: committeeReports read. */
+  | 'committeeReports.review'
+  /** Set who committee reports are emailed to. Rules: settings/reportRecipients. */
+  | 'committeeReports.recipients'
   | 'roles.manage';
 
 const OFFICER: readonly Capability[] = [
@@ -28,12 +32,15 @@ const OFFICER: readonly Capability[] = [
   'posts.official',
   'reports.review',
   'programs.manage',
+  'committeeReports.review',
 ];
+
+const ADMIN_ONLY: readonly Capability[] = ['roles.manage', 'committeeReports.recipients'];
 
 const CAPABILITIES: Record<AccessLevel, ReadonlySet<Capability>> = {
   member: new Set(),
   officer: new Set(OFFICER),
-  admin: new Set([...OFFICER, 'roles.manage']),
+  admin: new Set([...OFFICER, ...ADMIN_ONLY]),
 };
 
 export function accessLevelFor(role: RoleDoc | null | undefined): AccessLevel {

@@ -1346,6 +1346,118 @@ describe('activity', () => {
   });
 });
 
+describe('committee reports', () => {
+  const report = (uid: string, extra: object = {}) => ({
+    authorId: uid,
+    committee: 'Service',
+    period: 'October 2026',
+    summary: 'Two park cleanups.',
+    attachment: null,
+    createdAt: serverTimestamp(),
+    ...extra,
+  });
+  const file = (uid: string, id = 'r1', extra: object = {}) => ({
+    path: `committeeReports/${uid}/${id}/october.pdf`,
+    name: 'october.pdf',
+    contentType: 'application/pdf',
+    size: 2048,
+    ...extra,
+  });
+
+  it('approved members submit their own, with or without a file', async () => {
+    const db = as(USERS.bob);
+    await assertSucceeds(setDoc(doc(db, 'committeeReports/r1'), report('bob')));
+    await assertSucceeds(
+      setDoc(doc(db, 'committeeReports/r2'), report('bob', { attachment: file('bob', 'r2') })),
+    );
+  });
+
+  it('rejects someone else’s name, missing or long fields, extra fields and old times', async () => {
+    const db = as(USERS.bob);
+    const bad = [
+      report('alice'),
+      report('bob', { committee: '' }),
+      report('bob', { summary: 'x'.repeat(5001) }),
+      report('bob', { emailStatus: 'sent' }),
+      report('bob', { createdAt: new Date(0) }),
+    ];
+    for (const data of bad) await assertFails(setDoc(doc(db, 'committeeReports/r1'), data));
+  });
+
+  it('a file must be the member’s own upload for this report, up to 10 MB', async () => {
+    const db = as(USERS.bob);
+    const at = (attachment: object) =>
+      setDoc(doc(db, 'committeeReports/r1'), report('bob', { attachment }));
+    await assertFails(at(file('alice')));
+    await assertFails(at(file('bob', 'other')));
+    await assertFails(at(file('bob', 'r1', { size: 10 * 1024 * 1024 })));
+    await assertFails(at({ ...file('bob'), extra: true }));
+  });
+
+  it('pending members can’t submit', async () => {
+    await assertFails(setDoc(doc(as(USERS.pete), 'committeeReports/r1'), report('pete')));
+  });
+
+  it('members read their own; officers read all; nobody edits or deletes', async () => {
+    await assertSucceeds(setDoc(doc(as(USERS.bob), 'committeeReports/r1'), report('bob')));
+    await assertSucceeds(getDoc(doc(as(USERS.bob), 'committeeReports/r1')));
+    await assertFails(getDoc(doc(as(USERS.alice), 'committeeReports/r1')));
+    await assertSucceeds(getDoc(doc(as(USERS.olivia), 'committeeReports/r1')));
+    await assertSucceeds(
+      getDocs(
+        query(
+          collection(as(USERS.bob), 'committeeReports'),
+          where('authorId', '==', 'bob'),
+          orderBy('createdAt', 'desc'),
+        ),
+      ),
+    );
+    await assertSucceeds(
+      getDocs(
+        query(collection(as(USERS.olivia), 'committeeReports'), orderBy('createdAt', 'desc')),
+      ),
+    );
+    await assertFails(getDocs(collection(as(USERS.alice), 'committeeReports')));
+    for (const uid of [USERS.bob, USERS.adam]) {
+      await assertFails(updateDoc(doc(as(uid), 'committeeReports/r1'), { summary: 'Edited' }));
+      await assertFails(deleteDoc(doc(as(uid), 'committeeReports/r1')));
+    }
+  });
+});
+
+describe('committee report recipients', () => {
+  const recipients = (uid: string, extra: object = {}) => ({
+    emails: ['vp1@example.com', 'vp2@example.com'],
+    updatedBy: uid,
+    updatedAt: serverTimestamp(),
+    ...extra,
+  });
+  const path = 'settings/reportRecipients';
+
+  it('only admins read and set them', async () => {
+    await assertSucceeds(setDoc(doc(as(USERS.adam), path), recipients('adam')));
+    await assertSucceeds(getDoc(doc(as(USERS.adam), path)));
+    for (const uid of [USERS.alice, USERS.olivia, USERS.rogue]) {
+      await assertFails(getDoc(doc(as(uid), path)));
+      await assertFails(setDoc(doc(as(uid), path), recipients(uid)));
+    }
+  });
+
+  it('up to ten addresses, signed and timed by the admin', async () => {
+    const db = as(USERS.adam);
+    const eleven = Array.from({ length: 11 }, (_, i) => `vp${i}@example.com`);
+    await assertFails(setDoc(doc(db, path), recipients('adam', { emails: eleven })));
+    await assertFails(setDoc(doc(db, path), recipients('olivia')));
+    await assertFails(setDoc(doc(db, path), recipients('adam', { updatedAt: new Date(0) })));
+    await assertFails(setDoc(doc(db, path), recipients('adam', { note: 'x' })));
+  });
+
+  it('other settings stay closed', async () => {
+    await assertFails(getDoc(doc(as(USERS.adam), 'settings/other')));
+    await assertFails(setDoc(doc(as(USERS.adam), 'settings/other'), { x: 1 }));
+  });
+});
+
 describe('push tokens', () => {
   const token = (extra: object = {}) => ({
     token: 'ExponentPushToken[abc]',

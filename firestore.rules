@@ -509,6 +509,52 @@ service cloud.firestore {
         && isNow(incoming().readAt);
     }
 
+    // ---------- Committee reports ----------
+
+    // Any approved member submits a report for their committee, with an optional file they
+    // uploaded under committeeReports/{their uid}/{report id}/. A Cloud Function emails it to
+    // the recipients below and records how that went. Members read their own; officers read
+    // them all. Nobody edits or deletes one from the app.
+    function reportAttachmentValid(a, reportId) {
+      return a == null
+        || (a is map
+            && a.keys().hasAll(['path', 'name', 'contentType', 'size'])
+            && a.keys().hasOnly(['path', 'name', 'contentType', 'size'])
+            && a.path is string
+            && a.path.matches('committeeReports/' + request.auth.uid + '/' + reportId + '/.+')
+            && isText(a.name, 1, 200)
+            && isText(a.contentType, 1, 120)
+            && a.size is int && a.size > 0 && a.size < 10 * 1024 * 1024);
+    }
+
+    match /committeeReports/{reportId} {
+      allow read: if isOfficer()
+        || (isApproved() && resource.data.authorId == request.auth.uid);
+      allow create: if isApproved()
+        && incoming().keys().hasAll(['authorId', 'committee', 'period', 'summary', 'attachment',
+                                     'createdAt'])
+        && incoming().keys().hasOnly(['authorId', 'committee', 'period', 'summary',
+                                      'attachment', 'createdAt'])
+        && incoming().authorId == request.auth.uid
+        && isText(incoming().committee, 1, 60)
+        && isText(incoming().period, 1, 40)
+        && isText(incoming().summary, 1, 5000)
+        && reportAttachmentValid(incoming().attachment, reportId)
+        && isNow(incoming().createdAt);
+    }
+
+    // Who committee reports are emailed to (the chapter's VPs). Admins only, since it's a
+    // list of people's email addresses.
+    match /settings/reportRecipients {
+      allow read: if isAdmin();
+      allow write: if isAdmin()
+        && incoming().keys().hasOnly(['emails', 'updatedBy', 'updatedAt'])
+        && incoming().emails is list
+        && incoming().emails.size() <= 10
+        && incoming().updatedBy == request.auth.uid
+        && isNow(incoming().updatedAt);
+    }
+
     // Set by the resolveReport Cloud Function (#50). The member can see their own.
     match /restrictions/{userId} {
       allow read: if isSelf(userId) || isOfficer();

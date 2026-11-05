@@ -67,6 +67,18 @@ service firebase.storage {
       allow delete: if isOfficer();
     }
 
+    // A committee report's file (PDF, Word or photo), uploaded before the report is saved.
+    // The submitter and officers can open it; a Cloud Function emails it. Never replaced.
+    match /committeeReports/{userId}/{reportId}/{fileName} {
+      allow read: if (isSelf(userId) && isApproved()) || isOfficer();
+      allow create: if isSelf(userId)
+        && isApproved()
+        && resource == null
+        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches(
+             'application/pdf|application/msword|application/vnd[.]openxmlformats-officedocument[.].*|image/.*');
+    }
+
     match /{allPaths=**} {
       allow read, write: if false;
     }

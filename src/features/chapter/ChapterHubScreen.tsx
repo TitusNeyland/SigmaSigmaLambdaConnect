@@ -220,7 +220,12 @@ export function ChapterHubScreen() {
             onPress={() => router.push({ pathname: '/events', params: { view: 'calendar' } })}
             testID="tile-calendar"
           />
-          <Shortcut icon="doc" label="Documents" testID="tile-documents" />
+          <Shortcut
+            icon="doc"
+            label="Documents"
+            onPress={() => router.push('/chapter/documents')}
+            testID="tile-documents"
+          />
         </View>
 
         <AnnouncementsSection

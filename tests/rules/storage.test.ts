@@ -146,6 +146,41 @@ describe('event photos', () => {
   });
 });
 
+describe('committee report files', () => {
+  const pdf = { contentType: 'application/pdf' };
+  const docx = {
+    contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  };
+  const path = (uid: string, name = 'report.pdf') => `committeeReports/${uid}/r1/${name}`;
+
+  it('approved members upload a PDF, Word file or photo under their own ID', async () => {
+    const db = as(USERS.alice);
+    await assertSucceeds(uploadBytes(ref(db, path('alice')), image(), pdf));
+    await assertSucceeds(uploadBytes(ref(db, path('alice', 'report.docx')), image(), docx));
+    await assertSucceeds(uploadBytes(ref(db, path('alice', 'photo.jpg')), image(), jpeg));
+  });
+
+  it('not under someone else’s ID, not while pending, not other types or over 10 MB', async () => {
+    await assertFails(uploadBytes(ref(as(USERS.bob), path('alice')), image(), pdf));
+    await assertFails(uploadBytes(ref(as(USERS.pete), path('pete')), image(), pdf));
+    await assertFails(
+      uploadBytes(ref(as(USERS.alice), path('alice', 'run.sh')), image(), {
+        contentType: 'application/x-sh',
+      }),
+    );
+    await assertFails(uploadBytes(ref(as(USERS.alice), path('alice')), image(10 * MB + 1), pdf));
+  });
+
+  it('the member and officers open it; other members can’t, and nobody replaces it', async () => {
+    await put(path('alice'), 1024, pdf);
+    await assertSucceeds(getBytes(ref(as(USERS.alice), path('alice'))));
+    await assertSucceeds(getBytes(ref(as(USERS.olivia), path('alice'))));
+    await assertFails(getBytes(ref(as(USERS.bob), path('alice'))));
+    await assertFails(uploadBytes(ref(as(USERS.alice), path('alice')), image(), pdf));
+    await assertFails(deleteObject(ref(as(USERS.alice), path('alice'))));
+  });
+});
+
 describe('everything else', () => {
   it('is denied, even for admins', async () => {
     await assertFails(uploadBytes(ref(as(USERS.adam), 'random/file.jpg'), image(), jpeg));
