@@ -148,22 +148,12 @@ it('hides posts from people I blocked, right away', async () => {
   expect(shown()).not.toContain('p2');
 });
 
-it('shows the upcoming events strip and opens an event', async () => {
-  events.resetEventsMock([
-    events.sampleEvent({ id: 'meeting', title: 'Sample chapter meeting' }),
-    events.sampleEvent({ id: 'off', title: 'Sample cancelled', cancelled: true }),
-  ]);
-  events.setMockDetails({ meeting: events.sampleDetail({ id: 'meeting' }) });
-  await openHome();
-  await waitFor(() => expect(screen.getByTestId('events-strip')).toBeTruthy());
-  expect(screen.queryByTestId('strip-event-off')).toBeNull();
-  await press(screen.getByTestId('strip-event-meeting'));
-  await waitFor(() => expect(screen).toHavePathname('/events/meeting'));
-});
-
-it('leaves the strip out when nothing is coming up', async () => {
+it('has no upcoming events strip, even with events coming up', async () => {
+  events.resetEventsMock([events.sampleEvent({ id: 'meeting', title: 'Sample chapter meeting' })]);
   await openHome();
   expect(screen.queryByTestId('events-strip')).toBeNull();
+  expect(screen.queryByText('Upcoming')).toBeNull();
+  expect(events.fetchUpcomingEvents).not.toHaveBeenCalled();
 });
 
 it('shows photos at the post’s shape, so wide photos show wide', async () => {

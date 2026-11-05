@@ -3,13 +3,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { fetchUpcomingEvents, type EventSummary } from '@/data/events';
 import { fetchFeedPage, type FeedCursor, type FeedPost } from '@/data/feed';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { colors, spacing } from '@/theme';
 import { AppText, Button } from '@/ui';
 
-import { EventsStrip } from './EventsStrip';
 import { onCommentsChanged, onFeedChanged } from './feedEvents';
 import { appendPage, visiblePosts } from './feedLogic';
 import { PostCard } from './PostCard';
@@ -27,13 +25,12 @@ type Feed =
       moreFailed: boolean;
     };
 
-/** Home: upcoming events, then the chapter's posts, newest first. */
+/** Home: the chapter's posts, newest first. */
 export function FeedScreen() {
   const auth = useAuth();
   const uid = auth.status === 'signedIn' ? auth.user.uid : '';
   const { blocked, hidden } = useHiddenContent(uid);
   const [feed, setFeed] = useState<Feed>({ state: 'loading' });
-  const [events, setEvents] = useState<EventSummary[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [now, setNow] = useState(() => new Date());
   const loadId = useRef(0);
@@ -61,8 +58,6 @@ export function FeedScreen() {
         setRefreshing(false);
       },
     );
-    // The strip is a bonus; the feed still shows if it fails.
-    fetchUpcomingEvents(uid, at).then(setEvents, () => {});
   }, [uid]);
 
   // Sharing a post reloads the feed so it shows at the top.
@@ -129,7 +124,6 @@ export function FeedScreen() {
           Sigma Sigma Lambda
         </AppText>
       </View>
-      <EventsStrip events={events} now={now} />
       <View style={styles.divider} />
     </View>
   );
