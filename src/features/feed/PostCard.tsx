@@ -9,7 +9,14 @@ import { colors, MIN_TOUCH, spacing } from '@/theme';
 import { CHAPTER_NAME } from '@/config/app';
 import { AppText, Avatar, Monogram, VerifiedBadge } from '@/ui';
 
-import { authorLine, captionPreview, commentsLabel, likesLabel, timeAgo } from './feedLogic';
+import {
+  authorLine,
+  captionPreview,
+  commentsCountLabel,
+  commentsLabel,
+  likesLabel,
+  timeAgo,
+} from './feedLogic';
 import { OfficialEventCard } from './OfficialEventCard';
 import { PhotoCarousel } from './PhotoCarousel';
 import { PostMenu } from './PostMenu';
@@ -60,8 +67,9 @@ function openAuthor(post: FeedPost, me: string) {
   else router.push({ pathname: '/chapter/member/[uid]', params: { uid: post.authorId } });
 }
 
-function openPost(id: string) {
-  router.push({ pathname: '/home/post/[id]', params: { id } });
+/** Comments open in a sheet over the feed. */
+function openComments(id: string) {
+  router.push({ pathname: '/home/comments/[id]', params: { id } });
 }
 
 const AVATAR = 36;
@@ -186,13 +194,22 @@ export function PostCard({
         </Pressable>
         {post.allowComments && !hideCommentLink ? (
           <Pressable
-            onPress={() => openPost(post.id)}
+            onPress={() => openComments(post.id)}
             accessibilityRole="button"
-            accessibilityLabel="Comment"
-            style={styles.action}
+            accessibilityLabel={
+              post.commentCount > 0
+                ? `Comment, ${commentsCountLabel(post.commentCount)}`
+                : 'Comment'
+            }
+            style={[styles.action, post.commentCount > 0 && styles.actionWithCount]}
             testID={`comment-${post.id}`}
           >
             <CommentIcon />
+            {post.commentCount > 0 ? (
+              <AppText variant="subhead" weight="600" testID={`comment-count-${post.id}`}>
+                {post.commentCount}
+              </AppText>
+            ) : null}
           </Pressable>
         ) : null}
       </View>
@@ -219,7 +236,7 @@ export function PostCard({
         ) : null}
         {post.allowComments && post.commentCount > 0 ? (
           <Pressable
-            onPress={() => openPost(post.id)}
+            onPress={() => openComments(post.id)}
             accessibilityRole="button"
             style={styles.commentsLink}
             testID={`comments-${post.id}`}
@@ -229,6 +246,25 @@ export function PostCard({
             </AppText>
           </Pressable>
         ) : null}
+        {/* The newest couple of comments, Instagram style. The post screen lists them all. */}
+        {post.allowComments && !hideCommentLink
+          ? post.previewComments.map((c) => (
+              <Pressable
+                key={c.id}
+                onPress={() => openComments(post.id)}
+                accessibilityRole="button"
+                accessibilityHint="Opens the comments"
+                testID={`preview-comment-${c.id}`}
+              >
+                <AppText variant="subhead" numberOfLines={2}>
+                  <AppText variant="subhead" weight="600">
+                    {c.authorName}{' '}
+                  </AppText>
+                  {c.text}
+                </AppText>
+              </Pressable>
+            ))
+          : null}
       </View>
       {post.official && post.eventId ? (
         <OfficialEventCard eventId={post.eventId} me={me} now={now} />
@@ -254,6 +290,14 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   actions: { flexDirection: 'row', paddingHorizontal: spacing.sm, paddingTop: spacing.xs },
   action: { width: MIN_TOUCH, height: MIN_TOUCH, alignItems: 'center', justifyContent: 'center' },
+  // The comment button grows to fit its count beside the icon.
+  actionWithCount: {
+    width: undefined,
+    minWidth: MIN_TOUCH,
+    flexDirection: 'row',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.sm,
+  },
   body: { paddingHorizontal: spacing.lg, gap: spacing.xs },
   commentsLink: { minHeight: MIN_TOUCH - spacing.md, justifyContent: 'center' },
   // Text-only posts line up with the author's name, past the avatar, like a tweet.

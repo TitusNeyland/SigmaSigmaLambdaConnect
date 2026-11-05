@@ -29,6 +29,7 @@ export function samplePost(overrides: Partial<FeedPost> = {}): FeedPost {
     commentCount: 0,
     createdAt: new Date(Date.now() - 2 * 3600_000),
     likedByMe: false,
+    previewComments: [],
     ...overrides,
   };
 }

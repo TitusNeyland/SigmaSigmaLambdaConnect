@@ -36,21 +36,34 @@ export function timeAgo(date: Date, now: Date): string {
 export const likesLabel = (n: number) =>
   `${n.toLocaleString('en-US')} ${n === 1 ? 'like' : 'likes'}`;
 
+/** "1 comment", "12 comments". For the count beside the comment icon. */
+export function commentsCountLabel(n: number): string {
+  return n === 1 ? '1 comment' : `${n.toLocaleString('en-US')} comments`;
+}
+
 export function commentsLabel(n: number): string {
   if (n <= 0) return '';
   return n === 1 ? 'View 1 comment' : `View all ${n.toLocaleString('en-US')} comments`;
 }
 
 /**
- * Drops posts by people the member blocked and posts they reported (keys from hiddenKey).
- * Removed posts never reach the app.
+ * Drops posts by people the member blocked and posts they reported (keys from hiddenKey),
+ * and the same for the comments previewed under each post. Removed posts never reach the
+ * app.
  */
 export function visiblePosts(
   posts: FeedPost[],
   blocked: ReadonlySet<string>,
   hidden: ReadonlySet<string> = new Set(),
 ): FeedPost[] {
-  return posts.filter((p) => !blocked.has(p.authorId) && !hidden.has(`post_${p.id}`));
+  return posts
+    .filter((p) => !blocked.has(p.authorId) && !hidden.has(`post_${p.id}`))
+    .map((p) => {
+      const previewComments = p.previewComments.filter(
+        (c) => !blocked.has(c.authorId) && !hidden.has(`comment_${p.id}_${c.id}`),
+      );
+      return previewComments.length === p.previewComments.length ? p : { ...p, previewComments };
+    });
 }
 
 /** Adds a page under what's loaded, skipping any post already shown (posts can shift pages). */

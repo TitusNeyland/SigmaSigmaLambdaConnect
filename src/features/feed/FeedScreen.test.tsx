@@ -177,7 +177,64 @@ it('shows photos and links comments and authors', async () => {
   await waitFor(() => expect(screen.getByTestId('photo-posts/a/p1/0.jpg')).toBeTruthy());
   expect(screen.getByLabelText('Photo from Marcus Reed, photo 1 of 2')).toBeTruthy();
   await press(screen.getByTestId('comments-p1'));
-  await waitFor(() => expect(screen).toHavePathname('/home/post/p1'));
+  await waitFor(() => expect(screen).toHavePathname('/home/comments/p1'));
+});
+
+describe('comments under a post', () => {
+  const withComments = (overrides = {}) =>
+    feed.samplePost({
+      id: 'p1',
+      commentCount: 5,
+      previewComments: [
+        { id: 'c1', authorId: 'sample-chris', authorName: 'Chris Baptiste', text: 'Great night' },
+        { id: 'c2', authorId: 'sample-zed', authorName: 'Zed Allen', text: 'See you Saturday' },
+      ],
+      ...overrides,
+    });
+
+  it('shows the count by the comment icon and the newest comments under the caption', async () => {
+    feed.resetFeedMock([withComments()]);
+    await openHome();
+    expect(screen.getByTestId('comment-count-p1')).toHaveTextContent('5');
+    expect(screen.getByTestId('comment-p1').props.accessibilityLabel).toBe('Comment, 5 comments');
+    expect(screen.getByTestId('comments-p1')).toHaveTextContent('View all 5 comments');
+    expect(screen.getByTestId('preview-comment-c1')).toHaveTextContent(
+      'Chris Baptiste Great night',
+    );
+    expect(screen.getByTestId('preview-comment-c2')).toHaveTextContent(
+      'Zed Allen See you Saturday',
+    );
+  });
+
+  it('opens the comments sheet from a previewed comment', async () => {
+    feed.resetFeedMock([withComments()]);
+    await openHome();
+    await press(screen.getByTestId('preview-comment-c2'));
+    await waitFor(() => expect(screen).toHavePathname('/home/comments/p1'));
+  });
+
+  it('hides a previewed comment from someone the member blocked', async () => {
+    feed.resetFeedMock([withComments()]);
+    await openHome();
+    await act(async () =>
+      blocks.setMockBlocked([
+        { uid: 'sample-chris', displayName: 'Chris Baptiste', photoURL: null },
+      ]),
+    );
+    await waitFor(() => expect(screen.queryByTestId('preview-comment-c1')).toBeNull());
+    expect(screen.getByTestId('preview-comment-c2')).toBeTruthy();
+  });
+
+  it('shows no count or previews when there are no comments, or comments are off', async () => {
+    feed.resetFeedMock([
+      feed.samplePost({ id: 'p1' }),
+      withComments({ id: 'p2', allowComments: false }),
+    ]);
+    await openHome();
+    expect(screen.queryByTestId('comment-count-p1')).toBeNull();
+    expect(screen.getByTestId('comment-p1').props.accessibilityLabel).toBe('Comment');
+    expect(screen.queryByTestId('preview-comment-c1')).toBeNull();
+  });
 });
 
 it('opens the author’s profile', async () => {

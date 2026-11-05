@@ -1,6 +1,6 @@
 import type { PostComment } from '@/data/comments';
 
-import { canPostComment, threadComments } from './commentLogic';
+import { canPostComment, previewOf, threadComments } from './commentLogic';
 
 const c = (id: string, replyToId: string | null = null, authorId = 'a') =>
   ({ id, replyToId, authorId }) as PostComment;
@@ -40,4 +40,34 @@ it('needs some words, up to 1000 characters', () => {
   expect(canPostComment(' Nice ')).toBe(true);
   expect(canPostComment('a'.repeat(1000))).toBe(true);
   expect(canPostComment('a'.repeat(1001))).toBe(false);
+});
+
+describe('previewOf', () => {
+  const at = (id: string, minutes: number, extra: Partial<PostComment> = {}) =>
+    ({
+      ...c(id),
+      author: { displayName: `Name ${id}` },
+      text: ` Text ${id} `,
+      createdAt: new Date(minutes * 60_000),
+      ...extra,
+    }) as PostComment;
+
+  it('is the newest two top-level comments, oldest first, like the feed loads them', () => {
+    expect(
+      previewOf([
+        at('c1', 1),
+        at('c4', 4, { replyToId: 'c1' }),
+        at('c3', 3),
+        at('c2', 2, { author: null }),
+      ]),
+    ).toEqual([
+      { id: 'c2', authorId: 'a', authorName: 'Former member', text: 'Text c2' },
+      { id: 'c3', authorId: 'a', authorName: 'Name c3', text: 'Text c3' },
+    ]);
+  });
+
+  it('is empty with no top-level comments', () => {
+    expect(previewOf([])).toEqual([]);
+    expect(previewOf([at('c2', 2, { replyToId: 'c1' })])).toEqual([]);
+  });
 });

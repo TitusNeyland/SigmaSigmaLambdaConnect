@@ -1,4 +1,5 @@
 import type { PostComment } from '@/data/comments';
+import { PREVIEW_COMMENTS, type CommentPreview } from '@/data/types';
 
 export type CommentRow = { comment: PostComment; isReply: boolean };
 
@@ -46,4 +47,21 @@ export const MAX_COMMENT = 1000;
 export function canPostComment(text: string): boolean {
   const trimmed = text.trim();
   return trimmed.length > 0 && trimmed.length <= MAX_COMMENT;
+}
+
+/**
+ * The comments the feed previews under a post: the newest top-level ones, oldest first.
+ * Matches fetchCommentPreview, so the feed looks the same live or freshly loaded.
+ */
+export function previewOf(comments: PostComment[]): CommentPreview[] {
+  return [...comments]
+    .filter((c) => !c.replyToId && c.text.trim())
+    .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+    .slice(-PREVIEW_COMMENTS)
+    .map((c) => ({
+      id: c.id,
+      authorId: c.authorId,
+      authorName: c.author?.displayName ?? 'Former member',
+      text: c.text.trim(),
+    }));
 }
