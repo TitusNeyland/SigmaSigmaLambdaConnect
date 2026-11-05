@@ -10,6 +10,8 @@ export function sampleKpis(overrides: Partial<ChapterKpis> = {}): ChapterKpis {
   return {
     period: '2026-fall',
     label: 'Fall 2026',
+    start: null,
+    end: null,
     participationRate: 0.62,
     attendanceRate: 0.41,
     serviceHours: 128.5,

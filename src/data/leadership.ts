@@ -30,6 +30,9 @@ export async function fetchWaitingCounts(): Promise<WaitingCounts> {
 export type ChapterKpis = {
   period: string;
   label: string;
+  /** When the period starts and ends. Null if the snapshot doesn't say. */
+  start: Date | null;
+  end: Date | null;
   participationRate: number | null;
   attendanceRate: number | null;
   serviceHours: number;
@@ -44,6 +47,7 @@ export type ChapterKpis = {
 export type CurrentKpis = { periods: Record<KpiPeriodKind, ChapterKpis>; computedAt: Date | null };
 
 const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
+const date = (v: unknown) => (v instanceof Timestamp ? v.toDate() : null);
 const rate = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
 
 function toGoal(v: unknown): GoalResult | null {
@@ -74,6 +78,8 @@ export function toKpis(v: unknown): ChapterKpis | null {
   return {
     period: k.period,
     label: typeof k.label === 'string' ? k.label : k.period,
+    start: date(k.start),
+    end: date(k.end),
     participationRate: rate(k.participationRate),
     attendanceRate: rate(k.attendanceRate),
     serviceHours: num(k.serviceHours),

@@ -22,6 +22,7 @@ Profile --> Settings[Settings]
 Chapter --> Directory[Brotherhood directory]
 Chapter --> Goals[Chapter progress]
 Chapter --> Leader[Leadership home, officers only]
+Leader --> Health[Chapter health]
 Leader --> Attendance[Take attendance]
 Leader --> Reports[Review reports]
 Leader --> Desktop[Desktop dashboard, later]
@@ -60,11 +61,12 @@ Leader --> Desktop[Desktop dashboard, later]
 
 ## Leadership tools, mobile (officers only)
 
-| Screen          | What it does                                                                                                                                                                                                                                                                                                               | Issues             |
-| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
-| Leadership home | Period filter, goals ring, KPI tiles (participation, attendance, service hours, active members). Needs attention: reported posts, programs at risk, membership requests with inline approve and decline. Quick actions: take attendance, post announcement, create event, update milestone. Link to the desktop dashboard. | #46, #47, #48, #27 |
-| Take attendance | Checked-in count against RSVPs, search, RSVP'd vs all filter, tap to check in, add walk-in, log service hours switch, save confirmation.                                                                                                                                                                                   | #49                |
-| Review reports  | Report cards with reason, count and preview. Keep, Remove or Restrict (pause posting 7 days), each with undo. Reporters stay anonymous; decisions are logged.                                                                                                                                                              | #50                |
+| Screen          | What it does                                                                                                                                                                                                                                                                                                                                                                                                 | Issues             |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------ |
+| Leadership home | Period filter, goals ring, KPI tiles (participation, attendance, service hours, active members). Needs attention: reported posts, programs at risk, membership requests with inline approve and decline. Quick actions: take attendance, post announcement, create event, update milestone. Link to the desktop dashboard.                                                                                   | #46, #47, #48, #27 |
+| Chapter health  | Officers only, from a row on Leadership home. The chapter year at a glance: a green, yellow and red bar with counts, milestones done, goals met and how much of the year is gone. Programs and goals listed worst first, each with its status and why. Green is on pace for the time of year; yellow is one milestone or up to 15 points behind; red is further behind, past due or flagged as needing help. | #58 (mobile)       |
+| Take attendance | Checked-in count against RSVPs, search, RSVP'd vs all filter, tap to check in, add walk-in, log service hours switch, save confirmation.                                                                                                                                                                                                                                                                     | #49                |
+| Review reports  | Report cards with reason, count and preview. Keep, Remove or Restrict (pause posting 7 days), each with undo. Reporters stay anonymous; decisions are logged.                                                                                                                                                                                                                                                | #50                |
 
 ## Officer desktop (later)
 

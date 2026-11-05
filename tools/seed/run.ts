@@ -3,6 +3,8 @@
  *
  *   npm run seed:emulators            # into the local emulators (start them first)
  *   npm run seed:dev -- --yes         # into the real dev project
+ *   npm run seed:dev -- --yes --only programs,goals --no-auth
+ *                                     # just some collections, here chapter health
  *
  * Real projects need Application Default Credentials: `gcloud auth application-default login`.
  * Production is always refused.
@@ -11,7 +13,7 @@ import { initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 
-import { assertSafeTarget, buildSeedDocs, seedAuthUsers, writeSeed } from './seed';
+import { assertSafeTarget, buildSeedDocs, onlyCollections, seedAuthUsers, writeSeed } from './seed';
 
 const PROJECT_ALIASES: Record<string, string> = {
   dev: 'sigmasigmalambdadev',
@@ -29,7 +31,10 @@ async function main() {
   const target = assertSafeTarget({ projectId, usingEmulator, confirmed: args.includes('--yes') });
 
   initializeApp({ projectId: target });
-  const docs = buildSeedDocs();
+  const all = buildSeedDocs();
+  const only = args.includes('--only') ? (args[args.indexOf('--only') + 1] ?? '') : null;
+  const docs = only === null ? all : onlyCollections(all, only.split(','));
+  if (docs.length === 0) throw new Error(`Nothing to seed for --only ${only}.`);
   const written = await writeSeed(getFirestore(), docs);
   console.log(
     `Wrote ${written} sample documents to ${target}${usingEmulator ? ' (emulator)' : ''}.`,

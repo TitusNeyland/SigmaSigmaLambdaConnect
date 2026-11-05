@@ -26,6 +26,13 @@ export const palette = {
   warning: '#9A4210',
   warningSoft: '#FBEBDD',
   destructive: '#B42318',
+  /**
+   * Chapter health fills: green, yellow and red. Fills only (dots, bars), always beside a
+   * text label, so status never depends on color alone. Green and yellow are lighter than
+   * red so they still differ for color-blind members.
+   */
+  healthGreen: '#2F9E5F',
+  healthYellow: '#E6B800',
   onInk: '#FFFFFF',
   scrim: 'rgba(0,0,0,0.32)',
 } as const;

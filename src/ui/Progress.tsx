@@ -93,6 +93,8 @@ export function ProgressRing({
 export type ProgressBarProps = {
   percent: number;
   tone?: 'gold' | 'ink' | 'warning';
+  /** A fill color from the palette, in place of a tone. */
+  color?: string;
   height?: number;
   accessibilityLabel?: string;
   testID?: string;
@@ -103,6 +105,7 @@ const BAR_TONES = { gold: palette.gold, ink: palette.ink, warning: '#D9822B' } a
 export function ProgressBar({
   percent,
   tone = 'gold',
+  color,
   height = 6,
   accessibilityLabel,
   testID,
@@ -121,7 +124,7 @@ export function ProgressBar({
         testID={testID ? `${testID}-fill` : undefined}
         style={[
           styles.fill,
-          { width: `${value}%`, backgroundColor: BAR_TONES[tone], borderRadius: height },
+          { width: `${value}%`, backgroundColor: color ?? BAR_TONES[tone], borderRadius: height },
         ]}
       />
     </View>

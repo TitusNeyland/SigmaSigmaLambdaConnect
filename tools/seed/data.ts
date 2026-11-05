@@ -204,6 +204,8 @@ export type SeedProgram = {
   id: string;
   name: string;
   ownerTitle: string;
+  /** When it was set up. Chapter health measures pace from here to the due date. */
+  startedDaysAgo: number;
   dueInDays: number;
   status: 'not_started' | 'in_progress' | 'at_risk' | 'completed';
   milestones: [string, boolean][];
@@ -214,7 +216,8 @@ export const PROGRAMS: SeedProgram[] = [
     id: 'sample-scholarship',
     name: 'Annual Scholarship Initiative',
     ownerTitle: 'Director of Education',
-    dueInDays: 180,
+    startedDaysAgo: 90,
+    dueInDays: 90,
     status: 'in_progress',
     milestones: [
       ['Form selection committee', true],
@@ -227,7 +230,8 @@ export const PROGRAMS: SeedProgram[] = [
     id: 'sample-mentoring',
     name: 'Youth Mentoring Program',
     ownerTitle: 'Mentoring chair',
-    dueInDays: 200,
+    startedDaysAgo: 90,
+    dueInDays: 110,
     status: 'in_progress',
     milestones: [
       ['Recruit mentors', true],
@@ -242,6 +246,7 @@ export const PROGRAMS: SeedProgram[] = [
     id: 'sample-health-week',
     name: 'Health Awareness Week',
     ownerTitle: 'Health committee',
+    startedDaysAgo: 60,
     dueInDays: 20,
     status: 'at_risk',
     milestones: [
@@ -255,7 +260,8 @@ export const PROGRAMS: SeedProgram[] = [
     id: 'sample-retreat',
     name: 'Brotherhood Retreat',
     ownerTitle: 'Brotherhood chair',
-    dueInDays: 140,
+    startedDaysAgo: 60,
+    dueInDays: 60,
     status: 'not_started',
     milestones: [
       ['Pick dates', false],
@@ -267,12 +273,43 @@ export const PROGRAMS: SeedProgram[] = [
     id: 'sample-orientation',
     name: 'New Member Orientation',
     ownerTitle: 'Membership chair',
+    startedDaysAgo: 90,
     dueInDays: -30,
     status: 'completed',
     milestones: [
       ['Orientation packet', true],
       ['Welcome session', true],
       ['Mentor pairing', true],
+    ],
+  },
+  {
+    // Two thirds of the way to its due date with one of four done: a milestone behind.
+    id: 'sample-food-drive',
+    name: 'Holiday Food Drive',
+    ownerTitle: 'Service committee',
+    startedDaysAgo: 40,
+    dueInDays: 20,
+    status: 'in_progress',
+    milestones: [
+      ['Partner pantry', true],
+      ['Collection sites', false],
+      ['Volunteer schedule', false],
+      ['Delivery day', false],
+    ],
+  },
+  {
+    // Almost due with one of four done: well behind pace.
+    id: 'sample-service-days',
+    name: 'Community Service Days',
+    ownerTitle: 'Service committee',
+    startedDaysAgo: 95,
+    dueInDays: 5,
+    status: 'in_progress',
+    milestones: [
+      ['Fall service day', true],
+      ['Winter service day', false],
+      ['Spring service day', false],
+      ['Summer service day', false],
     ],
   },
 ];
@@ -310,6 +347,13 @@ export const GOALS = [
     metric: 'attendance',
     target: 75,
     unit: 'percent',
+  },
+  {
+    id: 'sample-goal-active',
+    name: 'Active brothers',
+    metric: 'active_members',
+    target: 10,
+    unit: 'count',
   },
   {
     id: 'sample-goal-programs',
