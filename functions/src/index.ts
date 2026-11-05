@@ -29,6 +29,7 @@ export { eventNotifications, notifyEventCancelled, notifyNewEvent } from './even
 export { resolveReport, undoReportDecision } from './moderation.js';
 export { kpisHourly, kpisOnGoalChange, refreshKpis } from './kpis.js';
 export { cleanUpDeletedPost, countCommentLikes, countComments, countLikes } from './posts.js';
+export { memberStatsNightly, memberStatsOnCheckIn } from './memberStats.js';
 export { notifyProgramHelp } from './programs.js';
 export { notifyApproval } from './push.js';
 export {

@@ -199,21 +199,36 @@ describe('subscribeToProfile', () => {
 describe('fetchProfileStats', () => {
   it('counts only visible posts by that member', async () => {
     jest.mocked(getAggregateFromServer).mockResolvedValueOnce(agg({ posts: 4 }) as never);
+    jest.mocked(getDoc).mockResolvedValueOnce({ get: () => undefined } as never);
     await fetchProfileStats('u1', { includeAttendance: false });
     expect(collection).toHaveBeenCalledWith({ name: 'db' }, 'posts');
     expect(where).toHaveBeenCalledWith('authorId', '==', 'u1');
     expect(where).toHaveBeenCalledWith('removed', '==', false);
   });
 
-  it('leaves attendance out unless allowed, so the rules never reject the query', async () => {
+  it('reads the shared totals for someone else, never their check-ins', async () => {
     jest.mocked(getAggregateFromServer).mockResolvedValueOnce(agg({ posts: 4 }) as never);
+    jest.mocked(getDoc).mockResolvedValueOnce({
+      get: (k: string) => ({ eventsAttended: 7, serviceHours: 12.5 })[k],
+    } as never);
     await expect(fetchProfileStats('u1', { includeAttendance: false })).resolves.toEqual({
       posts: 4,
-      eventsAttended: null,
-      serviceHours: null,
+      eventsAttended: 7,
+      serviceHours: 12.5,
     });
+    expect(doc).toHaveBeenCalledWith({ name: 'db' }, 'memberStats', 'u1');
     expect(getAggregateFromServer).toHaveBeenCalledTimes(1);
     expect(collectionGroup).not.toHaveBeenCalled();
+  });
+
+  it('shows zero when there are no totals yet', async () => {
+    jest.mocked(getAggregateFromServer).mockResolvedValueOnce(agg({ posts: 0 }) as never);
+    jest.mocked(getDoc).mockResolvedValueOnce({ get: () => undefined } as never);
+    await expect(fetchProfileStats('u1', { includeAttendance: false })).resolves.toEqual({
+      posts: 0,
+      eventsAttended: 0,
+      serviceHours: 0,
+    });
   });
 
   it('counts attended events and sums service hours across events', async () => {

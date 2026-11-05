@@ -1361,6 +1361,35 @@ describe('activity', () => {
   });
 });
 
+describe('member stats', () => {
+  beforeEach(async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore() as unknown as Firestore;
+      await setDoc(doc(db, 'memberStats/alice'), { eventsAttended: 3, serviceHours: 8 });
+    });
+  });
+
+  it('every approved member can see anyone’s totals (src/data/profile.ts)', async () => {
+    for (const uid of [USERS.alice, USERS.bob, USERS.olivia]) {
+      await assertSucceeds(getDoc(doc(as(uid), 'memberStats/alice')));
+    }
+  });
+
+  it('pending members and signed-out users can’t', async () => {
+    await assertFails(getDoc(doc(as(USERS.pete), 'memberStats/alice')));
+    await assertFails(getDoc(doc(anon(), 'memberStats/alice')));
+  });
+
+  it('only Cloud Functions write them, not even the member or an admin', async () => {
+    for (const uid of [USERS.alice, USERS.adam]) {
+      await assertFails(
+        setDoc(doc(as(uid), 'memberStats/alice'), { eventsAttended: 99, serviceHours: 99 }),
+      );
+      await assertFails(deleteDoc(doc(as(uid), 'memberStats/alice')));
+    }
+  });
+});
+
 describe('committee reports', () => {
   const report = (uid: string, extra: object = {}) => ({
     authorId: uid,
