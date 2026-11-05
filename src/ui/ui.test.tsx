@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { Text } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 
 import { palette, passesAA } from '@/theme';
 
@@ -258,6 +258,12 @@ describe('Avatar', () => {
     await render(<Avatar name="Marcus Reed" />);
     expect(screen.getByText('MR')).toBeTruthy();
     expect(screen.getByRole('image', { name: 'Marcus Reed' })).toBeTruthy();
+  });
+
+  it('gives big initials room so they are not clipped', async () => {
+    await render(<Avatar name="Titus Neyland" size={92} />);
+    const style = StyleSheet.flatten(screen.getByText('TN').props.style);
+    expect(style.lineHeight).toBeGreaterThan(style.fontSize);
   });
 
   it('shows the photo instead of initials when there is one', async () => {

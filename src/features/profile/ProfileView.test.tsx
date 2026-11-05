@@ -1,6 +1,13 @@
-import { render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
 
-import { formatHours, profileSubtitle, ProfileView, type ProfileViewProps } from './ProfileView';
+import {
+  formatHours,
+  gridTileSize,
+  profileSubtitle,
+  ProfileView,
+  type ProfileViewProps,
+} from './ProfileView';
 
 jest.mock('@/data/profile');
 
@@ -51,7 +58,32 @@ describe('formatHours', () => {
   });
 });
 
+describe('gridTileSize', () => {
+  it.each([320, 375, 390, 430, 768])('fits three squares and two gaps in %p points', (width) => {
+    const size = gridTileSize(width);
+    expect(size * 3 + 2 * 2).toBeLessThanOrEqual(width);
+    expect(size * 3 + 2 * 2).toBeGreaterThan(width - 3);
+  });
+});
+
 describe('ProfileView', () => {
+  it('lays posts out as equal squares, three to a row', async () => {
+    const posts = ['a', 'b', 'c', 'd'].map((id) => ({
+      id,
+      coverPath: null,
+      photoCount: 0,
+      caption: `Post ${id}`,
+    }));
+    await render(<ProfileView {...baseProps({ posts: { state: 'ready', data: posts } })} />);
+    await fireEvent(screen.getByTestId('profile-grid'), 'layout', {
+      nativeEvent: { layout: { width: 390, height: 0, x: 0, y: 0 } },
+    });
+    for (const id of ['a', 'b', 'c', 'd']) {
+      const style = StyleSheet.flatten(screen.getByTestId(`profile-post-${id}`).props.style);
+      expect(style).toMatchObject({ width: 128, height: 128 });
+    }
+  });
+
   it('hides attendance and the Activity tab when the viewer may not see them', async () => {
     await render(<ProfileView {...baseProps()} />);
     expect(screen.getByLabelText('3 Posts')).toBeTruthy();

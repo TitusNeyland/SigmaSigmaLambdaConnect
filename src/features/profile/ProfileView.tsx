@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { useEffect, useState, type ReactNode } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { RefreshControl, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import {
   photoUrl,
@@ -75,7 +75,38 @@ function pick<T, K extends keyof T>(value: Loadable<T>, key: K): Loadable<T[K]> 
   return value.state === 'ready' ? { state: 'ready', data: value.data[key] } : value;
 }
 
-function PostTile({ post }: { post: ProfilePost }) {
+const GRID_COLUMNS = 3;
+const GRID_GAP = spacing.xxs;
+
+/** Tile edge for a grid this wide: three equal squares with two gaps between them. */
+export function gridTileSize(gridWidth: number): number {
+  return Math.floor((gridWidth - GRID_GAP * (GRID_COLUMNS - 1)) / GRID_COLUMNS);
+}
+
+/**
+ * Three square tiles per row, Instagram style. Sized from the measured width, because
+ * percentage widths plus gaps overflow the row and aspectRatio doesn't hold up in a
+ * wrapping row.
+ */
+function PostGrid({ posts }: { posts: ProfilePost[] }) {
+  // The grid runs edge to edge, so the screen width is right until it's measured.
+  const screen = useWindowDimensions().width;
+  const [width, setWidth] = useState<number | null>(null);
+  const size = gridTileSize(width ?? screen);
+  return (
+    <View
+      style={styles.grid}
+      onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
+      testID="profile-grid"
+    >
+      {posts.map((post) => (
+        <PostTile key={post.id} post={post} size={size} />
+      ))}
+    </View>
+  );
+}
+
+function PostTile({ post, size }: { post: ProfilePost; size: number }) {
   const [uri, setUri] = useState<string | null>(null);
   useEffect(() => {
     if (!post.coverPath) return;
@@ -90,7 +121,7 @@ function PostTile({ post }: { post: ProfilePost }) {
   }, [post.coverPath]);
 
   return (
-    <View style={styles.tile} testID={`profile-post-${post.id}`}>
+    <View style={[styles.tile, { width: size, height: size }]} testID={`profile-post-${post.id}`}>
       {post.coverPath ? (
         uri ? (
           <Image
@@ -235,11 +266,7 @@ export function ProfileView({
         ) : posts.data.length === 0 ? (
           <Message text={own ? 'Your posts will show up here.' : 'No posts yet.'} />
         ) : (
-          <View style={styles.grid} testID="profile-grid">
-            {posts.data.map((post) => (
-              <PostTile key={post.id} post={post} />
-            ))}
-          </View>
+          <PostGrid posts={posts.data} />
         )
       ) : (
         <View testID="profile-activity">
@@ -273,10 +300,8 @@ const styles = StyleSheet.create({
   about: { gap: spacing.xs },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.sm },
   actions: { flexDirection: 'row', gap: spacing.sm },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xxs, marginHorizontal: -spacing.xl },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: GRID_GAP, marginHorizontal: -spacing.xl },
   tile: {
-    width: '33%',
-    aspectRatio: 1,
     backgroundColor: colors.fill,
     overflow: 'hidden',
     justifyContent: 'center',

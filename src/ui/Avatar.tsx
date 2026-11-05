@@ -36,6 +36,9 @@ export function avatarTone(name: string): { bg: string; fg: string } {
 export function Avatar({ name, uri, size = 40, ring = false, testID }: AvatarProps) {
   const { bg, fg } = avatarTone(name);
   const circle = { width: size, height: size, borderRadius: size / 2 };
+  // The line height has to grow with the font, or big initials get clipped at the top.
+  const fontSize = Math.round(size * 0.36);
+  const initialsText = { fontSize, lineHeight: Math.round(fontSize * 1.2) };
 
   return (
     <View
@@ -49,7 +52,7 @@ export function Avatar({ name, uri, size = 40, ring = false, testID }: AvatarPro
         <Image source={{ uri }} style={circle} />
       ) : (
         <View style={[circle, styles.center, { backgroundColor: bg }]}>
-          <AppText weight="700" color={fg} style={{ fontSize: Math.round(size * 0.36) }}>
+          <AppText weight="700" color={fg} style={initialsText}>
             {initials(name)}
           </AppText>
         </View>
