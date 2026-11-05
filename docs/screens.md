@@ -10,13 +10,12 @@ All names and figures in the mockups are sample data.
 flowchart TD
 Tabs[Tab bar] --> Home[Home feed]
 Tabs --> Events[Events + Calendar]
-Tabs --> Post[Post 1: Pick photos]
+Tabs --> Compose[Post: Compose]
 Tabs --> Chapter[Chapter hub]
 Tabs --> Profile[My profile]
 Home --> PostDetail[Post 3: Comments, report, block]
 Home --> EventDetail[Event details + RSVP]
 Events --> EventDetail
-Post --> Compose[Post 2: Caption + share]
 Compose --> PostDetail
 Profile --> EditProfile[Edit profile]
 Profile --> Settings[Settings]
@@ -38,11 +37,10 @@ Leader --> Desktop[Desktop dashboard, later]
 
 ## Posting flow
 
-| Screen                          | What it does                                                                                                                                                                | Issues             |
-| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
-| Post 1: Pick photos             | Grid picker, numbered multi-select up to 10, preview with page dots, Next disabled until something is picked, Camera and Text only.                                         | #31                |
-| Post 2: Caption + share         | Caption, thumbnails with cover, tag event, tag brothers, visible to members only, allow comments switch, guidelines link. Share shows upload progress, then a Posted sheet. | #32, #33, #38      |
-| Post 3: Comments, report, block | Full post, likes on post and comments, comment input. The ... menu opens Report (pick a reason, then confirm), Block (confirm first) and Copy link.                         | #34, #35, #36, #37 |
+| Screen                          | What it does                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | Issues             |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
+| Post: Compose                   | The Post tab opens straight here. Caption with the guidelines link under the count, tag event, tag brothers, allow comments, visible to members only. Then the camera roll, Instagram style: Recents grid, camera tile first, tap to pick up to 10 in order; picked photos show above it; tap one to open the editor (post shape Original, 1:1, 4:5 or 16:9, pinch to zoom and drag to frame, make cover) or remove it. The feed shows posts at their shape. Without photo access: Allow or Settings, plus the system picker. Or no photos. Share shows upload progress, then a Posted sheet. | #31, #32, #33, #38 |
+| Post 3: Comments, report, block | Full post, likes on post and comments, comment input. The ... menu opens Report (pick a reason, then confirm), Block (confirm first) and Copy link.                                                                                                                                                                                                                                                                                                                                                                                                                                           | #34, #35, #36, #37 |
 
 ## Profile flow
 

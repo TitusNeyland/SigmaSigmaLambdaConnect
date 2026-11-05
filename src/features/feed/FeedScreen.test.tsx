@@ -1,4 +1,5 @@
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
+import { StyleSheet } from 'react-native';
 
 jest.mock('@/data/auth');
 const auth = jest.requireMock<typeof import('@/data/__mocks__/auth')>('@/data/auth');
@@ -163,6 +164,21 @@ it('shows the upcoming events strip and opens an event', async () => {
 it('leaves the strip out when nothing is coming up', async () => {
   await openHome();
   expect(screen.queryByTestId('events-strip')).toBeNull();
+});
+
+it('shows photos at the post’s shape, so wide photos show wide', async () => {
+  feed.resetFeedMock([
+    feed.samplePost({ id: 'p1', photoPaths: ['posts/a/p1/0.jpg'], aspectRatio: 16 / 9 }),
+    feed.samplePost({ id: 'p2', photoPaths: ['posts/a/p2/0.jpg'] }),
+  ]);
+  await openHome();
+  const size = (path: string) =>
+    StyleSheet.flatten(screen.getByTestId(`photo-frame-${path}`).props.style);
+  const wide = size('posts/a/p1/0.jpg');
+  expect(wide.height).toBe(Math.round(wide.width / (16 / 9)));
+  // Posts from before framing stay square.
+  const square = size('posts/a/p2/0.jpg');
+  expect(square.height).toBe(square.width);
 });
 
 it('shows photos and links comments and authors', async () => {

@@ -263,13 +263,18 @@ service cloud.firestore {
         && acceptedGuidelines()
         && incoming().keys().hasOnly(['authorId', 'caption', 'photoPaths', 'eventId',
                                       'taggedMemberIds', 'allowComments', 'official',
-                                      'removed', 'likeCount', 'commentCount', 'createdAt'])
+                                      'aspectRatio', 'removed', 'likeCount', 'commentCount',
+                                      'createdAt'])
         && incoming().authorId == request.auth.uid
         && isText(incoming().caption, 0, 2200)
         && incoming().photoPaths is list
         && incoming().photoPaths.size() <= 10
         && (incoming().photoPaths.size() > 0 || incoming().caption.size() > 0)
         && incoming().allowComments is bool
+        // The photos' frame, width over height: 4:5 portrait to 1.91:1 landscape, like Instagram.
+        && (!('aspectRatio' in incoming())
+            || (incoming().aspectRatio is number
+                && incoming().aspectRatio >= 0.8 && incoming().aspectRatio <= 1.91))
         && (incoming().official == false || (incoming().official == true && isOfficer()))
         && incoming().removed == false
         && notRestricted()

@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Svg, { Path } from 'react-native-svg';
 
 import { fetchDirectory, type DirectoryEntry } from '@/data/directory';
 import { fetchEventsBetween, type EventSummary } from '@/data/events';
@@ -45,7 +46,17 @@ import {
   taggableEvents,
   toggleTag,
 } from './composeLogic';
-import { makeCover, usePostDraft } from './draft';
+import {
+  addPhotos,
+  draftAspect,
+  MAX_PHOTOS,
+  removePhoto,
+  usePostDraft,
+  type DraftPhoto,
+} from './draft';
+import { toDraftPhoto, type RollPhoto } from './cameraRoll';
+import { CameraRollGrid } from './CameraRollGrid';
+import { pickFromLibrary, takePhoto, type PhotoPick } from './pickPhotos';
 import { preparePhoto } from './preparePhoto';
 import { overallPercent, uploadLabel } from './uploadLogic';
 
@@ -72,11 +83,23 @@ function useWhenOpen<T>(open: boolean, load: () => Promise<T>): Loadable<T> {
   return value ?? { state: 'loading' };
 }
 
-/** Step 2 of posting: caption, cover, tags and comments, then share. */
+function RemoveIcon() {
+  return (
+    <Svg width={10} height={10} viewBox="0 0 24 24" fill="none" accessibilityElementsHidden>
+      <Path d="M6 6l12 12M18 6 6 18" stroke={palette.onInk} strokeWidth={3} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+/**
+ * Making a post, in one screen: the Post tab opens straight here. Add photos from the camera
+ * roll or camera (or none), write a caption, tag, then share.
+ */
 export function ComposeScreen() {
   const auth = useAuth();
   const uid = auth.status === 'signedIn' ? auth.user.uid : '';
   const { draft, setPhotos, reset } = usePostDraft();
+  const [photoNote, setPhotoNote] = useState<string | null>(null);
   const [caption, setCaption] = useState('');
   const [allowComments, setAllowComments] = useState(true);
   const canPostOfficial = useCan('posts.official');
@@ -104,10 +127,13 @@ export function ComposeScreen() {
   const brothers = useWhenOpen(sheet === 'brothers', fetchDirectory);
 
   const photos = draft.photos;
+  const aspect = draftAspect(draft);
   const pausedUntil = useRestriction(uid);
   const ready = canShare(photos.length, caption) && !sharing && !pausedUntil;
 
-  // Kept across retries: the same post ID, and photos already uploaded aren't sent again.
+  // Kept across retries: the same post ID, and photos already uploaded aren't sent again,
+  // unless they were reframed since.
+  const uploadKey = (photo: DraftPhoto) => JSON.stringify([photo.uri, photo.crop ?? null, aspect]);
   const upload = useRef<{ postId: string | null; paths: Map<string, string>; next: number }>({
     postId: null,
     paths: new Map(),
@@ -120,7 +146,7 @@ export function ComposeScreen() {
     setFailed(false);
     setProgress({
       done: 0,
-      fractions: photos.map((p) => (upload.current.paths.has(p.uri) ? 1 : 0)),
+      fractions: photos.map((p) => (upload.current.paths.has(uploadKey(p)) ? 1 : 0)),
     });
     try {
       const state = upload.current;
@@ -128,16 +154,16 @@ export function ComposeScreen() {
       const id = state.postId;
       const photoPaths: string[] = [];
       for (const [i, photo] of photos.entries()) {
-        let path = state.paths.get(photo.uri);
+        let path = state.paths.get(uploadKey(photo));
         if (!path) {
-          const prepared = await preparePhoto(photo);
+          const prepared = await preparePhoto(photo, aspect);
           path = await uploadPostPhoto(uid, id, state.next++, prepared, (fraction) =>
             setProgress((p) => ({
               ...p,
               fractions: p.fractions.map((f, j) => (j === i ? fraction : f)),
             })),
           );
-          state.paths.set(photo.uri, path);
+          state.paths.set(uploadKey(photo), path);
         }
         photoPaths.push(path);
         setProgress((p) => ({
@@ -152,6 +178,7 @@ export function ComposeScreen() {
         taggedMemberIds: tags.map((t) => t.uid),
         allowComments,
         official: canPostOfficial && official,
+        aspectRatio: aspect,
       });
       notifyFeedChanged();
       setPosted(id);
@@ -160,6 +187,36 @@ export function ComposeScreen() {
     } finally {
       setSharing(false);
     }
+  }
+
+  const remaining = MAX_PHOTOS - photos.length;
+
+  function addPicked(pick: PhotoPick | null) {
+    if (!pick) setPhotoNote('Couldn’t open your photos. Try again.');
+    else if (pick.status === 'denied') {
+      setPhotoNote('Allow camera access in Settings to take a photo.');
+    } else if (pick.status === 'picked') {
+      setPhotoNote(null);
+      setPhotos((current) => addPhotos(current, pick.photos));
+    }
+  }
+
+  // The system photo picker scrolls the whole camera roll without the app needing access to
+  // the member's library.
+  const choosePhotos = async () => addPicked(await pickFromLibrary(remaining).catch(() => null));
+  const openCamera = async () => addPicked(await takePhoto().catch(() => null));
+
+  async function pickFromRoll(photo: RollPhoto) {
+    const draftPhoto = await toDraftPhoto(photo).catch(() => null);
+    if (!draftPhoto) return setPhotoNote('Couldn’t add that photo. Try another.');
+    setPhotoNote(null);
+    setPhotos((current) => addPhotos(current, [draftPhoto]));
+  }
+
+  function cancel() {
+    reset();
+    if (router.canGoBack()) router.back();
+    else router.replace('/home');
   }
 
   /** Closes the posting modal back to Home, then optionally opens something there. */
@@ -209,7 +266,7 @@ export function ComposeScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.header}>
-        <HeaderButton title="Back" onPress={() => router.back()} testID="compose-back" />
+        <HeaderButton title="Cancel" onPress={cancel} testID="compose-cancel" />
         <AppText variant="headline" accessibilityRole="header">
           New post
         </AppText>
@@ -232,53 +289,31 @@ export function ComposeScreen() {
               {restrictionNote(pausedUntil)}
             </AppText>
           ) : null}
-          {photos.length > 0 ? (
-            <View style={styles.field}>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.thumbs}
-              >
-                {photos.map((photo, i) => (
-                  <Pressable
-                    key={photo.uri}
-                    onPress={() => setPhotos((all) => makeCover(all, photo.uri))}
-                    accessibilityRole="button"
-                    accessibilityLabel={i === 0 ? 'Photo 1, cover' : `Photo ${i + 1}, make cover`}
-                    style={[styles.thumb, i === 0 && styles.cover]}
-                    testID={`compose-photo-${i + 1}`}
-                  >
-                    <Image
-                      source={{ uri: photo.uri }}
-                      style={StyleSheet.absoluteFill}
-                      contentFit="cover"
-                    />
-                    {i === 0 ? (
-                      <View style={styles.coverLabel}>
-                        <AppText variant="caption" weight="700" color={palette.onInk}>
-                          Cover
-                        </AppText>
-                      </View>
-                    ) : null}
-                  </Pressable>
-                ))}
-              </ScrollView>
-              <AppText variant="footnote" color={colors.textSecondary}>
-                Tap a photo to make it the cover. It shows first in the feed.
+          {/* The guidelines sit right under the caption's character count. */}
+          <View>
+            <TextField
+              label="Caption"
+              value={caption}
+              onChangeText={setCaption}
+              placeholder={
+                photos.length ? 'Write a caption…' : 'What’s happening with the chapter?'
+              }
+              multiline
+              maxLength={MAX_CAPTION}
+              hint={`${caption.length}/${MAX_CAPTION}`}
+              testID="compose-caption"
+            />
+            <Pressable
+              onPress={() => router.push('/guidelines')}
+              accessibilityRole="link"
+              style={styles.link}
+              testID="compose-guidelines"
+            >
+              <AppText variant="footnote" color={colors.link}>
+                Community guidelines
               </AppText>
-            </View>
-          ) : null}
-
-          <TextField
-            label="Caption"
-            value={caption}
-            onChangeText={setCaption}
-            placeholder={photos.length ? 'Write a caption…' : 'What’s happening with the chapter?'}
-            multiline
-            maxLength={MAX_CAPTION}
-            hint={`${caption.length}/${MAX_CAPTION}`}
-            testID="compose-caption"
-          />
+            </Pressable>
+          </View>
 
           <ListSection>
             <ListRow
@@ -320,16 +355,69 @@ export function ComposeScreen() {
             ) : null}
           </ListSection>
 
-          <Pressable
-            onPress={() => router.push('/guidelines')}
-            accessibilityRole="link"
-            style={styles.link}
-            testID="compose-guidelines"
-          >
-            <AppText variant="footnote" color={colors.link} align="center">
-              Community guidelines
+          {photos.length > 0 ? (
+            <View style={styles.field}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.thumbs}
+              >
+                {photos.map((photo, i) => (
+                  <View key={photo.uri} style={styles.thumbWrap}>
+                    <Pressable
+                      onPress={() =>
+                        router.push({ pathname: '/new-post/edit', params: { photo: String(i) } })
+                      }
+                      accessibilityRole="button"
+                      accessibilityLabel={i === 0 ? 'Photo 1, cover' : `Photo ${i + 1}`}
+                      accessibilityHint="Opens the photo to zoom, move and set the cover"
+                      style={[styles.thumb, i === 0 && styles.cover]}
+                      testID={`compose-photo-${i + 1}`}
+                    >
+                      <Image
+                        source={{ uri: photo.uri }}
+                        style={StyleSheet.absoluteFill}
+                        contentFit="cover"
+                      />
+                      {i === 0 ? (
+                        <View style={styles.coverLabel}>
+                          <AppText variant="caption" weight="700" color={palette.onInk}>
+                            Cover
+                          </AppText>
+                        </View>
+                      ) : null}
+                    </Pressable>
+                    <Pressable
+                      onPress={() => setPhotos((all) => removePhoto(all, photo.uri))}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Remove photo ${i + 1}`}
+                      hitSlop={spacing.md}
+                      style={styles.remove}
+                      testID={`compose-remove-${i + 1}`}
+                    >
+                      <RemoveIcon />
+                    </Pressable>
+                  </View>
+                ))}
+              </ScrollView>
+              <AppText variant="footnote" color={colors.textSecondary}>
+                Tap a photo to zoom and frame it, or make it the cover.
+              </AppText>
+            </View>
+          ) : null}
+          {photoNote ? (
+            <AppText variant="footnote" color={colors.textSecondary} testID="compose-photo-note">
+              {photoNote}
             </AppText>
-          </Pressable>
+          ) : null}
+          <CameraRollGrid
+            picked={photos}
+            remaining={remaining}
+            onPick={(photo) => void pickFromRoll(photo)}
+            onUnpick={(assetId) => setPhotos((all) => all.filter((p) => p.assetId !== assetId))}
+            onCamera={() => void openCamera()}
+            onLibrary={() => void choosePhotos()}
+          />
 
           {sharing && photos.length > 0 ? (
             <View style={styles.progress} testID="compose-progress">
@@ -493,7 +581,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: palette.scrim,
   },
-  link: { minHeight: MIN_TOUCH, justifyContent: 'center' },
+  thumbWrap: { width: THUMB, height: THUMB },
+  remove: {
+    position: 'absolute',
+    top: spacing.xs,
+    right: spacing.xs,
+    width: spacing.xl,
+    height: spacing.xl,
+    borderRadius: radius.pill,
+    backgroundColor: palette.scrim,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  link: { minHeight: MIN_TOUCH, justifyContent: 'center', alignSelf: 'flex-start' },
   progress: { gap: spacing.sm },
   sheetList: { maxHeight: THUMB * 4 },
   posted: { flex: 1, justifyContent: 'center', padding: spacing.xxl, gap: spacing.md },

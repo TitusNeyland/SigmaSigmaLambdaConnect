@@ -2,16 +2,32 @@ import { createContext, useContext, useMemo, useState, type ReactNode } from 're
 
 import { LIMITS } from '@/data/types';
 
+import { frameAspect, type Crop, type FrameShape } from './cropLogic';
+
 export const MAX_PHOTOS = LIMITS.photosPerPost;
 
 /** A photo picked for a post, in the order it will show. */
-export type DraftPhoto = { uri: string; width: number; height: number };
+export type DraftPhoto = {
+  uri: string;
+  width: number;
+  height: number;
+  /** Set when picked from the in-app camera roll grid, so the grid can show it as picked. */
+  assetId?: string;
+  /** How the member framed it. Unset means the middle of the photo. */
+  crop?: Crop;
+};
 
 export type PostDraft = {
   photos: DraftPhoto[];
-  /** Chose to write without photos. */
-  textOnly: boolean;
+  /** The frame every photo in the post shares. */
+  shape: FrameShape;
 };
+
+/** Width over height of the post's frame. */
+export const draftAspect = (draft: PostDraft) => frameAspect(draft.shape, draft.photos[0]);
+
+/** Framing only fits the frame it was made for, so a new frame starts photos centered. */
+const uncropped = (photos: DraftPhoto[]) => photos.map(({ crop: _crop, ...p }) => p);
 
 /** Adds picks after what's there, skipping repeats, up to the 10 photo limit. */
 export function addPhotos(current: DraftPhoto[], picked: DraftPhoto[]): DraftPhoto[] {
@@ -33,21 +49,35 @@ export function makeCover(current: DraftPhoto[], uri: string): DraftPhoto[] {
 type DraftContext = {
   draft: PostDraft;
   setPhotos: (update: (photos: DraftPhoto[]) => DraftPhoto[]) => void;
-  setTextOnly: (textOnly: boolean) => void;
+  setShape: (shape: FrameShape) => void;
+  /** Saves how each photo is framed, by uri. */
+  setCrops: (crops: Record<string, Crop>) => void;
   reset: () => void;
 };
 
-const EMPTY: PostDraft = { photos: [], textOnly: false };
+const EMPTY: PostDraft = { photos: [], shape: 'original' };
 const Context = createContext<DraftContext | null>(null);
 
-/** Holds the post being made while the member moves between the pick and compose screens. */
+/** Holds the post being made, including while the member opens other screens like the guidelines. */
 export function PostDraftProvider({ children }: { children: ReactNode }) {
   const [draft, setDraft] = useState<PostDraft>(EMPTY);
   const value = useMemo<DraftContext>(
     () => ({
       draft,
-      setPhotos: (update) => setDraft((d) => ({ ...d, photos: update(d.photos), textOnly: false })),
-      setTextOnly: (textOnly) => setDraft((d) => ({ ...d, textOnly })),
+      setPhotos: (update) =>
+        setDraft((d) => {
+          const photos = update(d.photos);
+          // With Original, the first photo sets the frame: a new one resets the framing.
+          const reframed = d.shape === 'original' && photos[0]?.uri !== d.photos[0]?.uri;
+          return { ...d, photos: reframed ? uncropped(photos) : photos };
+        }),
+      setShape: (shape) =>
+        setDraft((d) => (d.shape === shape ? d : { shape, photos: uncropped(d.photos) })),
+      setCrops: (crops) =>
+        setDraft((d) => ({
+          ...d,
+          photos: d.photos.map((p) => (crops[p.uri] ? { ...p, crop: crops[p.uri] } : p)),
+        })),
       reset: () => setDraft(EMPTY),
     }),
     [draft],

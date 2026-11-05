@@ -42,19 +42,19 @@ async function openPost() {
   await waitFor(() => expect(screen.getByTestId('guidelines')).toBeTruthy());
 }
 
-it('shows the guidelines before a member’s first post, instead of the picker', async () => {
+it('shows the guidelines before a member’s first post, instead of the post screen', async () => {
   await openPost();
   expect(screen.getByRole('header', { name: 'Before you post' })).toBeTruthy();
   expect(screen.getByText('1. Represent the chapter well')).toBeTruthy();
   expect(screen.getByText('6. Report, don’t argue')).toBeTruthy();
-  expect(screen.queryByTestId('post-choose')).toBeNull();
+  expect(screen.queryByTestId('compose-caption')).toBeNull();
 });
 
-it('agreeing records it and opens the picker', async () => {
+it('agreeing records it and opens the post screen', async () => {
   await openPost();
   await press(screen.getByTestId('guidelines-agree'));
   expect(profile.acceptGuidelines).toHaveBeenCalledWith(auth.sampleUser().uid);
-  await waitFor(() => expect(screen.getByTestId('post-choose')).toBeTruthy());
+  await waitFor(() => expect(screen.getByTestId('compose-caption')).toBeTruthy());
 });
 
 it('stays on the guidelines and says so if saving fails', async () => {
@@ -66,7 +66,7 @@ it('stays on the guidelines and says so if saving fails', async () => {
       screen.getByText('Couldn’t save that. Check your connection and try again.'),
     ).toBeTruthy(),
   );
-  expect(screen.queryByTestId('post-choose')).toBeNull();
+  expect(screen.queryByTestId('compose-caption')).toBeNull();
 });
 
 it('cancel closes without agreeing', async () => {
@@ -79,9 +79,9 @@ it('cancel closes without agreeing', async () => {
   expect(profile.acceptGuidelines).not.toHaveBeenCalled();
 });
 
-it('goes straight to the picker for members who already agreed', async () => {
+it('goes straight to the post screen for members who already agreed', async () => {
   profile.resetProfileMock(profile.sampleProfile({ guidelinesAccepted: true }));
   await renderRouter('src/app', { initialUrl: '/new-post' });
-  await waitFor(() => expect(screen.getByTestId('post-choose')).toBeTruthy());
+  await waitFor(() => expect(screen.getByTestId('compose-caption')).toBeTruthy());
   expect(screen.queryByTestId('guidelines')).toBeNull();
 });
