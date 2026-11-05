@@ -112,6 +112,7 @@ async function seed() {
     ['events/e1/attendance/stays', { memberId: 'stays', checkedInBy: 'stays', checkedInAt: now() }],
     ['reads/gone/announcements/a1', { readAt: now() }],
     ['activity/gone', { seenAt: now() }],
+    ['memberStats/gone', { eventsAttended: 1, serviceHours: 4 }],
     ['activity/gone/items/like_mine_stays', { type: 'like', actorId: 'stays', postId: 'mine' }],
     ['hidden/gone/items/post_theirs', { targetType: 'post', postId: 'theirs', createdAt: now() }],
     ['restrictions/gone', { until: now(), by: 'stays', decisionId: 'd2' }],
@@ -175,6 +176,7 @@ beforeEach(async () => {
     'events',
     'reads',
     'activity',
+    'memberStats',
     'hidden',
     'restrictions',
     'decisions',
@@ -234,6 +236,7 @@ describe('deleteUserData', () => {
     await run();
     expect(await exists('reads/gone/announcements/a1')).toBe(false);
     expect(await exists('activity/gone')).toBe(false);
+    expect(await exists('memberStats/gone')).toBe(false);
     expect(await exists('activity/gone/items/like_mine_stays')).toBe(false);
     expect(await exists('hidden/gone/items/post_theirs')).toBe(false);
     expect(await exists('restrictions/gone')).toBe(false);

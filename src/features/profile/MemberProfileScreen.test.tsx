@@ -101,11 +101,14 @@ describe('layout', () => {
     expect(screen.queryByTestId('role-chip')).toBeNull();
   });
 
-  it('hides attendance from regular members', async () => {
+  it('shows regular members his totals, but not which events he attended', async () => {
+    profile.setMockExtras({ stats: { posts: 2, eventsAttended: 6, serviceHours: 14 } });
     await openMember();
     expect(profile.fetchProfileStats).toHaveBeenCalledWith(OTHER, { includeAttendance: false });
     expect(profile.fetchActivity).not.toHaveBeenCalled();
-    expect(screen.queryByTestId('stat-events')).toBeNull();
+    await waitFor(() => expect(screen.getByLabelText('6 Events')).toBeTruthy());
+    expect(screen.getByLabelText('14 Service hrs')).toBeTruthy();
+    expect(screen.getByLabelText('2 Posts')).toBeTruthy();
     expect(screen.queryByTestId('profile-tabs')).toBeNull();
   });
 

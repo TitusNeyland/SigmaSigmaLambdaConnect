@@ -49,11 +49,11 @@ Leader --> Desktop[Desktop dashboard, later]
 
 ## Profile flow
 
-| Screen       | What it does                                                                                                                                                                                              | Issues   |
-| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
-| My profile   | Photo with gold ring, counts for posts, events and service hours, name, headline, initiation, bio, interest tags. Posts grid tab and Activity tab. Attendance is visible only to the member and officers. | #13, #18 |
-| Edit profile | iOS-style form: name, headline, bio with 150 character count, initiation, chapter role (locked, set by officers), interests, show email and show phone switches.                                          | #14      |
-| Settings     | Account and membership status, notification switches, privacy, blocked accounts, guidelines, support contact, terms. Sign out and Delete account confirm first.                                           | #15, #16 |
+| Screen       | What it does                                                                                                                                                                                                                                                                                                     | Issues   |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| My profile   | Photo with gold ring, counts for posts, events and service hours, name, headline, initiation, bio, interest tags. Posts grid tab and Activity tab. Every brother sees anyone's post, event and service hour counts; which events someone attended (the Activity tab) is visible only to the member and officers. | #13, #18 |
+| Edit profile | iOS-style form: name, headline, bio with 150 character count, initiation, chapter role (locked, set by officers), interests, show email and show phone switches.                                                                                                                                                 | #14      |
+| Settings     | Account and membership status, notification switches, privacy, blocked accounts, guidelines, support contact, terms. Sign out and Delete account confirm first.                                                                                                                                                  | #15, #16 |
 
 ## Chapter flow
 

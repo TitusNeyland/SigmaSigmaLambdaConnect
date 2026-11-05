@@ -77,9 +77,8 @@ const rejectIfFailing = <T>(value: T) =>
 
 export const fetchProfileStats = jest.fn(
   async (_uid: string, options: { includeAttendance: boolean }) =>
-    rejectIfFailing<ProfileStats>(
-      options.includeAttendance ? stats : { ...stats, eventsAttended: null, serviceHours: null },
-    ),
+    // Same totals either way: others' come from memberStats, your own from your check-ins.
+    rejectIfFailing<ProfileStats>(options.includeAttendance ? stats : { ...stats }),
 );
 export const fetchProfilePosts = jest.fn(async () => rejectIfFailing(posts));
 export const fetchActivity = jest.fn(async () => rejectIfFailing(activity));

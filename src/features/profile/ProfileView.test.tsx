@@ -27,7 +27,7 @@ const baseProps = (overrides: Partial<ProfileViewProps> = {}): ProfileViewProps 
     guidelinesAccepted: true,
   },
   roleLabel: null,
-  stats: { state: 'ready', data: { posts: 3, eventsAttended: null, serviceHours: null } },
+  stats: { state: 'ready', data: { posts: 3, eventsAttended: 5, serviceHours: 12.5 } },
   posts: { state: 'ready', data: [] },
   activity: { state: 'ready', data: null },
   onRefresh: jest.fn(),
@@ -84,11 +84,11 @@ describe('ProfileView', () => {
     }
   });
 
-  it('hides attendance and the Activity tab when the viewer may not see them', async () => {
+  it('always shows posts, events and service hours, but the Activity tab only when allowed', async () => {
     await render(<ProfileView {...baseProps()} />);
     expect(screen.getByLabelText('3 Posts')).toBeTruthy();
-    expect(screen.queryByTestId('stat-events')).toBeNull();
-    expect(screen.queryByTestId('stat-hours')).toBeNull();
+    expect(screen.getByLabelText('5 Events')).toBeTruthy();
+    expect(screen.getByLabelText('12.5 Service hrs')).toBeTruthy();
     expect(screen.queryByTestId('profile-tabs')).toBeNull();
     expect(screen.getByText('No posts yet.')).toBeTruthy();
   });

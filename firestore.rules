@@ -558,6 +558,14 @@ service cloud.firestore {
         && isNow(incoming().updatedAt);
     }
 
+    // A member's profile totals (events attended, service hours), kept by Cloud Functions
+    // from their check-ins. Every approved member can see them; the check-ins themselves
+    // stay private to the member and officers.
+    match /memberStats/{userId} {
+      allow read: if isApproved();
+      allow write: if false;
+    }
+
     // Set by the resolveReport Cloud Function (#50). The member can see their own.
     match /restrictions/{userId} {
       allow read: if isSelf(userId) || isOfficer();

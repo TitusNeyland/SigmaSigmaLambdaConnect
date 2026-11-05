@@ -214,12 +214,8 @@ export function ProfileView({
         <Avatar name={profile.displayName} uri={profile.photoURL} size={86} ring={own} />
         <View style={styles.stats}>
           <Stat value={pick(stats, 'posts')} label="Posts" testID="stat-posts" />
-          {showActivity ? (
-            <>
-              <Stat value={pick(stats, 'eventsAttended')} label="Events" testID="stat-events" />
-              <Stat value={pick(stats, 'serviceHours')} label="Service hrs" testID="stat-hours" />
-            </>
-          ) : null}
+          <Stat value={pick(stats, 'eventsAttended')} label="Events" testID="stat-events" />
+          <Stat value={pick(stats, 'serviceHours')} label="Service hrs" testID="stat-hours" />
         </View>
       </View>
 

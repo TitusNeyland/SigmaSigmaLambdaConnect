@@ -46,9 +46,8 @@ export type Profile = {
 
 export type ProfileStats = {
   posts: number;
-  /** Only known for the member themself and officers; null otherwise. */
-  eventsAttended: number | null;
-  serviceHours: number | null;
+  eventsAttended: number;
+  serviceHours: number;
 };
 
 export type ProfilePost = {
@@ -207,7 +206,15 @@ export async function fetchProfileStats(
 ): Promise<ProfileStats> {
   const posts = getAggregateFromServer(visiblePostsQuery(uid), { posts: count() });
   if (!options.includeAttendance) {
-    return { posts: (await posts).data().posts, eventsAttended: null, serviceHours: null };
+    // Other members' check-ins are private; their totals are shared in memberStats, kept by
+    // a Cloud Function. No doc yet means no check-ins.
+    const [p, totals] = await Promise.all([posts, getDoc(doc(db, 'memberStats', uid))]);
+    const n = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : 0);
+    return {
+      posts: p.data().posts,
+      eventsAttended: n(totals.get('eventsAttended')),
+      serviceHours: n(totals.get('serviceHours')),
+    };
   }
   const attendance = getAggregateFromServer(attendanceQuery(uid), {
     events: count(),
