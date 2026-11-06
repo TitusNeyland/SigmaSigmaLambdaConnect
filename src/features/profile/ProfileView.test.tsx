@@ -31,8 +31,10 @@ const baseProps = (overrides: Partial<ProfileViewProps> = {}): ProfileViewProps 
   stats: { state: 'ready', data: { posts: 3, eventsAttended: 5, serviceHours: 12.5 } },
   posts: { state: 'ready', data: [] },
   activity: { state: 'ready', data: null },
+  upcoming: { state: 'ready', data: [] },
   onRefresh: jest.fn(),
   onOpenPost: jest.fn(),
+  onOpenEvent: jest.fn(),
   ...overrides,
 });
 
@@ -87,12 +89,13 @@ describe('ProfileView', () => {
     }
   });
 
-  it('always shows posts, events and service hours, but the Activity tab only when allowed', async () => {
+  it('always shows posts, events and service hours, and the Photos and Activity tabs', async () => {
     await render(<ProfileView {...baseProps()} />);
     expect(screen.getByLabelText('3 Posts')).toBeTruthy();
     expect(screen.getByLabelText('5 Events')).toBeTruthy();
     expect(screen.getByLabelText('12.5 Service hrs')).toBeTruthy();
-    expect(screen.queryByTestId('profile-tabs')).toBeNull();
+    expect(screen.getByRole('tab', { name: 'Photos' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Activity' })).toBeTruthy();
     expect(screen.getByText('No posts yet.')).toBeTruthy();
   });
 
@@ -114,5 +117,109 @@ describe('ProfileView', () => {
   it('shows the role badge when given one', async () => {
     await render(<ProfileView {...baseProps({ roleLabel: 'Service Chair' })} />);
     expect(screen.getByTestId('role-chip')).toHaveTextContent('Service Chair');
+  });
+});
+
+describe('Activity', () => {
+  const soon = new Date(Date.now() + 3 * 86_400_000);
+  const event = {
+    id: 'e1',
+    title: 'Sample food drive',
+    category: 'service' as const,
+    description: '',
+    startsAt: soon,
+    endsAt: null,
+    location: 'Sample hall',
+    photoURL: null,
+    cancelled: false,
+    myRsvp: 'going' as const,
+    slots: null,
+    goingCount: null,
+  };
+  const timelineProps = (overrides: Partial<ProfileViewProps> = {}) =>
+    baseProps({
+      profile: { ...baseProps().profile, initiationDate: new Date(2020, 0, 15) },
+      upcoming: { state: 'ready', data: [event] },
+      posts: {
+        state: 'ready',
+        data: [
+          {
+            id: 'p1',
+            coverPath: null,
+            photoCount: 0,
+            caption: 'Great turnout',
+            createdAt: new Date(2026, 9, 2),
+          },
+        ],
+      },
+      activity: {
+        state: 'ready',
+        data: [
+          {
+            eventId: 'e0',
+            title: 'Sample service day',
+            startsAt: new Date(2026, 9, 3),
+            location: 'Food bank',
+            serviceHours: 4,
+          },
+        ],
+      },
+      ...overrides,
+    });
+
+  async function openActivity(props: ProfileViewProps) {
+    await render(<ProfileView {...props} />);
+    await fireEvent.press(screen.getByRole('tab', { name: 'Activity' }));
+  }
+
+  it('lists what’s coming up, then what he’s done, and each row opens it', async () => {
+    const props = timelineProps();
+    await openActivity(props);
+    expect(screen.getByTestId('activity-upcoming')).toHaveTextContent(/COMING UP/);
+    expect(screen.getByTestId('activity-going-e1')).toHaveTextContent(/Sample food drive/);
+    expect(screen.getByTestId('activity-going-e1')).toHaveTextContent(/Going · Sample hall/);
+    expect(screen.getByTestId('activity-attended-e0')).toHaveTextContent(
+      /Attended · Food bank · 4 service hours/,
+    );
+    expect(screen.getByTestId('activity-posted-p1')).toHaveTextContent(/Shared a post/);
+    expect(screen.getByTestId('activity-initiated-0')).toHaveTextContent(
+      /Initiated into Sigma Sigma Lambda/,
+    );
+    expect(screen.getByTestId('activity-initiated-1')).toHaveTextContent(
+      /Line anniversary: 1 year/,
+    );
+
+    await fireEvent.press(screen.getByTestId('activity-going-e1'));
+    expect(props.onOpenEvent).toHaveBeenCalledWith('e1');
+    await fireEvent.press(screen.getByTestId('activity-attended-e0'));
+    expect(props.onOpenEvent).toHaveBeenCalledWith('e0');
+    await fireEvent.press(screen.getByTestId('activity-posted-p1'));
+    expect(props.onOpenPost).toHaveBeenCalledWith('p1');
+    // Anniversaries are just a note.
+    expect(screen.getByTestId('activity-initiated-1').props.accessibilityState).toMatchObject({
+      disabled: true,
+    });
+  });
+
+  it('shows check-ins and says who can see them only when the viewer is allowed', async () => {
+    await openActivity(timelineProps({ own: true }));
+    expect(screen.getByText('Only you and chapter officers can see your check-ins.')).toBeTruthy();
+  });
+
+  it('leaves check-ins out for other brothers, keeping the rest', async () => {
+    await openActivity(timelineProps({ activity: { state: 'ready', data: null } }));
+    expect(screen.queryByTestId('activity-attended-e0')).toBeNull();
+    expect(screen.getByTestId('activity-going-e1')).toBeTruthy();
+    expect(screen.queryByText(/can see/)).toBeNull();
+  });
+
+  it('says when there’s nothing yet, and offers a retry when it can’t load', async () => {
+    await openActivity(baseProps({ own: true }));
+    expect(screen.getByText('Your posts, RSVPs and check-ins will show up here.')).toBeTruthy();
+    const props = baseProps({ upcoming: { state: 'error' } });
+    await openActivity(props);
+    expect(screen.getByText('Couldn’t load activity.')).toBeTruthy();
+    await fireEvent.press(screen.getByText('Try again'));
+    expect(props.onRefresh).toHaveBeenCalled();
   });
 });

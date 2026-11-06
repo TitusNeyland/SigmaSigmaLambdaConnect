@@ -150,8 +150,10 @@ export function MemberProfileScreen({ uid }: { uid: string }) {
             posts={extras.posts}
             tagged={extras.tagged}
             activity={extras.activity}
+            upcoming={extras.upcoming}
             onRefresh={extras.reload}
             onOpenPost={(id) => router.push({ pathname: '/chapter/post/[id]', params: { id } })}
+            onOpenEvent={(id) => router.push({ pathname: '/events/[id]', params: { id } })}
             actions={
               // Only what he chose to show in Edit profile; the rules keep the rest private.
               data.email || data.phone ? (

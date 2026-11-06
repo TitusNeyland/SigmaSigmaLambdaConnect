@@ -1,6 +1,7 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { fetchUpcomingEvents, type EventSummary } from '@/data/events';
 import {
   fetchActivity,
   fetchProfilePosts,
@@ -69,8 +70,9 @@ function useLoad<T>(key: string, load: () => Promise<T>) {
 }
 
 /**
- * Counts, posts and (when allowed) attendance for a profile. includeAttendance must only
- * be true for the member themself or an officer; the rules reject anyone else.
+ * Counts, posts, upcoming events (with the member's RSVP) and, when allowed, attendance for
+ * a profile. includeAttendance must only be true for the member themself or an officer; the
+ * rules reject anyone else.
  */
 export function useProfileExtras(uid: string, includeAttendance: boolean) {
   const key = `${uid}:${includeAttendance}`;
@@ -80,17 +82,20 @@ export function useProfileExtras(uid: string, includeAttendance: boolean) {
   const activity = useLoad<ActivityItem[] | null>(key, () =>
     includeAttendance ? fetchActivity(uid) : Promise.resolve(null),
   );
+  const upcoming = useLoad<EventSummary[]>(key, () => fetchUpcomingEvents(uid));
 
   const { reload: reloadStats } = stats;
   const { reload: reloadPosts } = posts;
   const { reload: reloadTagged } = tagged;
   const { reload: reloadActivity } = activity;
+  const { reload: reloadUpcoming } = upcoming;
   const reload = useCallback(() => {
     reloadStats();
     reloadPosts();
     reloadTagged();
     reloadActivity();
-  }, [reloadStats, reloadPosts, reloadTagged, reloadActivity]);
+    reloadUpcoming();
+  }, [reloadStats, reloadPosts, reloadTagged, reloadActivity, reloadUpcoming]);
 
   // Coming back to the profile (say, after deleting a post you opened from it) reloads it.
   // The first focus is the first load, which has already started.
@@ -107,6 +112,7 @@ export function useProfileExtras(uid: string, includeAttendance: boolean) {
     posts: posts.value,
     tagged: tagged.value,
     activity: activity.value,
+    upcoming: upcoming.value,
     reload,
   };
 }

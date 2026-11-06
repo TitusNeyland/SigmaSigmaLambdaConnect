@@ -18,7 +18,7 @@ const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDat
 const isLeap = (y: number) => (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
 
 /** The anniversary of `crossed` in year `y`. Feb 29 falls on Feb 28 in other years. */
-function inYear(crossed: Date, y: number): Date {
+export function inYear(crossed: Date, y: number): Date {
   const day = crossed.getMonth() === 1 && crossed.getDate() === 29 && !isLeap(y) ? 28 : null;
   return new Date(y, crossed.getMonth(), day ?? crossed.getDate());
 }
