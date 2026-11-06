@@ -140,6 +140,36 @@ it('handles nobody going and no description', async () => {
   expect(screen.queryByTestId('event-about')).toBeNull();
 });
 
+describe('photo album', () => {
+  it('shows photos posted from the event, and opens the post', async () => {
+    events.setMockEventPhotos({
+      gala: [
+        { postId: 'p1', path: 'posts/a/p1/0.jpg' },
+        { postId: 'p1', path: 'posts/a/p1/1.jpg' },
+        { postId: 'p2', path: 'posts/b/p2/0.jpg' },
+      ],
+    });
+    await openEvent();
+    await waitFor(() => expect(screen.getByTestId('event-photos')).toBeTruthy());
+    expect(screen.getByText('PHOTOS · 3')).toBeTruthy();
+    await act(async () => {
+      fireEvent(screen.getByTestId('event-photos-grid'), 'layout', {
+        nativeEvent: { layout: { width: 300, height: 0, x: 0, y: 0 } },
+      });
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('event-photo-posts/b/p2/0.jpg'));
+    });
+    expect(screen).toHavePathname('/events/post/p2');
+  });
+
+  it('isn’t shown until someone posts a photo from the event', async () => {
+    await openEvent();
+    await waitFor(() => expect(events.fetchEventPhotos).toHaveBeenCalledWith('gala'));
+    expect(screen.queryByTestId('event-photos')).toBeNull();
+  });
+});
+
 describe('coverage', () => {
   it('shows how many of the brothers needed are going, and updates on RSVP', async () => {
     events.setMockDetails({ gala: { ...GALA, slots: 20 } });

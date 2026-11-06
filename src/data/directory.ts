@@ -10,6 +10,8 @@ export type DirectoryEntry = {
   displayName: string;
   headline: string;
   initiationTerm: string;
+  /** The day they crossed, if they added it. */
+  initiationDate: Date | null;
   interests: string[];
   photoURL: string | null;
   role: RoleDoc | null;
@@ -45,6 +47,10 @@ export async function fetchDirectory(): Promise<DirectoryEntry[]> {
         displayName,
         headline: text(data.headline).trim(),
         initiationTerm: text(data.initiationTerm).trim(),
+        initiationDate:
+          typeof data.initiationDate?.toDate === 'function'
+            ? (data.initiationDate.toDate() as Date)
+            : null,
         interests: Array.isArray(data.interests)
           ? data.interests.filter((i): i is string => typeof i === 'string' && i.trim() !== '')
           : [],

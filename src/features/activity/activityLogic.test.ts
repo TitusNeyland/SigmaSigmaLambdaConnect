@@ -3,6 +3,7 @@ import { sampleActivity } from '@/data/__mocks__/activity';
 import {
   activityAction,
   activitySections,
+  activityTarget,
   actorNames,
   hasNewActivity,
   type ActivityRow,
@@ -82,6 +83,10 @@ describe('wording', () => {
     type: 'like',
     actors: [],
     postId: 'p1',
+    eventId: null,
+    announcementId: null,
+    title: '',
+    startsAt: null,
     text: '',
     photoPath: null,
     at: at(1),
@@ -97,10 +102,44 @@ describe('wording', () => {
     expect(actorNames(['A', 'B', 'C'].map(person))).toBe('A and 2 others');
   });
 
+  const now = new Date(2026, 10, 5, 12);
+
   it('says what happened', () => {
-    expect(activityAction(row({}))).toBe(' liked your post.');
-    expect(activityAction(row({ type: 'comment', text: 'Nice' }))).toBe(' commented: Nice');
-    expect(activityAction(row({ type: 'reply', text: 'Me' }))).toBe(' replied to your comment: Me');
-    expect(activityAction(row({ type: 'comment' }))).toBe(' commented on your post.');
+    expect(activityAction(row({}), now)).toBe(' liked your post.');
+    expect(activityAction(row({ type: 'comment', text: 'Nice' }), now)).toBe(' commented: Nice');
+    expect(activityAction(row({ type: 'reply', text: 'Me' }), now)).toBe(
+      ' replied to your comment: Me',
+    );
+    expect(activityAction(row({ type: 'comment' }), now)).toBe(' commented on your post.');
+    expect(activityAction(row({ type: 'tag' }), now)).toBe(' tagged you in a post.');
+  });
+
+  it('words the chapter’s own notices as whole sentences', () => {
+    const marcus = person('Sample Marcus');
+    expect(
+      activityAction(row({ type: 'announcement', actors: [marcus], title: 'Dues due' }), now),
+    ).toBe(' posted an announcement: Dues due');
+    const reminder = (startsAt: Date) =>
+      activityAction(row({ type: 'event_reminder', title: 'Gala', startsAt }), now);
+    expect(reminder(new Date(2026, 10, 6, 19))).toBe('Reminder: Gala is tomorrow at 7:00 PM.');
+    expect(reminder(new Date(2026, 10, 5, 19))).toBe('Reminder: Gala is today at 7:00 PM.');
+    expect(reminder(new Date(2026, 10, 7, 9))).toBe('Reminder: Gala is on Sat, Nov 7 at 9:00 AM.');
+    expect(activityAction(row({ type: 'approved' }), now)).toMatch(/^Welcome to Sigma Sigma/);
+  });
+
+  it('knows where each one goes', () => {
+    expect(activityTarget(row({ type: 'tag', postId: 'p2' }))).toEqual({
+      pathname: '/home/post/[id]',
+      params: { id: 'p2' },
+    });
+    expect(activityTarget(row({ type: 'reply' }))).toMatchObject({
+      pathname: '/home/comments/[id]',
+    });
+    expect(activityTarget(row({ type: 'event_reminder', eventId: 'e1' }))).toEqual({
+      pathname: '/events/[id]',
+      params: { id: 'e1' },
+    });
+    expect(activityTarget(row({ type: 'announcement' }))).toEqual({ pathname: '/chapter' });
+    expect(activityTarget(row({ type: 'approved' }))).toBeNull();
   });
 });

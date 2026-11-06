@@ -3,8 +3,12 @@ import { getFirestore, Timestamp, type Firestore } from 'firebase-admin/firestor
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import {
+  recordAnnouncement,
+  recordApproval,
   recordComment,
+  recordEventReminder,
   recordLike,
+  recordTags,
   removeCommentItems,
   removeLike,
   removePostItems,
@@ -132,4 +136,71 @@ it('a deleted post takes its items out of everyone’s Activity, and nothing els
   expect(await items('author')).toEqual(['like_text_chris']);
   expect(await items('zed')).toEqual([]);
   expect((await db.doc('hidden/zed/items/post_p1').get()).exists).toBe(true);
+});
+
+describe('notices', () => {
+  it('tells each brother tagged in a post, but not the author', async () => {
+    const n = await recordTags(
+      'p9',
+      {
+        authorId: 'chris',
+        caption: 'Great turnout',
+        photoPaths: ['posts/chris/p9/0.jpg'],
+        taggedMemberIds: ['zed', 'author', 'chris', 'zed'],
+      },
+      db,
+    );
+    expect(n).toBe(2);
+    expect(await item('zed', 'tag_p9')).toMatchObject({
+      type: 'tag',
+      actorName: 'Sample Chris',
+      postId: 'p9',
+      text: 'Great turnout',
+      photoPath: 'posts/chris/p9/0.jpg',
+    });
+    expect(await items('chris')).toEqual([]);
+    expect(await recordTags('p8', { authorId: 'chris', taggedMemberIds: [] }, db)).toBe(0);
+  });
+
+  it('puts a new announcement in every approved member’s Activity but the poster’s', async () => {
+    await db.doc('members/pete').set({ displayName: 'Sample Pete', status: 'pending' });
+    const n = await recordAnnouncement('a1', { title: 'Dues due', authorId: 'author' }, db);
+    expect(n).toBe(2);
+    expect(await item('chris', 'announcement_a1')).toMatchObject({
+      type: 'announcement',
+      actorName: 'Sample Marcus',
+      announcementId: 'a1',
+      title: 'Dues due',
+    });
+    expect(await items('author')).toEqual([]);
+    expect(await items('pete')).toEqual([]);
+  });
+
+  it('reminds everyone Going or Maybe about an event', async () => {
+    const startsAt = Timestamp.fromMillis(Date.UTC(2026, 10, 7, 19));
+    await recordEventReminder('e1', { title: 'Gala', startsAt }, ['chris', 'zed'], db);
+    expect(await item('zed', 'reminder_e1')).toMatchObject({
+      type: 'event_reminder',
+      actorId: '',
+      eventId: 'e1',
+      title: 'Gala',
+      startsAt,
+    });
+  });
+
+  it('welcomes a member when they’re approved, once', async () => {
+    expect(await recordApproval('zed', { status: 'pending' }, { status: 'approved' }, db)).toBe(
+      true,
+    );
+    expect(await item('zed', 'approved')).toMatchObject({ type: 'approved', actorId: '' });
+    expect(await recordApproval('zed', { status: 'approved' }, { status: 'approved' }, db)).toBe(
+      false,
+    );
+  });
+
+  it('a deleted post takes its tag items with it', async () => {
+    await recordTags('p1', { authorId: 'author', taggedMemberIds: ['zed'] }, db);
+    await removePostItems('p1', db);
+    expect(await items('zed')).toEqual([]);
+  });
 });

@@ -3,6 +3,7 @@ import { logger } from 'firebase-functions';
 import { onDocumentCreated, onDocumentUpdated } from 'firebase-functions/v2/firestore';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 
+import { recordEventReminder } from './activity.js';
 import { sendPush, type PushDeps, type PushMessage } from './push.js';
 
 /**
@@ -141,6 +142,12 @@ export async function runEventNotifications(now: Date, deps: PushDeps = {}) {
       'events',
       message,
       deps,
+    );
+    await recordEventReminder(
+      doc.id,
+      event,
+      rsvps.docs.map((r) => r.id),
+      db,
     );
     reminders++;
   }

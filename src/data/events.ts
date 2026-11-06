@@ -205,6 +205,37 @@ export async function fetchEventDetail(eventId: string, uid: string): Promise<Ev
   };
 }
 
+/** One photo in an event's album, and the post it's from. */
+export type EventPhoto = { postId: string; path: string };
+
+/** Most photos an event's album shows. */
+export const EVENT_PHOTOS_MAX = 60;
+
+/**
+ * Photos brothers posted from an event, newest post first, every photo in each. Removed
+ * posts are left out.
+ */
+export async function fetchEventPhotos(eventId: string): Promise<EventPhoto[]> {
+  const snap = await getDocs(
+    query(
+      collection(db, 'posts'),
+      where('eventId', '==', eventId),
+      where('removed', '==', false),
+      orderBy('createdAt', 'desc'),
+      limit(EVENT_PHOTOS_MAX),
+    ),
+  );
+  const photos: EventPhoto[] = [];
+  for (const d of snap.docs) {
+    const paths = d.get('photoPaths');
+    if (!Array.isArray(paths)) continue;
+    for (const path of paths) {
+      if (typeof path === 'string' && path) photos.push({ postId: d.id, path });
+    }
+  }
+  return photos.slice(0, EVENT_PHOTOS_MAX);
+}
+
 export type RsvpError = 'closed' | 'failed';
 
 /** Why an RSVP couldn't be saved: closed means the deadline passed or the event was cancelled. */

@@ -26,6 +26,7 @@ import {
   type AddToCalendarResult,
 } from './eventActions';
 import { CoverageBar } from './CoverageBar';
+import { EventPhotos } from './EventPhotos';
 import {
   CATEGORY_LABELS,
   coverage,
@@ -349,6 +350,8 @@ export function EventDetailScreen({ id }: { id: string }) {
             </AppText>
           </View>
         </ListSection>
+
+        <EventPhotos eventId={event.id} />
 
         {event.description.trim() ? (
           <ListSection header="About">

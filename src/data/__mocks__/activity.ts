@@ -20,6 +20,10 @@ export function sampleActivity(overrides: Partial<ActivityItem> = {}): ActivityI
     commentId: null,
     text: '',
     photoPath: null,
+    eventId: null,
+    announcementId: null,
+    title: '',
+    startsAt: null,
     at: new Date(Date.now() - 3600_000),
     ...overrides,
   };

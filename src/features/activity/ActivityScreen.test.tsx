@@ -142,6 +142,53 @@ describe('Activity', () => {
     expect(r.getPathname()).toBe('/home/comments/p1');
   });
 
+  it('shows the chapter’s own notices with the monogram, and opens events and announcements', async () => {
+    activity.resetActivityMock([
+      activity.sampleActivity({
+        id: 'reminder_e1',
+        type: 'event_reminder',
+        actorId: '',
+        actorName: '',
+        postId: null,
+        eventId: 'e1',
+        title: 'Sample gala',
+        startsAt: new Date(Date.now() + 86_400_000),
+        at: ago(1),
+      }),
+      activity.sampleActivity({
+        id: 'announcement_a1',
+        type: 'announcement',
+        actorId: 'sample-marcus',
+        actorName: 'Sample Marcus',
+        postId: null,
+        announcementId: 'a1',
+        title: 'Dues due Friday',
+        at: ago(2),
+      }),
+      activity.sampleActivity({
+        id: 'approved',
+        type: 'approved',
+        actorId: '',
+        actorName: '',
+        postId: null,
+        at: ago(3),
+      }),
+    ]);
+    const r = await openActivity();
+    expect(screen.getByTestId('activity-reminder_e1').props.accessibilityLabel).toMatch(
+      /^Reminder: Sample gala is tomorrow at /,
+    );
+    expect(screen.getAllByLabelText('Sigma Sigma Lambda').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByTestId('activity-announcement_a1').props.accessibilityLabel).toMatch(
+      /^Sample Marcus posted an announcement: Dues due Friday/,
+    );
+    expect(screen.getByTestId('activity-approved').props.accessibilityLabel).toMatch(
+      /^Welcome to Sigma Sigma Lambda Connect/,
+    );
+    await press(screen.getByTestId('activity-reminder_e1'));
+    expect(r.getPathname()).toBe('/events/e1');
+  });
+
   it('leaves out people they blocked', async () => {
     blocks.setMockBlocked([{ uid: 'sample-zed', displayName: 'Sample Zed', photoURL: null }]);
     await openActivity();

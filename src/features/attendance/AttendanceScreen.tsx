@@ -32,6 +32,8 @@ import {
   visibleRoster,
   type RosterFilter,
 } from './attendanceLogic';
+import { CheckInScanner } from './CheckInScanner';
+import { scanCheckIn, scanMessage } from './checkInCode';
 
 type Loaded =
   | { state: 'loading' }
@@ -121,6 +123,7 @@ export function AttendanceScreen() {
   const [saved, setSaved] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
   const [now] = useState(() => new Date());
+  const [scanning, setScanning] = useState(false);
 
   useEffect(() => {
     if (!canAttend || !id) return;
@@ -160,6 +163,16 @@ export function AttendanceScreen() {
       else next.add(memberId);
       return next;
     });
+  }
+
+  /** A scanned check-in code: checks that brother on the roster, and says what happened. */
+  function scanned(data: string): string {
+    const result = scanCheckIn(data, members, checked);
+    if (result.kind === 'added') {
+      setSaved(null);
+      setChecked((prev) => new Set(prev).add(result.uid));
+    }
+    return scanMessage(result);
   }
 
   async function save() {
@@ -252,6 +265,19 @@ export function AttendanceScreen() {
                 testID="checkin-bar"
               />
             </View>
+
+            <Button
+              title="Scan check-in codes"
+              variant="secondary"
+              onPress={() => setScanning(true)}
+              fullWidth
+              testID="scan-codes"
+            />
+            <CheckInScanner
+              visible={scanning}
+              onScan={scanned}
+              onClose={() => setScanning(false)}
+            />
 
             <SearchField
               value={search}

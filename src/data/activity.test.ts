@@ -55,6 +55,10 @@ it('maps an item and skips ones it can’t show', () => {
     commentId: 'c1',
     text: 'Great night',
     photoPath: 'posts/a/p1/0.jpg',
+    eventId: null,
+    announcementId: null,
+    title: '',
+    startsAt: null,
     at: new Date(5),
   });
   expect(toActivityItem('l', { type: 'like', actorId: 'c', postId: 'p', at: ts(1) })).toMatchObject(
@@ -62,6 +66,43 @@ it('maps an item and skips ones it can’t show', () => {
   );
   expect(toActivityItem('x', { type: 'mention', actorId: 'c', postId: 'p', at: ts(1) })).toBeNull();
   expect(toActivityItem('x', { type: 'like', actorId: 'c', postId: 'p' })).toBeNull();
+  // Things people do need who did them.
+  expect(toActivityItem('x', { type: 'tag', postId: 'p', at: ts(1) })).toBeNull();
+});
+
+it('maps the chapter’s own notices, which have no person behind them', () => {
+  expect(
+    toActivityItem('reminder_e1', {
+      type: 'event_reminder',
+      actorId: '',
+      eventId: 'e1',
+      title: 'Gala',
+      startsAt: ts(9),
+      at: ts(5),
+    }),
+  ).toMatchObject({
+    actorId: '',
+    actorName: '',
+    eventId: 'e1',
+    title: 'Gala',
+    startsAt: new Date(9),
+  });
+  expect(toActivityItem('approved', { type: 'approved', at: ts(5) })).toMatchObject({
+    type: 'approved',
+    postId: null,
+  });
+  expect(
+    toActivityItem('announcement_a1', {
+      type: 'announcement',
+      actorId: 'm',
+      actorName: 'Sample Marcus',
+      announcementId: 'a1',
+      title: 'Dues',
+      at: ts(5),
+    }),
+  ).toMatchObject({ announcementId: 'a1', actorName: 'Sample Marcus' });
+  expect(toActivityItem('x', { type: 'event_reminder', at: ts(5) })).toBeNull();
+  expect(toActivityItem('x', { type: 'announcement', at: ts(5) })).toBeNull();
 });
 
 it('reads the member’s own Activity, newest first', async () => {

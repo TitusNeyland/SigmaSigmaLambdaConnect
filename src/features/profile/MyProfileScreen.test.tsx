@@ -224,6 +224,76 @@ describe('My profile', () => {
     expect(screen.queryByText('Loading posts…')).toBeNull();
   });
 
+  it('opens your check-in code from your profile', async () => {
+    const r = await renderRouter('src/app', { initialUrl: '/profile' });
+    await waitFor(() => expect(screen.getByTestId('open-check-in-code')).toBeTruthy());
+    await press(screen.getByTestId('open-check-in-code'));
+    expect(r.getPathname()).toBe('/profile/check-in-code');
+    await waitFor(() =>
+      expect(screen.getByTestId('check-in-code').props.accessibilityLabel).toBe(
+        'Check-in code for Marcus Reed',
+      ),
+    );
+  });
+
+  it('shows posts you were tagged in under Tagged, with who posted them', async () => {
+    profile.setMockExtras({
+      posts: [
+        {
+          id: 'p1',
+          coverPath: 'posts/u/p1/a.jpg',
+          photoCount: 1,
+          caption: 'Gala',
+          createdAt: null,
+        },
+      ],
+      tagged: [
+        {
+          id: 't1',
+          coverPath: 'posts/z/t1/a.jpg',
+          photoCount: 1,
+          caption: 'Cleanup crew',
+          createdAt: null,
+          author: { uid: 'sample-zed', displayName: 'Sample Zed', photoURL: null },
+        },
+        {
+          id: 't2',
+          coverPath: null,
+          photoCount: 0,
+          caption: 'Shout out to the brothers who came',
+          createdAt: null,
+          author: { uid: 'sample-ava', displayName: 'Sample Ava', photoURL: null },
+        },
+      ],
+    });
+    const r = await renderRouter('src/app', { initialUrl: '/profile' });
+    await waitFor(() => expect(screen.getByRole('tab', { name: 'Tagged' })).toBeTruthy());
+    await press(screen.getByRole('tab', { name: 'Tagged' }));
+    expect(screen.getByTestId('profile-post-t1')).toBeTruthy();
+    expect(screen.getByTestId('profile-text-t2').props.accessibilityLabel).toBe(
+      'Sample Ava, Shout out to the brothers who came',
+    );
+    await press(screen.getByTestId('profile-post-t1'));
+    expect(r.getPathname()).toBe('/profile/post/t1');
+  });
+
+  it('has no Tagged tab when nobody tagged you', async () => {
+    profile.setMockExtras({
+      posts: [
+        {
+          id: 'p1',
+          coverPath: 'posts/u/p1/a.jpg',
+          photoCount: 1,
+          caption: 'Gala',
+          createdAt: null,
+        },
+      ],
+    });
+    await openProfile();
+    await waitFor(() => expect(screen.getByTestId('profile-post-p1')).toBeTruthy());
+    expect(screen.queryByRole('tab', { name: 'Tagged' })).toBeNull();
+  });
+
   it('with only text posts, Photos says so and the Text tab has them', async () => {
     profile.setMockExtras({
       posts: [{ id: 'p3', coverPath: null, photoCount: 0, caption: 'Hello', createdAt: null }],

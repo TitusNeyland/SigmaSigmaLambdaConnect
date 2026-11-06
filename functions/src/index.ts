@@ -16,8 +16,11 @@ setGlobalOptions({ region: 'us-central1', maxInstances: 10 });
 
 export { deleteAccount } from './account.js';
 export {
+  recordAnnouncementActivity,
+  recordApprovalActivity,
   recordCommentActivity,
   recordLikeActivity,
+  recordTagActivity,
   removeCommentActivity,
   removeLikeActivity,
   removePostActivity,

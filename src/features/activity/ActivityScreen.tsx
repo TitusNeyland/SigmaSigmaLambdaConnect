@@ -15,9 +15,15 @@ import { timeAgo } from '@/features/feed/feedLogic';
 import { useHiddenContent } from '@/features/feed/useHidden';
 import { useStorageUrl } from '@/features/feed/useStorageUrl';
 import { colors, MIN_TOUCH, radius, spacing } from '@/theme';
-import { AppText, Avatar, Button, NavHeader } from '@/ui';
+import { AppText, Avatar, Button, Monogram, NavHeader } from '@/ui';
 
-import { activityAction, activitySections, actorNames, type ActivityRow } from './activityLogic';
+import {
+  activityAction,
+  activitySections,
+  activityTarget,
+  actorNames,
+  type ActivityRow,
+} from './activityLogic';
 
 const AVATAR = 44;
 const THUMB = 44;
@@ -43,23 +49,25 @@ function Thumb({ path }: { path: string }) {
 
 function Row({ row, now }: { row: ActivityRow; now: Date }) {
   const names = actorNames(row.actors);
-  const action = activityAction(row);
+  const action = activityAction(row, now);
   const when = timeAgo(row.at, now);
   const first = row.actors[0];
+  const target = activityTarget(row);
   return (
     <Pressable
-      onPress={() =>
-        row.type === 'like'
-          ? router.push({ pathname: '/home/post/[id]', params: { id: row.postId } })
-          : router.push({ pathname: '/home/comments/[id]', params: { id: row.postId } })
-      }
-      accessibilityRole="button"
+      onPress={target ? () => router.push(target) : undefined}
+      disabled={!target}
+      accessibilityRole={target ? 'button' : undefined}
       accessibilityLabel={`${names}${action} ${when}`}
-      accessibilityHint={row.type === 'like' ? 'Opens the post' : 'Opens the comments'}
-      style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+      style={({ pressed }) => [styles.row, pressed && target && styles.pressed]}
       testID={`activity-${row.key}`}
     >
-      {first ? <Avatar name={first.name} uri={first.photoURL} size={AVATAR} /> : null}
+      {first ? (
+        <Avatar name={first.name} uri={first.photoURL} size={AVATAR} />
+      ) : (
+        // The chapter's own notices come from the chapter.
+        <Monogram size={AVATAR} />
+      )}
       <AppText variant="subhead" style={styles.text} numberOfLines={3}>
         <AppText variant="subhead" weight="600">
           {names}
@@ -74,7 +82,10 @@ function Row({ row, now }: { row: ActivityRow; now: Date }) {
   );
 }
 
-/** Activity: likes, comments and replies on your posts, newest first. */
+/**
+ * Activity: likes, comments and replies on your posts, tags, announcements, event reminders
+ * and your approval, newest first.
+ */
 export function ActivityScreen() {
   const auth = useAuth();
   const uid = auth.status === 'signedIn' ? auth.user.uid : '';

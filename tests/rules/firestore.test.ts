@@ -181,6 +181,16 @@ describe('members', () => {
     );
   });
 
+  it('members can add or clear an initiation date, as a date', async () => {
+    const ref = doc(as(USERS.alice), 'members/alice');
+    await assertSucceeds(updateDoc(ref, { initiationDate: new Date(2019, 3, 13) }));
+    await assertSucceeds(updateDoc(ref, { initiationDate: deleteField() }));
+    await assertFails(updateDoc(ref, { initiationDate: 'April 13, 2019' }));
+    await assertFails(
+      updateDoc(doc(as(USERS.bob), 'members/alice'), { initiationDate: new Date() }),
+    );
+  });
+
   it('accepts the exact save from Edit profile (src/data/profile.ts)', async () => {
     const db = as(USERS.alice);
     const batch = writeBatch(db);
@@ -848,6 +858,33 @@ describe('posts', () => {
 
   it('members who accepted the guidelines can post', async () => {
     await assertSucceeds(setDoc(doc(as(USERS.alice), 'posts/new'), newPost(USERS.alice)));
+  });
+
+  it('approved members list posts someone was tagged in, or posts from an event (src/data/profile.ts, src/data/events.ts)', async () => {
+    const tagged = (db: Firestore) =>
+      getDocs(
+        query(
+          collection(db, 'posts'),
+          where('taggedMemberIds', 'array-contains', USERS.bob),
+          where('removed', '==', false),
+          orderBy('createdAt', 'desc'),
+          limit(30),
+        ),
+      );
+    const fromEvent = (db: Firestore) =>
+      getDocs(
+        query(
+          collection(db, 'posts'),
+          where('eventId', '==', 'open'),
+          where('removed', '==', false),
+          orderBy('createdAt', 'desc'),
+          limit(60),
+        ),
+      );
+    for (const read of [tagged, fromEvent]) {
+      await assertSucceeds(read(as(USERS.alice)));
+      await assertFails(read(as(USERS.pete)));
+    }
   });
 
   it('accepts the exact posts the compose screen shares (src/data/posts.ts)', async () => {

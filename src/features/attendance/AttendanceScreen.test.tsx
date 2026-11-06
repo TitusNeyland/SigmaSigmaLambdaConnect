@@ -246,3 +246,45 @@ describe('access and errors', () => {
     await waitFor(() => expect(screen.getByTestId('checkin-line')).toBeTruthy());
   });
 });
+
+describe('scanning check-in codes', () => {
+  const scan = async (data: string) => {
+    await act(async () => {
+      screen.getByTestId('scanner-camera').props.onBarcodeScanned({ type: 'qr', data });
+    });
+  };
+
+  it('checks brothers in by their code, then saves like any check-in', async () => {
+    await openRoster();
+    await press(screen.getByTestId('scan-codes'));
+    await scan('sslconnect:checkin:ace');
+    expect(screen.getByTestId('scanner-message')).toHaveTextContent(
+      "Sample Ace is checked. Save when you're done.",
+    );
+    // The same code again right away counts once.
+    await scan('sslconnect:checkin:ace');
+    await scan('sslconnect:checkin:bee');
+    expect(screen.getByTestId('scanner-message')).toHaveTextContent(
+      'Sample Bee is already checked.',
+    );
+    await scan('sslconnect:checkin:nobody');
+    expect(screen.getByTestId('scanner-message')).toHaveTextContent(/approved brother/);
+    await press(screen.getByTestId('scanner-done'));
+    await press(screen.getByTestId('attendance-save'));
+    expect(att.saveAttendance).toHaveBeenCalledWith(EVENT.id, auth.sampleUser().uid, {
+      checkIn: [{ uid: 'ace', walkIn: false }],
+      remove: [],
+      serviceHours: null,
+    });
+  });
+
+  it('asks for the camera when it isn’t allowed yet', async () => {
+    const camera = jest.requireMock<{ __setCameraPermission: (p: object) => void }>('expo-camera');
+    camera.__setCameraPermission({ granted: false, canAskAgain: true, status: 'undetermined' });
+    await openRoster();
+    await press(screen.getByTestId('scan-codes'));
+    expect(screen.queryByTestId('scanner-camera')).toBeNull();
+    expect(screen.getByTestId('scanner-allow')).toHaveTextContent('Allow camera');
+    camera.__setCameraPermission({ granted: true, canAskAgain: true, status: 'granted' });
+  });
+});

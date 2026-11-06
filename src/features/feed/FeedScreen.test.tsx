@@ -282,3 +282,46 @@ it('has an empty state and a retry', async () => {
   await press(screen.getByTestId('feed-retry'));
   await waitFor(() => expect(screen.getByTestId('post-p1')).toBeTruthy());
 });
+
+describe('line anniversaries', () => {
+  const directory =
+    jest.requireMock<typeof import('@/data/__mocks__/directory')>('@/data/directory');
+  const daysFromNow = (years: number, days: number) => {
+    const d = new Date();
+    d.setFullYear(d.getFullYear() - years);
+    d.setDate(d.getDate() + days);
+    return d;
+  };
+
+  it('shows brothers whose line anniversary is this week, and opens their profile', async () => {
+    directory.resetDirectoryMock([
+      directory.sampleEntry({
+        uid: 'sample-chris',
+        displayName: 'Sample Chris',
+        initiationDate: daysFromNow(5, 0),
+      }),
+      directory.sampleEntry({
+        uid: 'sample-zed',
+        displayName: 'Sample Zed',
+        initiationDate: daysFromNow(3, 2),
+      }),
+      directory.sampleEntry({ uid: 'sample-ava', displayName: 'Sample Ava', initiationDate: null }),
+    ]);
+    const r = await renderRouter('src/app', { initialUrl: '/home' });
+    await waitFor(() => expect(screen.getByTestId('anniversaries')).toBeTruthy());
+    expect(screen.getByTestId('anniversary-sample-chris').props.accessibilityLabel).toBe(
+      'Sample Chris, 5 years, Today',
+    );
+    expect(screen.getByTestId('anniversary-sample-zed')).toBeTruthy();
+    expect(screen.queryByTestId('anniversary-sample-ava')).toBeNull();
+    await press(screen.getByTestId('anniversary-sample-chris'));
+    expect(r.getPathname()).toBe('/chapter/member/sample-chris');
+  });
+
+  it('shows nothing when no one has an anniversary this week', async () => {
+    directory.resetDirectoryMock([directory.sampleEntry({ initiationDate: daysFromNow(2, 20) })]);
+    await renderRouter('src/app', { initialUrl: '/home' });
+    await waitFor(() => expect(directory.fetchDirectory).toHaveBeenCalled());
+    expect(screen.queryByTestId('anniversaries')).toBeNull();
+  });
+});

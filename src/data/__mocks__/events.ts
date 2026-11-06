@@ -111,8 +111,19 @@ export const fetchEventSummary = jest.fn(async (id: string, _uid: string) => {
   return event;
 });
 
+let photos: Record<string, { postId: string; path: string }[]> = {};
+
+/** Album photos by event ID. */
+export function setMockEventPhotos(next: Record<string, { postId: string; path: string }[]>) {
+  photos = next;
+}
+
+export const fetchEventPhotos = jest.fn(async (eventId: string) => photos[eventId] ?? []);
+
 export function resetEventsMock(initial: EventSummary[] = []) {
   events = initial;
+  photos = {};
+  fetchEventPhotos.mockClear();
   failing = false;
   fetchUpcomingEvents.mockClear();
   fetchEventsBetween.mockClear();

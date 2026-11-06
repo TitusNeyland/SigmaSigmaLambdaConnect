@@ -16,6 +16,7 @@ const entry = (overrides: Partial<DirectoryEntry>): DirectoryEntry => ({
   displayName: 'Sample Brother',
   headline: '',
   initiationTerm: '',
+  initiationDate: null,
   interests: [],
   photoURL: null,
   role: null,
