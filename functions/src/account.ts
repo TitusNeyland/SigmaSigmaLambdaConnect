@@ -79,6 +79,13 @@ export async function deleteUserData(
     for (const d of snap.docs) await d.ref.update({ [removes]: FieldValue.delete() });
   }
 
+  // Committee reports they submitted stay as chapter records (they were already emailed to
+  // the VPs), but without their name or member ID.
+  const reports = await db.collection('committeeReports').where('authorId', '==', uid).get();
+  for (const r of reports.docs) {
+    await r.ref.update({ authorId: FieldValue.delete(), authorName: FieldValue.delete() });
+  }
+
   // Their block list, push tokens, read marks, hidden items, Activity, any posting pause,
   // role and profile (with its private contact doc).
   await db.recursiveDelete(db.doc(`blocks/${uid}`));

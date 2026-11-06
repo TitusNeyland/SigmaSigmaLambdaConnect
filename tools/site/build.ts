@@ -16,7 +16,7 @@ import {
 } from '../../src/features/guidelines/guidelines';
 
 /** Shown on the privacy policy and terms. Update it whenever their wording changes. */
-export const POLICIES_UPDATED = 'November 3, 2026';
+export const POLICIES_UPDATED = 'November 5, 2026';
 
 const PAGES = resolve(__dirname, 'pages');
 export const DEFAULT_OUT = resolve(__dirname, '..', '..', 'build', 'site');

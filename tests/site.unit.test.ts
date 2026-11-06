@@ -50,6 +50,22 @@ describe('public site', () => {
     }
   });
 
+  it('the privacy policy keeps up with what the app does', () => {
+    const page = text(site['privacy.html']).toLowerCase();
+    // Committee reports go out by email through Resend; officers scan check-in codes with the
+    // camera; event and service hour totals show on profiles.
+    for (const phrase of [
+      'committee report',
+      'resend',
+      'check-in code',
+      'camera',
+      'service hours',
+      'initiated',
+    ]) {
+      expect(page).toContain(phrase);
+    }
+  });
+
   it('every page links home, works on a phone and uses no em dashes', () => {
     for (const [name, html] of Object.entries(site)) {
       expect(html, name).toContain('<meta name="viewport"');

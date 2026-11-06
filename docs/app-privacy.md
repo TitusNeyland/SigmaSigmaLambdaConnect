@@ -1,43 +1,61 @@
 # App privacy answers (#54)
 
-What to enter in App Store Connect (App Privacy) and the Google Play Console (Data safety). Based on what the app actually stores; see `docs/data-model.md` and the [privacy policy](../tools/site/pages/privacy.html). Re-check this whenever a feature starts collecting something new.
+What to enter in App Store Connect (App Privacy) and the Google Play Console (Data safety). It matches the [privacy policy](../tools/site/pages/privacy.html). If the app starts collecting something new, update both.
 
-The app has no ads, no analytics or crash-reporting SDKs, no tracking and no selling of data. Everything below is used only to run the app, and all of it is linked to the member's account.
+## Links for the store listings
+
+| Field                              | Value                                                             |
+| ---------------------------------- | ----------------------------------------------------------------- |
+| Privacy policy URL                 | https://sigmasigmalambdaproduction.web.app/privacy                |
+| Terms of use (EULA) URL            | https://sigmasigmalambdaproduction.web.app/terms                  |
+| Support URL                        | https://sigmasigmalambdaproduction.web.app                        |
+| Support email                      | `SUPPORT_EMAIL` in `src/config/app.ts`                            |
+| Account deletion URL (Google Play) | https://sigmasigmalambdaproduction.web.app (Your account section) |
+
+The site is built from `tools/site` and published with `firebase deploy --only hosting --project prod`.
 
 ## Apple: App Privacy
 
 **Do you or your third-party partners collect data from this app?** Yes.
-**Tracking:** No data is used to track.
 
-| Data type                         | Collected      | What it is                                                   | Purpose           | Linked to user |
-| --------------------------------- | -------------- | ------------------------------------------------------------ | ----------------- | -------------- |
-| Contact Info › Name               | Yes            | Display name                                                 | App Functionality | Yes            |
-| Contact Info › Email Address      | Yes            | Sign-in email; optional email shown on profile               | App Functionality | Yes            |
-| Contact Info › Phone Number       | Yes (optional) | Phone a member chooses to show                               | App Functionality | Yes            |
-| User Content › Photos or Videos   | Yes            | Profile photo and post photos                                | App Functionality | Yes            |
-| User Content › Other User Content | Yes            | Posts, captions, comments, profile bio, reports              | App Functionality | Yes            |
-| Identifiers › User ID             | Yes            | Firebase account ID                                          | App Functionality | Yes            |
-| Other Data                        | Yes            | RSVPs, event check-ins, service hours, notification settings | App Functionality | Yes            |
+**Tracking:** No. The app doesn't track people across other companies' apps or websites, and has no ads or analytics.
 
-Not collected: location, contacts, health, financial info, browsing or search history, purchases, diagnostics, usage analytics.
+Every type below is **linked to the user**, **not used for tracking**, and used only for **App Functionality**.
+
+| Category     | Type               | What it is in the app                                                                  |
+| ------------ | ------------------ | -------------------------------------------------------------------------------------- |
+| Contact Info | Name               | Display name on the profile                                                            |
+| Contact Info | Email Address      | Sign-in email; shown on the profile only if the member turns it on                     |
+| Contact Info | Phone Number       | Optional; shown only if the member turns it on                                         |
+| User Content | Photos or Videos   | Profile photo, post photos, photos attached to committee reports                       |
+| User Content | Other User Content | Posts, captions, comments, bio, committee reports and their files                      |
+| Identifiers  | User ID            | The member's account ID (also in their check-in QR code)                               |
+| Other Data   | Other Data Types   | Initiation term and date, RSVPs, event check-ins and service hours, reports and blocks |
+
+Not collected: location, health and fitness, financial info, sensitive info, contacts, browsing or search history, purchases, usage data or analytics, diagnostics or crash data, device ID for advertising.
 
 Push tokens are stored so notifications reach the member's phone. If App Store Connect's guidance at the time asks for them, declare them under Identifiers › Device ID, App Functionality, linked.
 
 ## Google Play: Data safety
 
-- **Does your app collect or share any of the required user data types?** Yes, collects. Nothing is shared with third parties (Firebase and Expo act as service providers, which Google doesn't count as sharing).
-- **Is all of the user data encrypted in transit?** Yes (Firebase uses TLS).
-- **Do you provide a way for users to request that their data is deleted?** Yes: in the app (Profile › Settings › Delete account) and by email. Account deletion URL: the support page (`SUPPORT_URL` in `src/config/app.ts`), which explains both.
+- **Does your app collect or share any of the required user data types?** Yes.
+- **Is all of the user data collected by your app encrypted in transit?** Yes (Firebase and Resend use HTTPS).
+- **Do you provide a way for users to request that their data is deleted?** Yes: Profile › Settings › Delete account in the app, or by emailing support.
+- **Shared with third parties:** No. Firebase, Expo and Resend process data on the chapter's behalf, which Google doesn't count as sharing. Committee report emails go to the chapter's own officers.
 
-| Category › Type                             | Collected | Optional | Purpose                                     |
-| ------------------------------------------- | --------- | -------- | ------------------------------------------- |
-| Personal info › Name                        | Yes       | No       | App functionality, Account management       |
-| Personal info › Email address               | Yes       | No       | App functionality, Account management       |
-| Personal info › Phone number                | Yes       | Yes      | App functionality                           |
-| Personal info › User IDs                    | Yes       | No       | App functionality, Account management       |
-| Photos and videos › Photos                  | Yes       | Yes      | App functionality                           |
-| App activity › Other user-generated content | Yes       | Yes      | App functionality                           |
-| App activity › Other actions                | Yes       | Yes      | App functionality (RSVPs, likes, check-ins) |
+| Data type                                  | Collected | Optional | Purpose                                                                |
+| ------------------------------------------ | --------- | -------- | ---------------------------------------------------------------------- |
+| Personal info: Name                        | Yes       | No       | App functionality, account management                                  |
+| Personal info: Email address               | Yes       | No       | App functionality, account management                                  |
+| Personal info: Phone number                | Yes       | Yes      | App functionality                                                      |
+| Personal info: User IDs                    | Yes       | No       | App functionality, account management                                  |
+| Personal info: Other info                  | Yes       | Yes      | App functionality (initiation term and date, interests, headline, bio) |
+| Photos and videos: Photos                  | Yes       | Yes      | App functionality                                                      |
+| Files and docs                             | Yes       | Yes      | App functionality (committee report files)                             |
+| App activity: Other user-generated content | Yes       | Yes      | App functionality (posts, comments, committee reports)                 |
+| App activity: Other actions                | Yes       | Yes      | App functionality (likes, RSVPs, check-ins, reports, blocks)           |
+
+Not collected: location, financial info, health and fitness, messages, audio, calendar, contacts, web browsing, app info and performance (no crash logs or diagnostics), device or other IDs for advertising.
 
 **Is data processed ephemerally?** No. It's stored until the member deletes it or their account.
 
@@ -46,3 +64,12 @@ Push tokens are stored so notifications reach the member's phone. If App Store C
 - **Sign-in required:** Yes. Give reviewers a demo account (see `docs/store-listing.md`).
 - **User-generated content:** Yes, with reporting, blocking, guidelines that must be accepted before posting, and officer review.
 - **Target audience (Play):** 18 and over.
+
+## Permissions the app asks for
+
+| Permission    | Why                                                              |
+| ------------- | ---------------------------------------------------------------- |
+| Photos        | Choose a profile photo or photos for a post                      |
+| Camera        | Take a photo for a post or profile; officers scan check-in codes |
+| Calendar      | Add an event to the phone's calendar (write only)                |
+| Notifications | Announcements, events, likes and comments, approvals             |
