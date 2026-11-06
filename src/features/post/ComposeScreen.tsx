@@ -1,4 +1,3 @@
-import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -10,7 +9,6 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Path } from 'react-native-svg';
 
 import { fetchDirectory, type DirectoryEntry } from '@/data/directory';
 import { fetchEventsBetween, type EventSummary } from '@/data/events';
@@ -46,17 +44,8 @@ import {
   taggableEvents,
   toggleTag,
 } from './composeLogic';
-import {
-  addPhotos,
-  draftAspect,
-  MAX_PHOTOS,
-  removePhoto,
-  usePostDraft,
-  type DraftPhoto,
-} from './draft';
-import { toDraftPhoto, type RollPhoto } from './cameraRoll';
-import { CameraRollGrid } from './CameraRollGrid';
-import { pickFromLibrary, takePhoto, type PhotoPick } from './pickPhotos';
+import { CroppedPhoto } from './CroppedPhoto';
+import { draftAspect, usePostDraft, type DraftPhoto } from './draft';
 import { preparePhoto } from './preparePhoto';
 import { overallPercent, uploadLabel } from './uploadLogic';
 
@@ -83,29 +72,21 @@ function useWhenOpen<T>(open: boolean, load: () => Promise<T>): Loadable<T> {
   return value ?? { state: 'loading' };
 }
 
-function RemoveIcon() {
-  return (
-    <Svg width={10} height={10} viewBox="0 0 24 24" fill="none" accessibilityElementsHidden>
-      <Path d="M6 6l12 12M18 6 6 18" stroke={palette.onInk} strokeWidth={3} strokeLinecap="round" />
-    </Svg>
-  );
-}
-
 /**
- * Making a post, in one screen: the Post tab opens straight here. Add photos from the camera
- * roll or camera (or none), write a caption, tag, then share.
+ * The last step of a post: write a caption, tag, then share. Photo posts come here from the
+ * editor, text posts straight from picking photos. Back keeps everything written here.
  */
 export function ComposeScreen() {
   const auth = useAuth();
   const uid = auth.status === 'signedIn' ? auth.user.uid : '';
-  const { draft, setPhotos, reset } = usePostDraft();
-  const [photoNote, setPhotoNote] = useState<string | null>(null);
-  const [caption, setCaption] = useState('');
-  const [allowComments, setAllowComments] = useState(true);
+  const { draft, setDetails, reset } = usePostDraft();
+  const { caption, allowComments, official, event, tags } = draft.details;
+  const setCaption = (caption: string) => setDetails({ caption });
+  const setAllowComments = (allowComments: boolean) => setDetails({ allowComments });
+  const setOfficial = (official: boolean) => setDetails({ official });
+  const setEvent = (event: EventSummary | null) => setDetails({ event });
+  const setTags = (tags: DirectoryEntry[]) => setDetails({ tags });
   const canPostOfficial = useCan('posts.official');
-  const [official, setOfficial] = useState(false);
-  const [event, setEvent] = useState<EventSummary | null>(null);
-  const [tags, setTags] = useState<DirectoryEntry[]>([]);
   const [sheet, setSheet] = useState<Sheet>(null);
   const [search, setSearch] = useState('');
   const [sharing, setSharing] = useState(false);
@@ -189,34 +170,9 @@ export function ComposeScreen() {
     }
   }
 
-  const remaining = MAX_PHOTOS - photos.length;
-
-  function addPicked(pick: PhotoPick | null) {
-    if (!pick) setPhotoNote('Couldn’t open your photos. Try again.');
-    else if (pick.status === 'denied') {
-      setPhotoNote('Allow camera access in Settings to take a photo.');
-    } else if (pick.status === 'picked') {
-      setPhotoNote(null);
-      setPhotos((current) => addPhotos(current, pick.photos));
-    }
-  }
-
-  // The system photo picker scrolls the whole camera roll without the app needing access to
-  // the member's library.
-  const choosePhotos = async () => addPicked(await pickFromLibrary(remaining).catch(() => null));
-  const openCamera = async () => addPicked(await takePhoto().catch(() => null));
-
-  async function pickFromRoll(photo: RollPhoto) {
-    const draftPhoto = await toDraftPhoto(photo).catch(() => null);
-    if (!draftPhoto) return setPhotoNote('Couldn’t add that photo. Try another.');
-    setPhotoNote(null);
-    setPhotos((current) => addPhotos(current, [draftPhoto]));
-  }
-
-  function cancel() {
-    reset();
+  function back() {
     if (router.canGoBack()) router.back();
-    else router.replace('/home');
+    else router.replace('/new-post');
   }
 
   /** Closes the posting modal back to Home, then optionally opens something there. */
@@ -266,7 +222,7 @@ export function ComposeScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.header}>
-        <HeaderButton title="Cancel" onPress={cancel} testID="compose-cancel" />
+        <HeaderButton title="Back" disabled={sharing} onPress={back} testID="compose-back" />
         <AppText variant="headline" accessibilityRole="header">
           New post
         </AppText>
@@ -288,6 +244,29 @@ export function ComposeScreen() {
             <AppText variant="footnote" color={colors.warning} testID="compose-paused">
               {restrictionNote(pausedUntil)}
             </AppText>
+          ) : null}
+          {photos.length > 0 ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.thumbs}
+              accessibilityLabel={
+                photos.length === 1 ? '1 photo' : `${photos.length} photos, cover first`
+              }
+              testID="compose-photos"
+            >
+              {/* As they'll post: at the post's shape, framed as edited. */}
+              {photos.map((photo, i) => (
+                <CroppedPhoto
+                  key={photo.uri}
+                  photo={photo}
+                  aspect={aspect}
+                  height={THUMB}
+                  style={[styles.thumb, i === 0 && styles.cover]}
+                  testID={`compose-photo-${i + 1}`}
+                />
+              ))}
+            </ScrollView>
           ) : null}
           {/* The guidelines sit right under the caption's character count. */}
           <View>
@@ -354,70 +333,6 @@ export function ComposeScreen() {
               />
             ) : null}
           </ListSection>
-
-          {photos.length > 0 ? (
-            <View style={styles.field}>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.thumbs}
-              >
-                {photos.map((photo, i) => (
-                  <View key={photo.uri} style={styles.thumbWrap}>
-                    <Pressable
-                      onPress={() =>
-                        router.push({ pathname: '/new-post/edit', params: { photo: String(i) } })
-                      }
-                      accessibilityRole="button"
-                      accessibilityLabel={i === 0 ? 'Photo 1, cover' : `Photo ${i + 1}`}
-                      accessibilityHint="Opens the photo to zoom, move and set the cover"
-                      style={[styles.thumb, i === 0 && styles.cover]}
-                      testID={`compose-photo-${i + 1}`}
-                    >
-                      <Image
-                        source={{ uri: photo.uri }}
-                        style={StyleSheet.absoluteFill}
-                        contentFit="cover"
-                      />
-                      {i === 0 ? (
-                        <View style={styles.coverLabel}>
-                          <AppText variant="caption" weight="700" color={palette.onInk}>
-                            Cover
-                          </AppText>
-                        </View>
-                      ) : null}
-                    </Pressable>
-                    <Pressable
-                      onPress={() => setPhotos((all) => removePhoto(all, photo.uri))}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Remove photo ${i + 1}`}
-                      hitSlop={spacing.md}
-                      style={styles.remove}
-                      testID={`compose-remove-${i + 1}`}
-                    >
-                      <RemoveIcon />
-                    </Pressable>
-                  </View>
-                ))}
-              </ScrollView>
-              <AppText variant="footnote" color={colors.textSecondary}>
-                Tap a photo to zoom and frame it, or make it the cover.
-              </AppText>
-            </View>
-          ) : null}
-          {photoNote ? (
-            <AppText variant="footnote" color={colors.textSecondary} testID="compose-photo-note">
-              {photoNote}
-            </AppText>
-          ) : null}
-          <CameraRollGrid
-            picked={photos}
-            remaining={remaining}
-            onPick={(photo) => void pickFromRoll(photo)}
-            onUnpick={(assetId) => setPhotos((all) => all.filter((p) => p.assetId !== assetId))}
-            onCamera={() => void openCamera()}
-            onLibrary={() => void choosePhotos()}
-          />
 
           {sharing && photos.length > 0 ? (
             <View style={styles.progress} testID="compose-progress">
@@ -562,37 +477,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   content: { padding: spacing.lg, gap: spacing.xl, paddingBottom: spacing.xxxl },
-  field: { gap: spacing.sm },
   thumbs: { gap: spacing.sm },
   thumb: {
-    width: THUMB,
-    height: THUMB,
     borderRadius: radius.md,
     overflow: 'hidden',
     backgroundColor: colors.fill,
   },
   cover: { borderWidth: 2, borderColor: palette.ink },
-  coverLabel: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    paddingVertical: spacing.xxs,
-    alignItems: 'center',
-    backgroundColor: palette.scrim,
-  },
-  thumbWrap: { width: THUMB, height: THUMB },
-  remove: {
-    position: 'absolute',
-    top: spacing.xs,
-    right: spacing.xs,
-    width: spacing.xl,
-    height: spacing.xl,
-    borderRadius: radius.pill,
-    backgroundColor: palette.scrim,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   link: { minHeight: MIN_TOUCH, justifyContent: 'center', alignSelf: 'flex-start' },
   progress: { gap: spacing.sm },
   sheetList: { maxHeight: THUMB * 4 },

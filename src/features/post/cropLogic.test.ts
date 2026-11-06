@@ -3,12 +3,15 @@ import {
   clampAspect,
   clampView,
   cropFromView,
+  cropPlacement,
   cropRect,
   frameAspect,
   MAX_ASPECT,
   MAX_ZOOM,
   MIN_ASPECT,
+  panBy,
   viewFromCrop,
+  zoomAt,
 } from './cropLogic';
 
 const wide = { width: 1920, height: 1080 }; // 16:9
@@ -109,5 +112,72 @@ describe('cropRect', () => {
       width: 1,
       height: 1080,
     });
+  });
+});
+
+describe('pinching and dragging', () => {
+  const square = { width: 1000, height: 1000 };
+  const box = { width: 300, height: 300 };
+
+  it('zooms around the point between the fingers, so it stays under them', () => {
+    const focal = { x: 60, y: -30 };
+    const before = { scale: 1, x: 0, y: 0 };
+    const after = zoomAt(before, 2, focal, square, box);
+    expect(after.scale).toBe(2);
+    // The photo point under the fingers, before and after, is the same.
+    const under = (v: typeof before) => ({
+      x: (focal.x - v.x) / v.scale,
+      y: (focal.y - v.y) / v.scale,
+    });
+    expect(under(after).x).toBeCloseTo(under(before).x);
+    expect(under(after).y).toBeCloseTo(under(before).y);
+  });
+
+  it('stretches a little past the zoom limits while pinching, and release springs it back', () => {
+    const out = zoomAt({ scale: 1, x: 0, y: 0 }, 0.1, { x: 0, y: 0 }, square, box);
+    expect(out.scale).toBe(0.75);
+    expect(clampView(out, square, box).scale).toBe(1);
+    const deep = zoomAt({ scale: MAX_ZOOM, x: 0, y: 0 }, 10, { x: 0, y: 0 }, square, box);
+    expect(deep.scale).toBe(MAX_ZOOM * 1.25);
+    expect(clampView(deep, square, box).scale).toBe(MAX_ZOOM);
+  });
+
+  it('ignores a broken pinch step', () => {
+    const view = { scale: 2, x: 10, y: 0 };
+    expect(zoomAt(view, 0, { x: 0, y: 0 }, square, box)).toBe(view);
+    expect(zoomAt(view, Number.NaN, { x: 0, y: 0 }, square, box)).toBe(view);
+  });
+
+  it('drags at full speed inside the edges, and with resistance past them', () => {
+    // At 2x the photo is 600 wide in a 300 frame: it can move 150 each way.
+    expect(panBy({ scale: 2, x: 0, y: 0 }, 40, -20, square, box)).toEqual({
+      scale: 2,
+      x: 40,
+      y: -20,
+    });
+    expect(panBy({ scale: 2, x: 160, y: 0 }, 40, 0, square, box).x).toBeCloseTo(174);
+    // Heading back in is full speed again.
+    expect(panBy({ scale: 2, x: 170, y: 0 }, -40, 0, square, box).x).toBe(130);
+    expect(clampView({ scale: 2, x: 174, y: 0 }, square, box).x).toBe(150);
+  });
+});
+
+describe('cropPlacement', () => {
+  it('draws the photo so the box shows just the crop', () => {
+    // The right half of a square photo, in a 50 x 100 box.
+    expect(
+      cropPlacement({ x: 0.5, y: 0, width: 0.5, height: 1 }, { width: 50, height: 100 }),
+    ).toEqual({ width: 100, height: 100, left: -50, top: -0 });
+  });
+
+  it('matches what the editor framed', () => {
+    const frame = { width: 300, height: 300 };
+    const view = { scale: 2, x: 40, y: -25 };
+    const placed = cropPlacement(cropFromView(view, wide, frame), frame);
+    // The same size and spot the editor drew the photo at.
+    const fill = Math.max(frame.width / wide.width, frame.height / wide.height) * view.scale;
+    expect(placed.width).toBeCloseTo(wide.width * fill);
+    expect(placed.left).toBeCloseTo((frame.width - wide.width * fill) / 2 + view.x);
+    expect(placed.top).toBeCloseTo((frame.height - wide.height * fill) / 2 + view.y);
   });
 });

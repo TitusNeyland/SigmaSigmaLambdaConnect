@@ -125,7 +125,7 @@ describe('in the feed', () => {
 
 describe('posting officially', () => {
   async function compose() {
-    await renderRouter('src/app', { initialUrl: '/new-post' });
+    await renderRouter('src/app', { initialUrl: '/new-post/details' });
     await waitFor(() => expect(screen.getByTestId('compose-caption')).toBeTruthy());
   }
 
