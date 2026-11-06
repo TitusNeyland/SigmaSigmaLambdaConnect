@@ -56,8 +56,8 @@ export function matchesFilter(
 }
 
 /**
- * Case-insensitive match on name, headline, industry, businesses or any interest. Every
- * word must match.
+ * Case-insensitive match on name, headline, industry, city, businesses or any interest.
+ * Every word must match.
  */
 export function matchesSearch(entry: DirectoryEntry, search: string): boolean {
   const words = search.trim().toLowerCase().split(/\s+/).filter(Boolean);
@@ -66,6 +66,7 @@ export function matchesSearch(entry: DirectoryEntry, search: string): boolean {
     entry.displayName,
     entry.headline,
     entry.industry,
+    entry.city,
     ...entry.businesses,
     ...entry.interests,
   ]
@@ -74,11 +75,12 @@ export function matchesSearch(entry: DirectoryEntry, search: string): boolean {
   return words.every((w) => haystack.includes(w));
 }
 
-/** Narrowing the directory further: one industry, interest or line, or business owners. */
+/** Narrowing the directory further: one industry, interest, line or city, or business owners. */
 export type Refinements = {
   industry: string | null;
   interest: string | null;
   line: string | null;
+  city: string | null;
   owners: boolean;
 };
 
@@ -86,8 +88,20 @@ export const NO_REFINEMENTS: Refinements = {
   industry: null,
   interest: null,
   line: null,
+  city: null,
   owners: false,
 };
+
+/**
+ * "atlanta, ga", so "Atlanta, GA" and "atlanta,ga" are the same place. Only what brothers
+ * typed: there's no map, so "Atlanta" and "Atlanta, GA" stay two choices.
+ */
+export const cityKey = (city: string) =>
+  city
+    .trim()
+    .toLowerCase()
+    .replace(/\s*,\s*/g, ', ')
+    .replace(/\s+/g, ' ');
 
 /** "spring 2019", so "Spring 2019" and "spring  2019" are the same line. */
 export const lineKey = (term: string) => term.trim().replace(/\s+/g, ' ').toLowerCase();
@@ -98,6 +112,7 @@ export function matchesRefinements(entry: DirectoryEntry, r: Refinements): boole
   if (r.industry && !same(entry.industry, r.industry)) return false;
   if (r.interest && !entry.interests.some((i) => same(i, r.interest!))) return false;
   if (r.line && lineKey(entry.initiationTerm) !== lineKey(r.line)) return false;
+  if (r.city && cityKey(entry.city) !== cityKey(r.city)) return false;
   if (r.owners && entry.businesses.length === 0) return false;
   return true;
 }
@@ -110,13 +125,13 @@ export type FacetOption = { value: string; count: number };
  */
 export function facetOptions(
   entries: DirectoryEntry[],
-  facet: 'industry' | 'interest' | 'line',
+  facet: 'industry' | 'interest' | 'line' | 'city',
 ): FacetOption[] {
   const counts = new Map<string, { value: string; count: number }>();
   const add = (raw: string) => {
     const value = raw.trim().replace(/\s+/g, ' ');
     if (!value) return;
-    const key = value.toLowerCase();
+    const key = facet === 'city' ? cityKey(value) : value.toLowerCase();
     const found = counts.get(key);
     if (found) found.count += 1;
     else counts.set(key, { value, count: 1 });
@@ -124,6 +139,7 @@ export function facetOptions(
   for (const e of entries) {
     if (facet === 'industry') add(e.industry);
     else if (facet === 'line') add(e.initiationTerm);
+    else if (facet === 'city') add(e.city);
     else {
       // Each brother counts once per interest, even if he listed it twice.
       const seen = new Set<string>();

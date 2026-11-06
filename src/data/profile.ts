@@ -35,6 +35,8 @@ export type Profile = {
   headline: string;
   /** His line of work, like Real estate. Empty if he didn't say. */
   industry: string;
+  /** The city he lives in, like Atlanta, GA, if he added it. Never an exact location. */
+  city: string;
   /** Businesses he owns, up to 3. */
   businesses: string[];
   bio: string;
@@ -92,6 +94,7 @@ export function toProfile(data: Record<string, unknown>): Profile {
         : null,
     headline: text(data.headline),
     industry: text(data.industry),
+    city: text(data.city),
     businesses: textList(data.businesses),
     bio: text(data.bio),
     interests: textList(data.interests),
@@ -334,6 +337,7 @@ export type ProfilePatch = {
   initiationDate: Date | null;
   headline: string;
   industry: string;
+  city: string;
   businesses: string[];
   bio: string;
   interests: string[];

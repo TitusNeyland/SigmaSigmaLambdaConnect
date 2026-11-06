@@ -8,7 +8,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import Svg, { Path, Rect } from 'react-native-svg';
+import Svg, { Circle, Path, Rect } from 'react-native-svg';
 
 import type { EventSummary } from '@/data/events';
 import {
@@ -77,11 +77,24 @@ export function formatHours(hours: number): string {
   return `${rounded} service ${rounded === 1 ? 'hour' : 'hours'}`;
 }
 
-/** A small line icon beside a fact on the profile: a briefcase for work, a shop for businesses. */
-function FactIcon({ kind }: { kind: 'work' | 'business' }) {
+/**
+ * A small line icon beside a fact on the profile: a briefcase for work, a shop for
+ * businesses, a pin for the city he lives in.
+ */
+function FactIcon({ kind }: { kind: 'work' | 'business' | 'place' }) {
   return (
     <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" accessibilityElementsHidden>
-      {kind === 'work' ? (
+      {kind === 'place' ? (
+        <>
+          <Path
+            d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"
+            stroke={colors.textSecondary}
+            strokeWidth={1.8}
+            strokeLinejoin="round"
+          />
+          <Circle cx={12} cy={10} r={2.4} stroke={colors.textSecondary} strokeWidth={1.8} />
+        </>
+      ) : kind === 'work' ? (
         <>
           <Rect
             x={3}
@@ -562,6 +575,14 @@ export function ProfileView({
             <FactIcon kind="work" />
             <AppText variant="subhead" style={styles.factText}>
               {industryLine(profile.industry)}
+            </AppText>
+          </View>
+        ) : null}
+        {profile.city.trim() ? (
+          <View style={styles.fact} testID="profile-city">
+            <FactIcon kind="place" />
+            <AppText variant="subhead" style={styles.factText}>
+              {`Lives in ${profile.city.trim()}`}
             </AppText>
           </View>
         ) : null}

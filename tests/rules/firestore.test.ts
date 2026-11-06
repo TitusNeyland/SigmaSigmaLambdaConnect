@@ -158,6 +158,30 @@ describe('members', () => {
     );
   });
 
+  it('members can set or clear the city they live in, within the limit', async () => {
+    await assertSucceeds(
+      updateDoc(doc(as(USERS.alice), 'members/alice'), {
+        city: 'Atlanta, GA',
+        updatedAt: serverTimestamp(),
+      }),
+    );
+    await assertSucceeds(
+      updateDoc(doc(as(USERS.alice), 'members/alice'), { city: '', updatedAt: serverTimestamp() }),
+    );
+    await assertFails(
+      updateDoc(doc(as(USERS.alice), 'members/alice'), {
+        city: 'x'.repeat(61),
+        updatedAt: serverTimestamp(),
+      }),
+    );
+    await assertFails(
+      updateDoc(doc(as(USERS.alice), 'members/alice'), {
+        city: { lat: 33.7, lng: -84.4 },
+        updatedAt: serverTimestamp(),
+      }),
+    );
+  });
+
   it('members can change their own industry and businesses', async () => {
     await assertSucceeds(
       updateDoc(doc(as(USERS.alice), 'members/alice'), {

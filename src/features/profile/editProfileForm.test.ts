@@ -14,6 +14,7 @@ const form = (overrides: Partial<EditProfileForm> = {}): EditProfileForm => ({
   initiationDate: null,
   headline: 'Software engineer',
   industry: 'Technology',
+  city: 'Atlanta, GA',
   businesses: ['Sample Studio'],
   bio: 'Mentoring chair.',
   interests: ['Tech'],
@@ -45,6 +46,7 @@ describe('normalizeForm', () => {
           displayName: '  Marcus Reed ',
           headline: ' Engineer ',
           industry: ' Technology ',
+          city: '  Atlanta,   GA ',
           businesses: [' Sample Studio ', ' '],
           bio: ' Hi ',
           interests: [' Tech ', '  '],
@@ -82,6 +84,8 @@ describe('validateEditProfile', () => {
   it('enforces the headline and bio limits from the rules', () => {
     expect(validateEditProfile(form({ headline: 'a'.repeat(80) })).headline).toBeUndefined();
     expect(validateEditProfile(form({ headline: 'a'.repeat(81) })).headline).toMatch(/80/);
+    expect(validateEditProfile(form({ city: 'a'.repeat(60) })).city).toBeUndefined();
+    expect(validateEditProfile(form({ city: 'a'.repeat(61) })).city).toMatch(/60/);
     expect(validateEditProfile(form({ bio: 'a'.repeat(150) })).bio).toBeUndefined();
     expect(validateEditProfile(form({ bio: 'a'.repeat(151) })).bio).toMatch(/150/);
   });

@@ -100,6 +100,7 @@ describe('Edit profile', () => {
         initiationDate: null,
         headline: 'Staff engineer',
         industry: '',
+        city: '',
         businesses: [],
         bio: 'Mentoring chair. Happy to review a resume.',
         interests: ['Tech', 'Career mentoring'],
@@ -196,6 +197,18 @@ describe('Edit profile', () => {
       await type('interest-input', 'tech');
       await press(screen.getByTestId('interest-add'));
       expect(screen.getByText('You already added that.')).toBeTruthy();
+    });
+  });
+
+  describe('city', () => {
+    it('saves just the city he types, tidied', async () => {
+      await openEdit();
+      await type('edit-city', '  Atlanta,   GA ');
+      await press(screen.getByTestId('edit-done'));
+      await waitFor(() => expect(profile.updateOwnProfile).toHaveBeenCalled());
+      expect(jest.mocked(profile.updateOwnProfile).mock.calls[0][1]).toMatchObject({
+        city: 'Atlanta, GA',
+      });
     });
   });
 

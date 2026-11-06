@@ -14,6 +14,7 @@ export function formFromProfile(profile: Profile): EditProfileForm {
     initiationDate: profile.initiationDate,
     headline: profile.headline,
     industry: profile.industry,
+    city: profile.city,
     businesses: profile.businesses,
     bio: profile.bio,
     interests: profile.interests,
@@ -32,6 +33,7 @@ export function normalizeForm(form: EditProfileForm): EditProfileForm {
     initiationDate: form.initiationDate,
     headline: form.headline.trim(),
     industry: form.industry.trim(),
+    city: form.city.trim().replace(/\s+/g, ' '),
     businesses: form.businesses.map((b) => b.trim()).filter(Boolean),
     bio: form.bio.trim(),
     interests: form.interests.map((i) => i.trim()).filter(Boolean),
@@ -42,7 +44,7 @@ export function normalizeForm(form: EditProfileForm): EditProfileForm {
 }
 
 export type EditProfileErrors = FieldErrors<
-  'displayName' | 'initiationTerm' | 'initiationDate' | 'headline' | 'bio' | 'phone'
+  'displayName' | 'initiationTerm' | 'initiationDate' | 'headline' | 'bio' | 'phone' | 'city'
 >;
 
 const SEASON_MONTH: Record<string, number> = { spring: 2, summer: 5, fall: 9, winter: 0 };
@@ -71,6 +73,9 @@ export function validateEditProfile(form: EditProfileForm): EditProfileErrors {
     errors.headline = `Use ${LIMITS.headline} characters or fewer.`;
   }
   if (form.bio.trim().length > LIMITS.bio) errors.bio = `Use ${LIMITS.bio} characters or fewer.`;
+  if (form.city.trim().length > LIMITS.city) {
+    errors.city = `Use ${LIMITS.city} characters or fewer.`;
+  }
   if (form.initiationDate && form.initiationDate.getTime() > Date.now()) {
     errors.initiationDate = 'Pick a day that’s already happened.';
   }

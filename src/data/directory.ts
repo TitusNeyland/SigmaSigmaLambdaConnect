@@ -11,6 +11,8 @@ export type DirectoryEntry = {
   headline: string;
   /** His line of work, like Real estate. Empty if he didn't say. */
   industry: string;
+  /** The city he lives in, if he added it. */
+  city: string;
   /** Businesses he owns. */
   businesses: string[];
   initiationTerm: string;
@@ -57,6 +59,7 @@ export async function fetchDirectory(): Promise<DirectoryEntry[]> {
         displayName,
         headline: text(data.headline).trim(),
         industry: text(data.industry).trim(),
+        city: text(data.city).trim(),
         businesses: textList(data.businesses),
         initiationTerm: text(data.initiationTerm).trim(),
         initiationDate:
