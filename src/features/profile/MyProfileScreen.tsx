@@ -1,5 +1,6 @@
-import { router } from 'expo-router';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { router, useScrollToTop } from 'expo-router';
+import { useRef, type ComponentRef } from 'react';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
@@ -35,6 +36,9 @@ export function MyProfileScreen() {
   // Members can always see their own attendance.
   const extras = useProfileExtras(uid, true);
   const role = useRole();
+  // Tapping the Profile tab again scrolls back to the top.
+  const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
+  useScrollToTop(scroll);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -62,6 +66,7 @@ export function MyProfileScreen() {
 
       {profile.state === 'ready' && profile.data ? (
         <ProfileView
+          scrollRef={scroll}
           own
           profile={profile.data}
           roleLabel={role.level === 'member' ? null : role.label}

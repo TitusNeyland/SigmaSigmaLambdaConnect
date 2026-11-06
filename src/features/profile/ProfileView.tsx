@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState, type ComponentRef, type ReactNode, type Ref } from 'react';
 import {
   Pressable,
   RefreshControl,
@@ -47,6 +47,8 @@ export type ProfileViewProps = {
   own?: boolean;
   onRefresh: () => void;
   refreshing?: boolean;
+  /** The page's scroll view, e.g. so tapping the Profile tab again scrolls to the top. */
+  scrollRef?: Ref<ComponentRef<typeof ScrollView>>;
 };
 
 const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
@@ -306,6 +308,7 @@ export function ProfileView({
   own = false,
   onRefresh,
   refreshing = false,
+  scrollRef,
 }: ProfileViewProps) {
   const [tab, setTab] = useState<Tab>('photos');
   const screenWidth = useWindowDimensions().width;
@@ -326,6 +329,7 @@ export function ProfileView({
 
   return (
     <ScrollView
+      ref={scrollRef}
       contentContainerStyle={styles.content}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       testID="profile-scroll"

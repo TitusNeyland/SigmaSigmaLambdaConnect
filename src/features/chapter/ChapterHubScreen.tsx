@@ -1,5 +1,5 @@
-import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { router, useFocusEffect, useScrollToTop } from 'expo-router';
+import { useCallback, useRef, useState, type ComponentRef } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
@@ -89,6 +89,9 @@ function Shortcut({
 
 /** The Chapter tab: leadership (officers), progress, shortcuts, announcements and officers. */
 export function ChapterHubScreen() {
+  // Tapping the tab again scrolls back to the top.
+  const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
+  useScrollToTop(scroll);
   const { label } = useRole();
   const canLead = useCan('leadership.view');
   const [programs, setPrograms] = useState<ProgramSummary[] | null>(null);
@@ -130,7 +133,7 @@ export function ChapterHubScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView ref={scroll} contentContainerStyle={styles.content}>
         <AppText variant="largeTitle" accessibilityRole="header">
           Chapter
         </AppText>
