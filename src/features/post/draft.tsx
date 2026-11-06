@@ -1,5 +1,7 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
 
+import type { DirectoryEntry } from '@/data/directory';
+import type { EventSummary } from '@/data/events';
 import { LIMITS } from '@/data/types';
 
 import { frameAspect, type Crop, type FrameShape } from './cropLogic';
@@ -17,10 +19,20 @@ export type DraftPhoto = {
   crop?: Crop;
 };
 
+/** What the caption step sets. Kept in the draft so going back a step doesn't lose it. */
+export type PostDetails = {
+  caption: string;
+  allowComments: boolean;
+  official: boolean;
+  event: EventSummary | null;
+  tags: DirectoryEntry[];
+};
+
 export type PostDraft = {
   photos: DraftPhoto[];
   /** The frame every photo in the post shares. */
   shape: FrameShape;
+  details: PostDetails;
 };
 
 /** Width over height of the post's frame. */
@@ -52,13 +64,21 @@ type DraftContext = {
   setShape: (shape: FrameShape) => void;
   /** Saves how each photo is framed, by uri. */
   setCrops: (crops: Record<string, Crop>) => void;
+  setDetails: (patch: Partial<PostDetails>) => void;
   reset: () => void;
 };
 
-const EMPTY: PostDraft = { photos: [], shape: 'original' };
+const EMPTY: PostDraft = {
+  photos: [],
+  shape: 'original',
+  details: { caption: '', allowComments: true, official: false, event: null, tags: [] },
+};
 const Context = createContext<DraftContext | null>(null);
 
-/** Holds the post being made, including while the member opens other screens like the guidelines. */
+/**
+ * Holds the post being made across its steps (photos, editor, caption), including while the
+ * member opens other screens like the guidelines.
+ */
 export function PostDraftProvider({ children }: { children: ReactNode }) {
   const [draft, setDraft] = useState<PostDraft>(EMPTY);
   const value = useMemo<DraftContext>(
@@ -72,12 +92,13 @@ export function PostDraftProvider({ children }: { children: ReactNode }) {
           return { ...d, photos: reframed ? uncropped(photos) : photos };
         }),
       setShape: (shape) =>
-        setDraft((d) => (d.shape === shape ? d : { shape, photos: uncropped(d.photos) })),
+        setDraft((d) => (d.shape === shape ? d : { ...d, shape, photos: uncropped(d.photos) })),
       setCrops: (crops) =>
         setDraft((d) => ({
           ...d,
           photos: d.photos.map((p) => (crops[p.uri] ? { ...p, crop: crops[p.uri] } : p)),
         })),
+      setDetails: (patch) => setDraft((d) => ({ ...d, details: { ...d.details, ...patch } })),
       reset: () => setDraft(EMPTY),
     }),
     [draft],

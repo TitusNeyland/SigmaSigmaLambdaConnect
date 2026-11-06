@@ -169,3 +169,7 @@ jest.mock('@react-native-community/datetimepicker', () => {
     DateTimePickerAndroid: { open: jest.fn(), dismiss: jest.fn() },
   };
 });
+
+// Pinch and drag in the photo editor: gestures and animations without the native side.
+require('react-native-reanimated').setUpTests();
+require('react-native-gesture-handler/jestSetup');
