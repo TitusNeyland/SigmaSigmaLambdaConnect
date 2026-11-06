@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, type ComponentRef, type ReactNode } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -30,15 +30,26 @@ import {
 } from '@/ui';
 
 import {
+  applyLength,
+  applyRsvp,
   blankForm,
+  firstErrorSection,
   formFromEvent,
   hasErrors,
+  LENGTH_OPTIONS,
+  lengthChoice,
   MAX_DESCRIPTION,
   moveStart,
+  RSVP_OPTIONS,
+  rsvpChoice,
   toEventInput,
   validateEventForm,
+  whenSummary,
   type EventForm,
   type EventFormErrors,
+  type FormSection,
+  type LengthChoice,
+  type RsvpChoice,
 } from './eventForm';
 import { CATEGORY_LABELS } from './eventsLogic';
 import { pickEventPhoto } from './pickEventPhoto';
@@ -99,6 +110,46 @@ export function EventFormScreen({ id }: { id?: string }) {
   return <Form uid={uid} existing={loaded.event} />;
 }
 
+/** A titled card on the form, like WHEN. Reports where it sits so saving can scroll to it. */
+function Section({
+  title,
+  onLayoutY,
+  children,
+  testID,
+}: {
+  title: string;
+  onLayoutY: (y: number) => void;
+  children: ReactNode;
+  testID?: string;
+}) {
+  return (
+    <View
+      onLayout={(e) => onLayoutY(e.nativeEvent.layout.y)}
+      style={styles.section}
+      testID={testID}
+    >
+      <AppText
+        variant="footnote"
+        weight="600"
+        color={colors.textSecondary}
+        accessibilityRole="header"
+        style={styles.sectionTitle}
+      >
+        {title.toUpperCase()}
+      </AppText>
+      <View style={styles.group}>{children}</View>
+    </View>
+  );
+}
+
+function FieldLabel({ children }: { children: string }) {
+  return (
+    <AppText variant="footnote" color={colors.textSecondary}>
+      {children}
+    </AppText>
+  );
+}
+
 function Message({ text, onBack }: { text: string; onBack: () => void }) {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -127,6 +178,18 @@ function Form({ uid, existing }: { uid: string; existing: EventDetail | null }) 
   const [cancelSheet, setCancelSheet] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
+  // Custom shows its own date picker even when the time happens to match a quick choice.
+  const [customLength, setCustomLength] = useState(() => lengthChoice(form) === 'custom');
+  const [customRsvp, setCustomRsvp] = useState(() => rsvpChoice(form) === 'custom');
+  // Optional extras stay out of the way until switched on.
+  const [paid, setPaid] = useState(() => form.fee.trim() !== '');
+  const [needsBrothers, setNeedsBrothers] = useState(() => form.slots.trim() !== '');
+  const [now] = useState(() => new Date());
+  const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
+  // Where each section sits, so saving can scroll to the first one with a problem.
+  const [sectionY, setSectionY] = useState<Partial<Record<FormSection, number>>>({});
+  const at = (section: FormSection) => (y: number) =>
+    setSectionY((all) => (all[section] === y ? all : { ...all, [section]: y }));
 
   const set = <K extends keyof EventForm>(key: K, value: EventForm[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
@@ -150,7 +213,14 @@ function Form({ uid, existing }: { uid: string; existing: EventDetail | null }) 
     const next = validateEventForm(form, { now: new Date(), isNew });
     setErrors(next);
     setSaveError(null);
-    if (hasErrors(next)) return;
+    if (hasErrors(next)) {
+      // Take them to the first thing to fix instead of leaving them to hunt for it.
+      const section = firstErrorSection(next);
+      const y = section ? sectionY[section] : undefined;
+      if (y !== undefined)
+        scroll.current?.scrollTo({ y: Math.max(0, y - spacing.lg), animated: true });
+      return;
+    }
     setSaving(true);
     try {
       const id = existing?.id ?? newEventId();
@@ -204,7 +274,11 @@ function Form({ uid, existing }: { uid: string; existing: EventDetail | null }) 
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          ref={scroll}
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+        >
           <View style={styles.photo}>
             {shownPhoto ? (
               <Image
@@ -246,18 +320,17 @@ function Form({ uid, existing }: { uid: string; existing: EventDetail | null }) 
             ) : null}
           </View>
 
-          <View style={styles.group}>
+          <Section title="What" onLayoutY={at('what')} testID="event-form-what">
             <TextField
               label="Title"
               value={form.title}
               onChangeText={(v) => set('title', v)}
+              placeholder="Like Fall Service Day"
               error={errors.title}
               testID="event-form-title"
             />
             <View style={styles.field}>
-              <AppText variant="footnote" color={colors.textSecondary}>
-                Category
-              </AppText>
+              <FieldLabel>Category</FieldLabel>
               <FilterChips
                 options={CATEGORY_OPTIONS}
                 value={form.category}
@@ -266,9 +339,9 @@ function Form({ uid, existing }: { uid: string; existing: EventDetail | null }) 
                 testID="event-form-category"
               />
             </View>
-          </View>
+          </Section>
 
-          <View style={styles.group}>
+          <Section title="When" onLayoutY={at('when')} testID="event-form-when">
             <DateTimeField
               label="Starts"
               value={form.startsAt}
@@ -276,15 +349,20 @@ function Form({ uid, existing }: { uid: string; existing: EventDetail | null }) 
               error={errors.startsAt}
               testID="event-form-starts"
             />
-            <SwitchRow
-              title="End time"
-              value={form.endsAt !== null}
-              onValueChange={(on) =>
-                set('endsAt', on ? new Date(form.startsAt.getTime() + 2 * 3600_000) : null)
-              }
-              testID="event-form-has-end"
-            />
-            {form.endsAt ? (
+            <View style={styles.field}>
+              <FieldLabel>How long</FieldLabel>
+              <FilterChips<LengthChoice>
+                options={LENGTH_OPTIONS}
+                value={customLength ? 'custom' : lengthChoice(form)}
+                onChange={(choice) => {
+                  setCustomLength(choice === 'custom');
+                  setForm((f) => applyLength(f, choice));
+                }}
+                accessibilityLabel="How long"
+                testID="event-form-length"
+              />
+            </View>
+            {customLength && form.endsAt ? (
               <DateTimeField
                 label="Ends"
                 value={form.endsAt}
@@ -292,22 +370,50 @@ function Form({ uid, existing }: { uid: string; existing: EventDetail | null }) 
                 error={errors.endsAt}
                 testID="event-form-ends"
               />
+            ) : errors.endsAt ? (
+              <AppText variant="footnote" color={colors.destructive}>
+                {errors.endsAt}
+              </AppText>
             ) : null}
-            <DateTimeField
-              label="RSVP by"
-              value={form.rsvpDeadline}
-              onChange={(d) => set('rsvpDeadline', d)}
-              error={errors.rsvpDeadline}
-              testID="event-form-deadline"
-            />
-          </View>
+            <View style={styles.field}>
+              <FieldLabel>RSVPs close</FieldLabel>
+              <FilterChips<RsvpChoice>
+                options={RSVP_OPTIONS}
+                value={customRsvp ? 'custom' : rsvpChoice(form)}
+                onChange={(choice) => {
+                  setCustomRsvp(choice === 'custom');
+                  setForm((f) => applyRsvp(f, choice));
+                }}
+                accessibilityLabel="RSVPs close"
+                testID="event-form-rsvp"
+              />
+            </View>
+            {customRsvp ? (
+              <DateTimeField
+                label="RSVP by"
+                value={form.rsvpDeadline}
+                onChange={(d) => set('rsvpDeadline', d)}
+                error={errors.rsvpDeadline}
+                testID="event-form-deadline"
+              />
+            ) : errors.rsvpDeadline ? (
+              <AppText variant="footnote" color={colors.destructive} testID="event-form-rsvp-error">
+                {errors.rsvpDeadline}
+              </AppText>
+            ) : null}
+            <View style={styles.summary}>
+              <AppText variant="subhead" color={colors.textSecondary} testID="event-form-summary">
+                {whenSummary(form, now)}
+              </AppText>
+            </View>
+          </Section>
 
-          <View style={styles.group}>
+          <Section title="Where" onLayoutY={at('where')} testID="event-form-where">
             <TextField
               label="Place"
               value={form.location}
               onChangeText={(v) => set('location', v)}
-              placeholder="Chapter house"
+              placeholder="Like the chapter house"
               error={errors.location}
               testID="event-form-location"
             />
@@ -315,43 +421,67 @@ function Form({ uid, existing }: { uid: string; existing: EventDetail | null }) 
               label="Address (optional)"
               value={form.address}
               onChangeText={(v) => set('address', v)}
-              hint="Used for Directions."
+              placeholder="Street, city"
+              hint="Brothers get directions from it."
               error={errors.address}
               testID="event-form-address"
             />
-            <TextField
-              label="Fee"
-              value={form.fee}
-              onChangeText={(v) => set('fee', v)}
-              placeholder="Free"
-              keyboardType="decimal-pad"
-              hint="In dollars. Leave empty if it’s free."
-              error={errors.fee}
-              testID="event-form-fee"
-            />
-            <TextField
-              label="Brothers needed (optional)"
-              value={form.slots}
-              onChangeText={(v) => set('slots', v)}
-              placeholder="No number"
-              keyboardType="number-pad"
-              hint="Each Going RSVP fills a slot, and the event shows how covered it is."
-              error={errors.slots}
-              testID="event-form-slots"
-            />
-          </View>
+          </Section>
 
-          <View style={styles.group}>
+          <Section title="Extras" onLayoutY={at('extras')} testID="event-form-extras">
+            <SwitchRow
+              title="Costs money"
+              subtitle={paid ? undefined : 'Off means it’s free.'}
+              value={paid}
+              onValueChange={(on) => {
+                setPaid(on);
+                if (!on) set('fee', '');
+              }}
+              testID="event-form-paid"
+            />
+            {paid ? (
+              <TextField
+                label="Price in dollars"
+                value={form.fee}
+                onChangeText={(v) => set('fee', v)}
+                placeholder="25"
+                keyboardType="decimal-pad"
+                error={errors.fee}
+                testID="event-form-fee"
+              />
+            ) : null}
+            <SwitchRow
+              title="Need a number of brothers"
+              subtitle="Each Going RSVP fills a spot, and the event shows how covered it is."
+              value={needsBrothers}
+              onValueChange={(on) => {
+                setNeedsBrothers(on);
+                if (!on) set('slots', '');
+              }}
+              testID="event-form-has-slots"
+            />
+            {needsBrothers ? (
+              <TextField
+                label="Brothers needed"
+                value={form.slots}
+                onChangeText={(v) => set('slots', v)}
+                placeholder="10"
+                keyboardType="number-pad"
+                error={errors.slots}
+                testID="event-form-slots"
+              />
+            ) : null}
             <TextField
-              label="About"
+              label="About (optional)"
               value={form.description}
               onChangeText={(v) => set('description', v)}
+              placeholder="What to expect, what to wear, what to bring"
               multiline
               maxLength={MAX_DESCRIPTION}
               error={errors.description}
               testID="event-form-description"
             />
-          </View>
+          </Section>
 
           {saveError ? (
             <AppText
@@ -367,6 +497,14 @@ function Form({ uid, existing }: { uid: string; existing: EventDetail | null }) 
               Fix the highlighted fields to save.
             </AppText>
           ) : null}
+
+          <Button
+            title={isNew ? 'Create event' : 'Save changes'}
+            onPress={save}
+            loading={saving}
+            fullWidth
+            testID="event-form-submit"
+          />
 
           {existing && !existing.cancelled ? (
             <ListSection footer="Going and Maybe RSVPs are told. The event stays listed as cancelled.">
@@ -439,5 +577,12 @@ const styles = StyleSheet.create({
     gap: spacing.lg,
   },
   field: { gap: spacing.sm },
+  section: { gap: spacing.sm },
+  sectionTitle: { paddingHorizontal: spacing.lg },
+  summary: {
+    paddingTop: spacing.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.separator,
+  },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl },
 });

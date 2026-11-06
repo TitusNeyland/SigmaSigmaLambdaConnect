@@ -2,6 +2,8 @@ import type { EventDetail } from '@/data/events';
 import type { EventInput } from '@/data/eventAdmin';
 import { MAX_SLOTS, type EventCategory } from '@/data/types';
 
+import { formatDay, formatTime, formatTimeRange } from './eventsLogic';
+
 /** What the create and edit form holds while it's being filled in. */
 export type EventForm = {
   title: string;
@@ -132,6 +134,9 @@ export function validateEventForm(
   }
   if (form.rsvpDeadline.getTime() > form.startsAt.getTime()) {
     errors.rsvpDeadline = 'RSVPs have to close by the time it starts.';
+  } else if (options.isNew && form.rsvpDeadline.getTime() <= options.now.getTime()) {
+    // Like a week-before deadline on an event three days out.
+    errors.rsvpDeadline = 'RSVPs would already be closed. Pick a later deadline.';
   }
 
   const cents = parseFee(form.fee);
@@ -161,4 +166,111 @@ export function toEventInput(form: EventForm): EventInput {
     photoURL: form.photoURL,
     slots: parseSlots(form.slots) ?? null,
   };
+}
+
+/** How long it runs, as one tap instead of a second date picker. */
+export type LengthChoice = 'none' | '1h' | '2h' | '3h' | 'custom';
+
+export const LENGTH_OPTIONS: readonly { value: LengthChoice; label: string }[] = [
+  { value: 'none', label: 'No end time' },
+  { value: '1h', label: '1 hr' },
+  { value: '2h', label: '2 hrs' },
+  { value: '3h', label: '3 hrs' },
+  { value: 'custom', label: 'Custom' },
+];
+
+const LENGTH_HOURS: Partial<Record<LengthChoice, number>> = { '1h': 1, '2h': 2, '3h': 3 };
+
+/** Which length choice the form's end time matches. Anything else is custom. */
+export function lengthChoice(form: EventForm): LengthChoice {
+  if (!form.endsAt) return 'none';
+  const hours = (form.endsAt.getTime() - form.startsAt.getTime()) / HOUR;
+  const match = (Object.keys(LENGTH_HOURS) as LengthChoice[]).find(
+    (k) => LENGTH_HOURS[k] === hours,
+  );
+  return match ?? 'custom';
+}
+
+/** Sets the end time from a length choice. Custom keeps the end, or starts at two hours. */
+export function applyLength(form: EventForm, choice: LengthChoice): EventForm {
+  if (choice === 'none') return { ...form, endsAt: null };
+  if (choice === 'custom') {
+    return { ...form, endsAt: form.endsAt ?? new Date(form.startsAt.getTime() + 2 * HOUR) };
+  }
+  return { ...form, endsAt: new Date(form.startsAt.getTime() + LENGTH_HOURS[choice]! * HOUR) };
+}
+
+/** When RSVPs close, as one tap instead of working out a date and time. */
+export type RsvpChoice = 'start' | 'day' | 'twoDays' | 'week' | 'custom';
+
+export const RSVP_OPTIONS: readonly { value: RsvpChoice; label: string }[] = [
+  { value: 'start', label: 'Until it starts' },
+  { value: 'day', label: 'Day before' },
+  { value: 'twoDays', label: '2 days before' },
+  { value: 'week', label: 'Week before' },
+  { value: 'custom', label: 'Custom' },
+];
+
+const RSVP_HOURS_BEFORE: Partial<Record<RsvpChoice, number>> = {
+  start: 0,
+  day: 24,
+  twoDays: 48,
+  week: 168,
+};
+
+export function rsvpChoice(form: EventForm): RsvpChoice {
+  const hours = (form.startsAt.getTime() - form.rsvpDeadline.getTime()) / HOUR;
+  const match = (Object.keys(RSVP_HOURS_BEFORE) as RsvpChoice[]).find(
+    (k) => RSVP_HOURS_BEFORE[k] === hours,
+  );
+  return match ?? 'custom';
+}
+
+/** Sets the RSVP deadline from a choice. Custom keeps the deadline as it is. */
+export function applyRsvp(form: EventForm, choice: RsvpChoice): EventForm {
+  if (choice === 'custom') return form;
+  return {
+    ...form,
+    rsvpDeadline: new Date(form.startsAt.getTime() - RSVP_HOURS_BEFORE[choice]! * HOUR),
+  };
+}
+
+/**
+ * The When section in one line, so the dates read like a sentence: "Sat, Nov 14, 7:00 to
+ * 9:00 PM. RSVPs close Fri, Nov 13, 7:00 PM."
+ */
+export function whenSummary(form: EventForm, now: Date): string {
+  const when = `${formatDay(form.startsAt, now)}, ${formatTimeRange(form.startsAt, form.endsAt)}.`;
+  const rsvp =
+    form.rsvpDeadline.getTime() === form.startsAt.getTime()
+      ? 'RSVPs stay open until it starts.'
+      : `RSVPs close ${formatDay(form.rsvpDeadline, now)}, ${formatTime(form.rsvpDeadline)}.`;
+  return `${when} ${rsvp}`;
+}
+
+/** The form's sections, top to bottom, so saving can scroll to the first problem. */
+export type FormSection = 'what' | 'when' | 'where' | 'extras';
+
+const FIELD_SECTION: Record<keyof EventForm, FormSection> = {
+  title: 'what',
+  category: 'what',
+  photoURL: 'what',
+  startsAt: 'when',
+  endsAt: 'when',
+  rsvpDeadline: 'when',
+  location: 'where',
+  address: 'where',
+  fee: 'extras',
+  slots: 'extras',
+  description: 'extras',
+};
+
+const SECTION_ORDER: readonly FormSection[] = ['what', 'when', 'where', 'extras'];
+
+/** The first section, top to bottom, with something to fix. */
+export function firstErrorSection(errors: EventFormErrors): FormSection | null {
+  const sections = new Set(
+    (Object.keys(errors) as (keyof EventForm)[]).map((k) => FIELD_SECTION[k]),
+  );
+  return SECTION_ORDER.find((s) => sections.has(s)) ?? null;
 }
