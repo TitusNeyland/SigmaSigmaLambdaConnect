@@ -112,6 +112,17 @@ async function seed() {
     ['events/e1/attendance/stays', { memberId: 'stays', checkedInBy: 'stays', checkedInAt: now() }],
     ['reads/gone/announcements/a1', { readAt: now() }],
     ['activity/gone', { seenAt: now() }],
+    [
+      'committeeReports/r1',
+      {
+        authorId: 'gone',
+        authorName: 'Sample Gone',
+        committee: 'Service',
+        period: 'October 2026',
+        summary: 'Two cleanups.',
+        emailStatus: 'sent',
+      },
+    ],
     ['memberStats/gone', { eventsAttended: 1, serviceHours: 4 }],
     ['activity/gone/items/like_mine_stays', { type: 'like', actorId: 'stays', postId: 'mine' }],
     ['hidden/gone/items/post_theirs', { targetType: 'post', postId: 'theirs', createdAt: now() }],
@@ -177,6 +188,7 @@ beforeEach(async () => {
     'reads',
     'activity',
     'memberStats',
+    'committeeReports',
     'hidden',
     'restrictions',
     'decisions',
@@ -240,6 +252,14 @@ describe('deleteUserData', () => {
     expect(await exists('activity/gone/items/like_mine_stays')).toBe(false);
     expect(await exists('hidden/gone/items/post_theirs')).toBe(false);
     expect(await exists('restrictions/gone')).toBe(false);
+  });
+
+  it('keeps committee reports they submitted, without their name or ID', async () => {
+    await run();
+    const r1 = (await db.doc('committeeReports/r1').get()).data()!;
+    expect(r1).toMatchObject({ committee: 'Service', summary: 'Two cleanups.' });
+    expect(r1).not.toHaveProperty('authorId');
+    expect(r1).not.toHaveProperty('authorName');
   });
 
   it('takes their name and words out of the decision log but keeps the decisions', async () => {
