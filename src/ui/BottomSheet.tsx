@@ -1,10 +1,11 @@
 import type { ReactNode } from 'react';
-import { Modal, Pressable, StyleSheet, View } from 'react-native';
+import { Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors, palette, radius, spacing } from '@/theme';
 
 import { AppText } from './AppText';
+import { useKeyboardInset } from './useKeyboardInset';
 
 export type BottomSheetProps = {
   visible: boolean;
@@ -14,9 +15,16 @@ export type BottomSheetProps = {
   testID?: string;
 };
 
-/** Slides up from the bottom over a dimmed backdrop. Tap the backdrop to close. */
+/**
+ * Slides up from the bottom over a dimmed backdrop. Tap the backdrop to close. When the
+ * keyboard opens (say, typing a password), the sheet rides up on top of it, so the field
+ * and buttons stay in view.
+ */
 export function BottomSheet({ visible, onClose, title, children, testID }: BottomSheetProps) {
   const insets = useSafeAreaInsets();
+  // iOS leaves a modal where it is under the keyboard. Android resizes the modal itself.
+  const keyboard = useKeyboardInset();
+  const bottom = Platform.OS === 'ios' ? keyboard : insets.bottom;
 
   return (
     <Modal
@@ -35,12 +43,10 @@ export function BottomSheet({ visible, onClose, title, children, testID }: Botto
           testID={testID ? `${testID}-backdrop` : undefined}
         />
         <View
-          style={[
-            styles.sheet,
-            { paddingBottom: Math.max(insets.bottom, spacing.xl) + spacing.sm },
-          ]}
+          style={[styles.sheet, { paddingBottom: Math.max(bottom, spacing.xl) + spacing.sm }]}
           accessibilityViewIsModal
           onAccessibilityEscape={onClose}
+          testID={testID ? `${testID}-sheet` : undefined}
         >
           <View style={styles.handle} />
           {title ? (
