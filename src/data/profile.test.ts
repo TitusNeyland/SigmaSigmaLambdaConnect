@@ -252,12 +252,31 @@ describe('fetchProfilePosts', () => {
           id: 'p1',
           data: () => ({ caption: 'Service day', photoPaths: ['posts/u1/p1/a.jpg', 'b.jpg'] }),
         },
-        { id: 'p2', data: () => ({ caption: 'Text only', photoPaths: [] }) },
+        {
+          id: 'p2',
+          data: () => ({
+            caption: 'Text only',
+            photoPaths: [],
+            createdAt: { toDate: () => new Date(2026, 9, 3) },
+          }),
+        },
       ],
     } as never);
     await expect(fetchProfilePosts('u1')).resolves.toEqual([
-      { id: 'p1', coverPath: 'posts/u1/p1/a.jpg', photoCount: 2, caption: 'Service day' },
-      { id: 'p2', coverPath: null, photoCount: 0, caption: 'Text only' },
+      {
+        id: 'p1',
+        coverPath: 'posts/u1/p1/a.jpg',
+        photoCount: 2,
+        caption: 'Service day',
+        createdAt: null,
+      },
+      {
+        id: 'p2',
+        coverPath: null,
+        photoCount: 0,
+        caption: 'Text only',
+        createdAt: new Date(2026, 9, 3),
+      },
     ]);
     expect(orderBy).toHaveBeenCalledWith('createdAt', 'desc');
     expect(limit).toHaveBeenCalledWith(30);

@@ -66,6 +66,7 @@ export function MyProfileScreen() {
           posts={extras.posts}
           activity={extras.activity}
           onRefresh={extras.reload}
+          onOpenPost={(id) => router.push({ pathname: '/profile/post/[id]', params: { id } })}
           actions={
             <Button
               title="Edit profile"

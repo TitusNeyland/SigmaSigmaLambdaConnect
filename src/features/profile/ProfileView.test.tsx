@@ -31,6 +31,7 @@ const baseProps = (overrides: Partial<ProfileViewProps> = {}): ProfileViewProps 
   posts: { state: 'ready', data: [] },
   activity: { state: 'ready', data: null },
   onRefresh: jest.fn(),
+  onOpenPost: jest.fn(),
   ...overrides,
 });
 
@@ -70,9 +71,10 @@ describe('ProfileView', () => {
   it('lays posts out as equal squares, three to a row', async () => {
     const posts = ['a', 'b', 'c', 'd'].map((id) => ({
       id,
-      coverPath: null,
-      photoCount: 0,
+      coverPath: `posts/u/${id}/0.jpg`,
+      photoCount: 1,
       caption: `Post ${id}`,
+      createdAt: null,
     }));
     await render(<ProfileView {...baseProps({ posts: { state: 'ready', data: posts } })} />);
     await fireEvent(screen.getByTestId('profile-grid'), 'layout', {
