@@ -10,6 +10,7 @@ import {
 
 import {
   fetchEventDetail,
+  fetchEventPhotos,
   fetchEventsBetween,
   fetchEventSummary,
   fetchUpcomingEvents,
@@ -63,6 +64,26 @@ const NOW = new Date('2026-10-29T17:00:00Z');
 const ts = (iso: string) => Timestamp.fromDate(new Date(iso));
 
 beforeEach(() => jest.clearAllMocks());
+
+describe('fetchEventPhotos', () => {
+  it('lists every photo from the event’s visible posts, newest post first', async () => {
+    jest.mocked(getDocs).mockResolvedValueOnce({
+      docs: [
+        { id: 'p2', get: () => ['posts/b/p2/0.jpg', 'posts/b/p2/1.jpg'] },
+        { id: 'p1', get: () => ['posts/a/p1/0.jpg', 7] },
+        { id: 'text', get: () => undefined },
+      ],
+    } as never);
+    expect(await fetchEventPhotos('gala')).toEqual([
+      { postId: 'p2', path: 'posts/b/p2/0.jpg' },
+      { postId: 'p2', path: 'posts/b/p2/1.jpg' },
+      { postId: 'p1', path: 'posts/a/p1/0.jpg' },
+    ]);
+    expect(where).toHaveBeenCalledWith('eventId', '==', 'gala');
+    expect(where).toHaveBeenCalledWith('removed', '==', false);
+    expect(orderBy).toHaveBeenCalledWith('createdAt', 'desc');
+  });
+});
 
 describe('toEventSummary', () => {
   it('maps an event document', () => {

@@ -30,6 +30,8 @@ import { DEFAULT_NOTIFICATION_PREFS, type NotificationPrefs } from './types';
 export type Profile = {
   displayName: string;
   initiationTerm: string;
+  /** The day they crossed, if they added it. */
+  initiationDate: Date | null;
   headline: string;
   bio: string;
   interests: string[];
@@ -56,7 +58,11 @@ export type ProfilePost = {
   photoCount: number;
   caption: string;
   createdAt: Date | null;
+  /** Who posted it, on posts someone else tagged this member in. */
+  author?: PostAuthor | null;
 };
+
+export type PostAuthor = { uid: string; displayName: string; photoURL: string | null };
 
 export type ActivityItem = {
   eventId: string;
@@ -72,6 +78,10 @@ export function toProfile(data: Record<string, unknown>): Profile {
   return {
     displayName: text(data.displayName),
     initiationTerm: text(data.initiationTerm),
+    initiationDate:
+      typeof (data.initiationDate as Timestamp | undefined)?.toDate === 'function'
+        ? (data.initiationDate as Timestamp).toDate()
+        : null,
     headline: text(data.headline),
     bio: text(data.bio),
     interests: Array.isArray(data.interests)
@@ -216,26 +226,64 @@ export async function fetchProfileStats(uid: string): Promise<ProfileStats> {
 }
 
 /** Newest posts first, for the profile grid. */
+function toProfilePost(id: string, data: Record<string, unknown>): ProfilePost {
+  const paths = Array.isArray(data.photoPaths)
+    ? data.photoPaths.filter((p): p is string => typeof p === 'string')
+    : [];
+  return {
+    id,
+    coverPath: paths[0] ?? null,
+    photoCount: paths.length,
+    caption: text(data.caption),
+    createdAt:
+      typeof (data.createdAt as Timestamp | undefined)?.toDate === 'function'
+        ? (data.createdAt as Timestamp).toDate()
+        : null,
+  };
+}
+
 export async function fetchProfilePosts(uid: string, max = 30): Promise<ProfilePost[]> {
   const snap = await getDocs(
     query(visiblePostsQuery(uid), orderBy('createdAt', 'desc'), limit(max)),
   );
-  return snap.docs.map((d) => {
-    const data = d.data();
-    const paths = Array.isArray(data.photoPaths)
-      ? data.photoPaths.filter((p): p is string => typeof p === 'string')
-      : [];
-    return {
-      id: d.id,
-      coverPath: paths[0] ?? null,
-      photoCount: paths.length,
-      caption: text(data.caption),
-      createdAt:
-        typeof (data.createdAt as Timestamp | undefined)?.toDate === 'function'
-          ? (data.createdAt as Timestamp).toDate()
-          : null,
-    };
-  });
+  return snap.docs.map((d) => toProfilePost(d.id, d.data()));
+}
+
+/**
+ * Posts other brothers tagged this member in, newest first, each with who posted it.
+ * Posts whose author's profile is gone are left out.
+ */
+export async function fetchTaggedPosts(uid: string, max = 30): Promise<ProfilePost[]> {
+  const snap = await getDocs(
+    query(
+      collection(db, 'posts'),
+      where('taggedMemberIds', 'array-contains', uid),
+      where('removed', '==', false),
+      orderBy('createdAt', 'desc'),
+      limit(max),
+    ),
+  );
+  const authorIds = [...new Set(snap.docs.map((d) => text(d.get('authorId'))).filter(Boolean))];
+  const authors = new Map<string, PostAuthor>();
+  await Promise.all(
+    authorIds.map(async (id) => {
+      const member = await getDoc(doc(db, 'members', id));
+      const name = text(member.get('displayName')).trim();
+      if (!member.exists() || !name) return;
+      const photo = member.get('photoURL');
+      authors.set(id, {
+        uid: id,
+        displayName: name,
+        photoURL: typeof photo === 'string' && photo ? photo : null,
+      });
+    }),
+  );
+  return snap.docs
+    .map((d) => ({
+      ...toProfilePost(d.id, d.data()),
+      author: authors.get(text(d.get('authorId'))) ?? null,
+    }))
+    .filter((p) => p.author !== null);
 }
 
 /**
@@ -275,6 +323,7 @@ export function photoUrl(path: string): Promise<string> {
 export type ProfilePatch = {
   displayName: string;
   initiationTerm: string;
+  initiationDate: Date | null;
   headline: string;
   bio: string;
   interests: string[];
@@ -292,7 +341,7 @@ export async function updateOwnProfile(
   patch: ProfilePatch,
   account: { email: string },
 ): Promise<void> {
-  const { phone, showEmail, showPhone, ...fields } = patch;
+  const { phone, showEmail, showPhone, initiationDate, ...fields } = patch;
   const email = account.email.trim();
   const batch = writeBatch(db);
   batch.set(doc(db, contactDocPath(uid)), {
@@ -304,6 +353,7 @@ export async function updateOwnProfile(
   });
   batch.update(doc(db, 'members', uid), {
     ...fields,
+    initiationDate: initiationDate ?? deleteField(),
     email: showEmail && email ? email : deleteField(),
     phone: showPhone && phone ? phone : deleteField(),
     updatedAt: serverTimestamp(),

@@ -1,20 +1,28 @@
 import { FieldValue, getFirestore, Timestamp, type Firestore } from 'firebase-admin/firestore';
-import { onDocumentCreated, onDocumentDeleted } from 'firebase-functions/v2/firestore';
+import {
+  onDocumentCreated,
+  onDocumentDeleted,
+  onDocumentUpdated,
+} from 'firebase-functions/v2/firestore';
 
 import { preview } from './social.js';
 
 /**
- * Activity: the likes, comments and replies on a member's posts, newest first, shown behind
- * the heart on Home. Written here with admin access; only the member can read theirs.
+ * Activity: what happened that's about a member, newest first, shown behind the heart on
+ * Home: likes, comments and replies on their posts, being tagged, new announcements, event
+ * reminders and being approved. Written here with admin access; only the member can read
+ * theirs.
  *
  *   activity/{uid}              { seenAt }  when they last opened Activity (they write it)
- *   activity/{uid}/items/{id}   one like, comment or reply
+ *   activity/{uid}/items/{id}   one item
  *
- * Item IDs are fixed (like_{post}_{liker}, comment_{id}, reply_{id}) so a repeat event
- * overwrites rather than duplicates. Blocked people are filtered out in the app, so
- * unblocking someone brings their activity back.
+ * Item IDs are fixed (like_{post}_{liker}, comment_{id}, reply_{id}, tag_{post},
+ * announcement_{id}, reminder_{event}, approved) so a repeat event overwrites rather than
+ * duplicates. Blocked people are filtered out in the app, so unblocking someone brings
+ * their activity back.
  */
-export type ActivityType = 'like' | 'comment' | 'reply';
+export type ActivityType =
+  'like' | 'comment' | 'reply' | 'tag' | 'announcement' | 'event_reminder' | 'approved';
 
 /** Most an item keeps of a comment. The app shows two lines. */
 export const ACTIVITY_TEXT_MAX = 120;
@@ -159,3 +167,138 @@ export const removeCommentActivity = onDocumentDeleted(
 export const removePostActivity = onDocumentDeleted('posts/{postId}', (event) =>
   removePostItems(event.params.postId).then(() => undefined),
 );
+
+// ---------- Notices: tags, announcements, reminders, approval ----------
+
+const BATCH = 400;
+
+/** Writes the same item to several members' Activity, in batches. */
+export async function recordForMembers(
+  uids: string[],
+  itemId: string,
+  item: Record<string, unknown>,
+  db: Firestore = getFirestore(),
+): Promise<number> {
+  const unique = [...new Set(uids.filter(Boolean))];
+  for (let i = 0; i < unique.length; i += BATCH) {
+    const batch = db.batch();
+    for (const uid of unique.slice(i, i + BATCH)) {
+      batch.set(db.doc(`${itemsPath(uid)}/${itemId}`), item);
+    }
+    await batch.commit();
+  }
+  return unique.length;
+}
+
+const NO_ACTOR = { actorId: '', actorName: '', actorPhotoURL: null };
+
+/** Tells each brother tagged in a new post. Tagging yourself adds nothing. */
+export async function recordTags(
+  postId: string,
+  post: {
+    authorId?: unknown;
+    caption?: unknown;
+    photoPaths?: unknown;
+    taggedMemberIds?: unknown;
+    createdAt?: unknown;
+  },
+  db: Firestore = getFirestore(),
+): Promise<number> {
+  const authorId = text(post.authorId);
+  const tagged = Array.isArray(post.taggedMemberIds)
+    ? post.taggedMemberIds.map(text).filter((uid) => uid && uid !== authorId)
+    : [];
+  if (!authorId || tagged.length === 0) return 0;
+  const paths = Array.isArray(post.photoPaths) ? post.photoPaths : [];
+  return recordForMembers(
+    tagged,
+    `tag_${postId}`,
+    {
+      type: 'tag' satisfies ActivityType,
+      ...(await actor(db, authorId)),
+      postId,
+      text: preview(text(post.caption), ACTIVITY_TEXT_MAX),
+      photoPath: text(paths[0]) || null,
+      at: when(post.createdAt),
+    },
+    db,
+  );
+}
+
+/** Puts a new announcement in every approved member's Activity, except the poster's own. */
+export async function recordAnnouncement(
+  id: string,
+  data: { title?: unknown; authorId?: unknown; createdAt?: unknown },
+  db: Firestore = getFirestore(),
+): Promise<number> {
+  const title = text(data.title);
+  if (!title) return 0;
+  const authorId = text(data.authorId);
+  const members = await db.collection('members').where('status', '==', 'approved').get();
+  return recordForMembers(
+    members.docs.map((d) => d.id).filter((uid) => uid !== authorId),
+    `announcement_${id}`,
+    {
+      type: 'announcement' satisfies ActivityType,
+      ...(authorId ? await actor(db, authorId) : NO_ACTOR),
+      announcementId: id,
+      title: preview(title, ACTIVITY_TEXT_MAX),
+      at: when(data.createdAt),
+    },
+    db,
+  );
+}
+
+/** A reminder in Activity for everyone Going or Maybe to an event starting soon. */
+export async function recordEventReminder(
+  eventId: string,
+  event: { title?: unknown; startsAt?: unknown },
+  uids: string[],
+  db: Firestore = getFirestore(),
+): Promise<number> {
+  const title = text(event.title);
+  if (!title || !(event.startsAt instanceof Timestamp)) return 0;
+  return recordForMembers(
+    uids,
+    `reminder_${eventId}`,
+    {
+      type: 'event_reminder' satisfies ActivityType,
+      ...NO_ACTOR,
+      eventId,
+      title: preview(title, ACTIVITY_TEXT_MAX),
+      startsAt: event.startsAt,
+      at: FieldValue.serverTimestamp(),
+    },
+    db,
+  );
+}
+
+/** Welcomes a member in their Activity once an officer approves them. */
+export async function recordApproval(
+  uid: string,
+  before: Record<string, unknown> | undefined,
+  after: Record<string, unknown> | undefined,
+  db: Firestore = getFirestore(),
+): Promise<boolean> {
+  if (before?.status !== 'pending' || after?.status !== 'approved') return false;
+  await db.doc(`${itemsPath(uid)}/approved`).set({
+    type: 'approved' satisfies ActivityType,
+    ...NO_ACTOR,
+    at: FieldValue.serverTimestamp(),
+  });
+  return true;
+}
+
+export const recordTagActivity = onDocumentCreated('posts/{postId}', async (event) => {
+  const data = event.data?.data();
+  if (data) await recordTags(event.params.postId, data);
+});
+
+export const recordAnnouncementActivity = onDocumentCreated('announcements/{id}', async (event) => {
+  const data = event.data?.data();
+  if (data) await recordAnnouncement(event.params.id, data);
+});
+
+export const recordApprovalActivity = onDocumentUpdated('members/{uid}', async (event) => {
+  await recordApproval(event.params.uid, event.data?.before.data(), event.data?.after.data());
+});

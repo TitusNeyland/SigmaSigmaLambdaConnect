@@ -12,6 +12,10 @@ export type DateTimeFieldProps = {
   label: string;
   value: Date;
   onChange: (value: Date) => void;
+  /** 'date' picks a day only, like a birthday. Defaults to a day and time. */
+  mode?: 'datetime' | 'date';
+  /** Latest day it allows, like today for something that already happened. */
+  maximumDate?: Date;
   error?: string;
   testID?: string;
 };
@@ -28,17 +32,36 @@ export function formatDateTime(d: Date): string {
   return `${DAYS[d.getDay()]}, ${MONTHS[d.getMonth()]} ${d.getDate()}, ${time}`;
 }
 
+/** "Nov 7, 2021" for a day-only field. */
+export function formatDate(d: Date): string {
+  return `${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+}
+
 /**
- * A labeled date and time. iOS shows the system's compact picker inline; Android opens the
- * date dialog, then the time dialog.
+ * A labeled date and time, or just a date. iOS shows the system's compact picker inline;
+ * Android opens the date dialog, then (for a date and time) the time dialog.
  */
-export function DateTimeField({ label, value, onChange, error, testID }: DateTimeFieldProps) {
+export function DateTimeField({
+  label,
+  value,
+  onChange,
+  mode = 'datetime',
+  maximumDate,
+  error,
+  testID,
+}: DateTimeFieldProps) {
+  const shown = mode === 'date' ? formatDate(value) : formatDateTime(value);
   function openAndroid() {
     DateTimePickerAndroid.open({
       value,
       mode: 'date',
+      maximumDate,
       onChange: (event: DateTimePickerEvent, day?: Date) => {
         if (event.type !== 'set' || !day) return;
+        if (mode === 'date') {
+          onChange(day);
+          return;
+        }
         DateTimePickerAndroid.open({
           value: day,
           mode: 'time',
@@ -57,25 +80,28 @@ export function DateTimeField({ label, value, onChange, error, testID }: DateTim
         {Platform.OS === 'ios' ? (
           <DateTimePicker
             value={value}
-            mode="datetime"
+            mode={mode}
             display="compact"
+            maximumDate={maximumDate}
             accentColor={palette.ink}
             onChange={(event, date) => {
               if (event.type === 'set' && date) onChange(date);
             }}
-            accessibilityLabel={`${label}, ${formatDateTime(value)}`}
+            accessibilityLabel={`${label}, ${shown}`}
             testID={testID}
           />
         ) : (
           <Pressable
             onPress={openAndroid}
             accessibilityRole="button"
-            accessibilityLabel={`${label}, ${formatDateTime(value)}`}
-            accessibilityHint="Opens a date and time picker"
+            accessibilityLabel={`${label}, ${shown}`}
+            accessibilityHint={
+              mode === 'date' ? 'Opens a date picker' : 'Opens a date and time picker'
+            }
             style={styles.button}
             testID={testID}
           >
-            <AppText>{formatDateTime(value)}</AppText>
+            <AppText>{shown}</AppText>
           </Pressable>
         )}
       </View>

@@ -13,6 +13,7 @@ import { AppText, Button } from '@/ui';
 import { onCommentsChanged, onFeedChanged } from './feedEvents';
 import { appendPage, visiblePosts } from './feedLogic';
 import { HomeHeader } from './HomeHeader';
+import { LineAnniversaries } from './LineAnniversaries';
 import { PostCard } from './PostCard';
 import { ReportedNotice } from './ReportedNotice';
 import { useHiddenContent } from './useHidden';
@@ -153,6 +154,7 @@ export function FeedScreen() {
           <PostCard post={item} now={now} me={uid} onDeleted={removePost} />
         )}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
+        ListHeaderComponent={<LineAnniversaries me={uid} />}
         ListEmptyComponent={
           feed.state === 'loading' ? (
             <AppText

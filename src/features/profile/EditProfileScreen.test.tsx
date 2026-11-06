@@ -95,6 +95,7 @@ describe('Edit profile', () => {
       {
         displayName: 'Marcus Reed',
         initiationTerm: 'Spring 2019',
+        initiationDate: null,
         headline: 'Staff engineer',
         bio: 'Mentoring chair. Happy to review a resume.',
         interests: ['Tech', 'Career mentoring'],
@@ -141,6 +142,28 @@ describe('Edit profile', () => {
     await waitFor(() => expect(screen.getByText('Mentoring Chair')).toBeTruthy());
     expect(screen.queryByDisplayValue('Mentoring Chair')).toBeNull();
     expect(screen.getByText(/Roles are set by officers/)).toBeTruthy();
+  });
+
+  describe('initiation date', () => {
+    it('is off until they add it, starting from their term, and saves the day', async () => {
+      await openEdit();
+      expect(screen.queryByTestId('edit-date')).toBeNull();
+      await act(async () => {
+        fireEvent(screen.getByTestId('edit-has-date'), 'valueChange', true);
+      });
+      // Spring 2019 starts the picker on March 1, 2019.
+      expect(screen.getByTestId('edit-date').props.date).toEqual(new Date(2019, 2, 1));
+      const crossed = new Date(2019, 3, 13);
+      await act(async () => {
+        screen.getByTestId('edit-date').props.onChange({ type: 'set' }, crossed);
+      });
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('edit-done'));
+      });
+      expect(jest.mocked(profile.updateOwnProfile).mock.calls[0][1]).toMatchObject({
+        initiationDate: crossed,
+      });
+    });
   });
 
   describe('interests', () => {

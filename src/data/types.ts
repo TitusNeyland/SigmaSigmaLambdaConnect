@@ -36,6 +36,8 @@ export const DEFAULT_NOTIFICATION_PREFS: NotificationPrefs = {
 export type Member = {
   displayName: string;
   initiationTerm: string;
+  /** The day they crossed, for line anniversaries. Optional. */
+  initiationDate?: Timestamp;
   headline?: string;
   bio?: string;
   interests?: string[];
@@ -58,6 +60,7 @@ export type Member = {
 export const MEMBER_EDITABLE_FIELDS = [
   'displayName',
   'initiationTerm',
+  'initiationDate',
   'headline',
   'bio',
   'interests',

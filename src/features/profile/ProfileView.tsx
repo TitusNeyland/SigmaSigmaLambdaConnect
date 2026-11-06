@@ -24,7 +24,7 @@ import { timeAgo } from '@/features/feed/feedLogic';
 
 import type { Loadable } from './useProfileData';
 
-type Tab = 'photos' | 'text' | 'activity';
+type Tab = 'photos' | 'text' | 'tagged' | 'activity';
 
 export type ProfileViewProps = {
   profile: Profile;
@@ -32,6 +32,8 @@ export type ProfileViewProps = {
   roleLabel: string | null;
   stats: Loadable<ProfileStats>;
   posts: Loadable<ProfilePost[]>;
+  /** Posts others tagged this member in. Leave out to hide the Tagged tab. */
+  tagged?: Loadable<ProfilePost[]>;
   /** Null when the viewer isn't allowed to see attendance; the Activity tab is hidden. */
   activity: Loadable<ActivityItem[] | null>;
   /** Shown under the avatar row, e.g. Edit profile. */
@@ -139,6 +141,8 @@ function TextPosts({
     <View testID="profile-text-posts">
       {posts.map((post, i) => {
         const when = post.createdAt ? timeAgo(post.createdAt, now) : '';
+        // Tagged posts show who posted them; the member's own show the member.
+        const by = post.author ?? author;
         return (
           <Pressable
             key={post.id}
@@ -149,15 +153,15 @@ function TextPosts({
               pressed && styles.pressed,
             ]}
             accessibilityRole="button"
-            accessibilityLabel={[author.displayName, when, post.caption].filter(Boolean).join(', ')}
+            accessibilityLabel={[by.displayName, when, post.caption].filter(Boolean).join(', ')}
             accessibilityHint="Opens the post"
             testID={`profile-text-${post.id}`}
           >
-            <Avatar name={author.displayName} uri={author.photoURL} size={TEXT_POST_AVATAR} />
+            <Avatar name={by.displayName} uri={by.photoURL} size={TEXT_POST_AVATAR} />
             <View style={styles.textPostBody}>
               <View style={styles.textPostHead}>
                 <AppText variant="subhead" weight="600" numberOfLines={1} style={styles.shrink}>
-                  {author.displayName}
+                  {by.displayName}
                 </AppText>
                 {when ? (
                   <AppText variant="subhead" color={colors.textSecondary}>
@@ -286,6 +290,7 @@ export function ProfileView({
   roleLabel,
   stats,
   posts,
+  tagged,
   activity,
   actions,
   onOpenPost,
@@ -298,10 +303,12 @@ export function ProfileView({
   const showActivity = !(activity.state === 'ready' && activity.data === null);
   const photoPosts = posts.state === 'ready' ? posts.data.filter((p) => p.coverPath) : [];
   const textPosts = posts.state === 'ready' ? posts.data.filter((p) => !p.coverPath) : [];
+  const taggedPosts = tagged?.state === 'ready' ? tagged.data : [];
   // Photos is always there; Text only when there are text posts; Activity only when allowed.
   const segments = [
     { value: 'photos' as const, label: 'Photos' },
     ...(textPosts.length > 0 ? [{ value: 'text' as const, label: 'Text' }] : []),
+    ...(taggedPosts.length > 0 ? [{ value: 'tagged' as const, label: 'Tagged' }] : []),
     ...(showActivity ? [{ value: 'activity' as const, label: 'Activity' }] : []),
   ];
   const current: Tab = segments.some((s) => s.value === tab) ? tab : 'photos';
@@ -368,6 +375,18 @@ export function ProfileView({
         )
       ) : current === 'text' ? (
         <TextPosts posts={textPosts} author={profile} now={now} onOpen={onOpenPost} />
+      ) : current === 'tagged' ? (
+        <View style={styles.tagged} testID="profile-tagged">
+          {taggedPosts.some((p) => p.coverPath) ? (
+            <PostGrid posts={taggedPosts.filter((p) => p.coverPath)} onOpen={onOpenPost} />
+          ) : null}
+          <TextPosts
+            posts={taggedPosts.filter((p) => !p.coverPath)}
+            author={profile}
+            now={now}
+            onOpen={onOpenPost}
+          />
+        </View>
       ) : (
         <View testID="profile-activity">
           {activity.state === 'loading' ? (
@@ -411,6 +430,7 @@ const styles = StyleSheet.create({
   textPostHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   shrink: { flexShrink: 1 },
   pressed: { opacity: 0.7 },
+  tagged: { gap: spacing.md },
   textPostDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.separator },
   more: {
     position: 'absolute',

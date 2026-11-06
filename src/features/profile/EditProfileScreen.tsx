@@ -22,6 +22,7 @@ import {
   Avatar,
   BottomSheet,
   Button,
+  DateTimeField,
   HeaderButton,
   ListRow,
   ListSection,
@@ -32,6 +33,7 @@ import {
 
 import {
   addInterest,
+  dateFromTerm,
   formFromProfile,
   isDirty,
   MAX_INTERESTS,
@@ -234,6 +236,26 @@ function EditProfileFormView({ uid, profile }: { uid: string; profile: Profile }
               error={errors.initiationTerm}
               testID="edit-term"
             />
+            <SwitchRow
+              title="Initiation date"
+              subtitle="Brothers see your line anniversary on Home"
+              value={form.initiationDate !== null}
+              onValueChange={(on) =>
+                set('initiationDate', on ? dateFromTerm(form.initiationTerm) : null)
+              }
+              testID="edit-has-date"
+            />
+            {form.initiationDate ? (
+              <DateTimeField
+                label="Crossed"
+                mode="date"
+                value={form.initiationDate}
+                maximumDate={new Date()}
+                onChange={(d) => set('initiationDate', d)}
+                error={errors.initiationDate}
+                testID="edit-date"
+              />
+            ) : null}
 
             <View style={styles.interests}>
               <AppText variant="footnote" weight="600" color={colors.textSecondary}>

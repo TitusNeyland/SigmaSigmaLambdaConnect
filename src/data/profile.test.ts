@@ -20,6 +20,7 @@ import {
   fetchActivity,
   fetchProfilePosts,
   fetchProfileStats,
+  fetchTaggedPosts,
   photoUrl,
   removeAvatar,
   setNotificationPref,
@@ -69,6 +70,7 @@ describe('toProfile', () => {
       toProfile({
         displayName: 'Marcus Reed',
         initiationTerm: 'Spring 2019',
+        initiationDate: { toDate: () => new Date(2019, 3, 13) },
         headline: 'Software engineer',
         bio: 'Mentoring chair.',
         interests: ['Tech', 'Mentoring'],
@@ -79,6 +81,7 @@ describe('toProfile', () => {
     ).toEqual({
       displayName: 'Marcus Reed',
       initiationTerm: 'Spring 2019',
+      initiationDate: new Date(2019, 3, 13),
       headline: 'Software engineer',
       bio: 'Mentoring chair.',
       interests: ['Tech', 'Mentoring'],
@@ -98,6 +101,7 @@ describe('toProfile', () => {
     ).toEqual({
       displayName: 'A',
       initiationTerm: '',
+      initiationDate: null,
       headline: '',
       bio: '',
       interests: ['Tech'],
@@ -244,6 +248,47 @@ describe('fetchProfileStats', () => {
   });
 });
 
+describe('fetchTaggedPosts', () => {
+  it('finds visible posts the member was tagged in, with who posted each', async () => {
+    jest.mocked(getDocs).mockResolvedValueOnce({
+      docs: [
+        {
+          id: 't1',
+          data: () => ({ authorId: 'zed', caption: 'Crew', photoPaths: ['posts/zed/t1/a.jpg'] }),
+          get: (k: string) => ({ authorId: 'zed' })[k as 'authorId'],
+        },
+        {
+          id: 't2',
+          data: () => ({ authorId: 'gone', caption: 'Old' }),
+          get: (k: string) => ({ authorId: 'gone' })[k as 'authorId'],
+        },
+      ],
+    } as never);
+    jest.mocked(getDoc).mockImplementation(async (ref: unknown) => {
+      const path = (ref as { path: string }).path;
+      const zed = path === 'members/zed';
+      return {
+        exists: () => zed,
+        get: (k: string) =>
+          zed ? { displayName: 'Sample Zed', photoURL: '' }[k as 'displayName'] : undefined,
+      } as never;
+    });
+    const posts = await fetchTaggedPosts('me');
+    expect(where).toHaveBeenCalledWith('taggedMemberIds', 'array-contains', 'me');
+    expect(where).toHaveBeenCalledWith('removed', '==', false);
+    expect(posts).toEqual([
+      {
+        id: 't1',
+        coverPath: 'posts/zed/t1/a.jpg',
+        photoCount: 1,
+        caption: 'Crew',
+        createdAt: null,
+        author: { uid: 'zed', displayName: 'Sample Zed', photoURL: null },
+      },
+    ]);
+  });
+});
+
 describe('fetchProfilePosts', () => {
   it('returns newest visible posts with their cover photo', async () => {
     jest.mocked(getDocs).mockResolvedValueOnce({
@@ -372,6 +417,7 @@ describe('updateOwnProfile', () => {
     phone: '555-0100',
     showEmail: true,
     showPhone: false,
+    initiationDate: null,
   };
 
   it('keeps the real contact details in the private doc', async () => {
@@ -396,6 +442,8 @@ describe('updateOwnProfile', () => {
       {
         displayName: 'Marcus Reed',
         initiationTerm: 'Spring 2019',
+        // No initiation date clears it.
+        initiationDate: 'DELETE',
         headline: 'Engineer',
         bio: 'Hi',
         interests: ['Tech'],

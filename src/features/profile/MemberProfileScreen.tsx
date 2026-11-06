@@ -147,6 +147,7 @@ export function MemberProfileScreen({ uid }: { uid: string }) {
             roleLabel={role ? roleLabel(role) : null}
             stats={extras.stats}
             posts={extras.posts}
+            tagged={extras.tagged}
             activity={extras.activity}
             onRefresh={extras.reload}
             onOpenPost={(id) => router.push({ pathname: '/chapter/post/[id]', params: { id } })}

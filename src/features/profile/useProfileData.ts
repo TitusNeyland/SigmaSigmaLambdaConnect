@@ -5,6 +5,7 @@ import {
   fetchActivity,
   fetchProfilePosts,
   fetchProfileStats,
+  fetchTaggedPosts,
   subscribeToProfile,
   type ActivityItem,
   type Profile,
@@ -75,18 +76,21 @@ export function useProfileExtras(uid: string, includeAttendance: boolean) {
   const key = `${uid}:${includeAttendance}`;
   const stats = useLoad<ProfileStats>(key, () => fetchProfileStats(uid));
   const posts = useLoad<ProfilePost[]>(key, () => fetchProfilePosts(uid));
+  const tagged = useLoad<ProfilePost[]>(key, () => fetchTaggedPosts(uid));
   const activity = useLoad<ActivityItem[] | null>(key, () =>
     includeAttendance ? fetchActivity(uid) : Promise.resolve(null),
   );
 
   const { reload: reloadStats } = stats;
   const { reload: reloadPosts } = posts;
+  const { reload: reloadTagged } = tagged;
   const { reload: reloadActivity } = activity;
   const reload = useCallback(() => {
     reloadStats();
     reloadPosts();
+    reloadTagged();
     reloadActivity();
-  }, [reloadStats, reloadPosts, reloadActivity]);
+  }, [reloadStats, reloadPosts, reloadTagged, reloadActivity]);
 
   // Coming back to the profile (say, after deleting a post you opened from it) reloads it.
   // The first focus is the first load, which has already started.
@@ -98,5 +102,11 @@ export function useProfileExtras(uid: string, includeAttendance: boolean) {
     }, [reload]),
   );
 
-  return { stats: stats.value, posts: posts.value, activity: activity.value, reload };
+  return {
+    stats: stats.value,
+    posts: posts.value,
+    tagged: tagged.value,
+    activity: activity.value,
+    reload,
+  };
 }

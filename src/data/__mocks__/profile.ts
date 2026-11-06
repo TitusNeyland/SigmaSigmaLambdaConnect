@@ -7,6 +7,7 @@ import type { ActivityItem, Profile, ProfilePost, ProfileStats } from '../profil
 let profile: Profile | null = null;
 let stats: ProfileStats = { posts: 0, eventsAttended: 0, serviceHours: 0 };
 let posts: ProfilePost[] = [];
+let tagged: ProfilePost[] = [];
 let activity: ActivityItem[] = [];
 let failExtras = false;
 const listeners = new Set<(p: Profile | null) => void>();
@@ -15,6 +16,7 @@ export function sampleProfile(overrides: Partial<Profile> = {}): Profile {
   return {
     displayName: 'Marcus Reed',
     initiationTerm: 'Spring 2019',
+    initiationDate: null,
     headline: 'Software engineer',
     bio: 'Mentoring chair. Happy to review a resume.',
     interests: ['Tech', 'Career mentoring'],
@@ -37,11 +39,13 @@ export function setMockProfile(next: Profile | null) {
 export function setMockExtras(next: {
   stats?: ProfileStats;
   posts?: ProfilePost[];
+  tagged?: ProfilePost[];
   activity?: ActivityItem[];
   fail?: boolean;
 }) {
   if (next.stats) stats = next.stats;
   if (next.posts) posts = next.posts;
+  if (next.tagged) tagged = next.tagged;
   if (next.activity) activity = next.activity;
   if (next.fail !== undefined) failExtras = next.fail;
 }
@@ -79,6 +83,7 @@ export const fetchProfileStats = jest.fn(async (_uid: string) =>
   rejectIfFailing<ProfileStats>(stats),
 );
 export const fetchProfilePosts = jest.fn(async () => rejectIfFailing(posts));
+export const fetchTaggedPosts = jest.fn(async (_uid: string) => rejectIfFailing(tagged));
 export const fetchActivity = jest.fn(async () => rejectIfFailing(activity));
 export const photoUrl = jest.fn(async (path: string) => `https://example.test/${path}`);
 export const updateOwnProfile = jest.fn(
@@ -101,6 +106,7 @@ export function resetProfileMock(initial: Profile | null = sampleProfile()) {
   profile = initial;
   stats = { posts: 0, eventsAttended: 0, serviceHours: 0 };
   posts = [];
+  tagged = [];
   activity = [];
   failExtras = false;
   others = {};
@@ -109,6 +115,7 @@ export function resetProfileMock(initial: Profile | null = sampleProfile()) {
     subscribeToProfile,
     fetchProfileStats,
     fetchProfilePosts,
+    fetchTaggedPosts,
     fetchActivity,
     photoUrl,
   ]) {

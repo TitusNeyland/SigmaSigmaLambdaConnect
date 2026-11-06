@@ -11,6 +11,7 @@ import {
 const form = (overrides: Partial<EditProfileForm> = {}): EditProfileForm => ({
   displayName: 'Marcus Reed',
   initiationTerm: 'Spring 2019',
+  initiationDate: null,
   headline: 'Software engineer',
   bio: 'Mentoring chair.',
   interests: ['Tech'],

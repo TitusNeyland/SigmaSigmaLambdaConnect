@@ -64,18 +64,29 @@ export function MyProfileScreen() {
           roleLabel={role.level === 'member' ? null : role.label}
           stats={extras.stats}
           posts={extras.posts}
+          tagged={extras.tagged}
           activity={extras.activity}
           onRefresh={extras.reload}
           onOpenPost={(id) => router.push({ pathname: '/profile/post/[id]', params: { id } })}
           actions={
-            <Button
-              title="Edit profile"
-              variant="secondary"
-              size="small"
-              onPress={() => router.push('/profile/edit')}
-              style={styles.flex}
-              testID="edit-profile"
-            />
+            <>
+              <Button
+                title="Edit profile"
+                variant="secondary"
+                size="small"
+                onPress={() => router.push('/profile/edit')}
+                style={styles.flex}
+                testID="edit-profile"
+              />
+              <Button
+                title="Check-in code"
+                variant="secondary"
+                size="small"
+                onPress={() => router.push('/profile/check-in-code')}
+                style={styles.flex}
+                testID="open-check-in-code"
+              />
+            </>
           }
         />
       ) : (

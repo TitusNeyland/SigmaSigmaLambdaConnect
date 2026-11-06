@@ -15,6 +15,7 @@ const baseProps = (overrides: Partial<ProfileViewProps> = {}): ProfileViewProps 
   profile: {
     displayName: 'Jordan Ellis',
     initiationTerm: 'Fall 2020',
+    initiationDate: null,
     headline: 'Teacher',
     bio: '',
     interests: [],

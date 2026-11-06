@@ -117,6 +117,20 @@ jest.mock('@/data/push');
 jest.mock('@/data/activity');
 // The Chapter routes load committee reports (Documents), and most app tests render them.
 jest.mock('@/data/committeeReports');
+// The camera is native. Tests that scan call the CameraView's onBarcodeScanned prop, and
+// set permission with __setCameraPermission.
+jest.mock('expo-camera', () => {
+  const { View } = jest.requireActual('react-native');
+  const React = jest.requireActual('react');
+  let permission = { granted: true, canAskAgain: true, status: 'granted' };
+  return {
+    CameraView: (props) => React.createElement(View, props),
+    useCameraPermissions: () => [permission, jest.fn(async () => permission)],
+    __setCameraPermission: (next) => {
+      permission = next;
+    },
+  };
+});
 // The file picker is native. Tests set what the person picked with __setPick.
 jest.mock('expo-document-picker', () => {
   let result = { canceled: true, assets: null };

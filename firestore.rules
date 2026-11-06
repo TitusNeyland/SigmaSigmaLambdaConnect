@@ -81,6 +81,8 @@ service cloud.firestore {
         && optionalBool(data, 'showPhone')
         && (!('interests' in data) || (data.interests is list && data.interests.size() <= 10))
         && (!('photoURL' in data) || data.photoURL == null || data.photoURL is string)
+        // The day they crossed, for line anniversaries on Home. Optional.
+        && (!('initiationDate' in data) || data.initiationDate is timestamp)
         && (!('notificationPrefs' in data) || notificationPrefsValid(data.notificationPrefs));
     }
 
@@ -95,7 +97,8 @@ service cloud.firestore {
     }
 
     function memberEditableFields() {
-      return ['displayName', 'initiationTerm', 'headline', 'bio', 'interests', 'photoURL',
+      return ['displayName', 'initiationTerm', 'initiationDate', 'headline', 'bio', 'interests',
+              'photoURL',
               'email', 'phone', 'notificationPrefs',
               'guidelinesAcceptedAt', 'updatedAt'];
     }

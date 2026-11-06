@@ -13,6 +13,7 @@ export function sampleEntry(overrides: Partial<DirectoryEntry> = {}): DirectoryE
     displayName: 'Marcus Reed',
     headline: 'Software engineer',
     initiationTerm: 'Spring 2019',
+    initiationDate: null,
     interests: ['Tech'],
     photoURL: null,
     role: null,
