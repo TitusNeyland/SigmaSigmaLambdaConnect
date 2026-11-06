@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
 import { StyleSheet } from 'react-native';
 
@@ -272,8 +273,10 @@ it('expands a long caption', async () => {
 
 it('has an empty state and a retry', async () => {
   feed.resetFeedMock([]);
-  await renderRouter('src/app', { initialUrl: '/home' });
+  const empty = await renderRouter('src/app', { initialUrl: '/home' });
   await waitFor(() => expect(screen.getByTestId('feed-empty')).toBeTruthy());
+  await press(screen.getByTestId('feed-new-post'));
+  expect(empty.getPathname()).toBe('/new-post');
 
   feed.resetFeedMock(POSTS);
   feed.failFeedLoad();
@@ -352,4 +355,63 @@ describe('tagged brothers', () => {
     await press(screen.getByTestId('tagged-p1-sample-zed'));
     expect(r.getPathname()).toBe('/chapter/member/sample-zed');
   });
+});
+
+describe('welcome card', () => {
+  beforeEach(async () => {
+    await AsyncStorage.clear();
+  });
+
+  it('lists the setup steps, ticking off what’s done, and opens each', async () => {
+    profile.setMockProfile(profile.sampleProfile({ photoURL: 'https://example.test/me.jpg' }));
+    const r = await renderRouter('src/app', { initialUrl: '/home' });
+    await waitFor(() => expect(screen.getByTestId('welcome')).toBeTruthy());
+    expect(screen.getByText('2 quick things to set up.')).toBeTruthy();
+    expect(screen.getByTestId('welcome-photo').props.accessibilityLabel).toBe(
+      'Add a profile photo, done',
+    );
+    expect(screen.getByTestId('welcome-date').props.accessibilityLabel).toBe(
+      'Add your initiation date',
+    );
+    await press(screen.getByTestId('welcome-code'));
+    expect(r.getPathname()).toBe('/profile/check-in-code');
+  });
+
+  it('goes away when closed, and stays closed', async () => {
+    await renderRouter('src/app', { initialUrl: '/home' });
+    await waitFor(() => expect(screen.getByTestId('welcome')).toBeTruthy());
+    await press(screen.getByTestId('welcome-close'));
+    expect(screen.queryByTestId('welcome')).toBeNull();
+    await renderRouter('src/app', { initialUrl: '/home' });
+    await waitFor(() => expect(screen.getByTestId('home-activity')).toBeTruthy());
+    expect(screen.queryByTestId('welcome')).toBeNull();
+  });
+
+  it('isn’t shown once everything’s set up', async () => {
+    profile.setMockProfile(
+      profile.sampleProfile({
+        photoURL: 'https://example.test/me.jpg',
+        initiationDate: new Date(2019, 3, 13),
+      }),
+    );
+    await AsyncStorage.setItem(`welcome:code-seen:${auth.sampleUser().uid}`, '1');
+    await renderRouter('src/app', { initialUrl: '/home' });
+    await waitFor(() => expect(screen.getByTestId('home-activity')).toBeTruthy());
+    expect(screen.queryByTestId('welcome')).toBeNull();
+  });
+});
+
+it('shows post shapes while the first posts load, not "Loading…"', async () => {
+  let release: () => void = () => {};
+  feed.fetchFeedPage.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        release = () => resolve({ posts: [], cursor: null });
+      }),
+  );
+  await renderRouter('src/app', { initialUrl: '/home' });
+  expect(screen.getByLabelText('Loading posts')).toBeTruthy();
+  expect(screen.queryByText('Loading…')).toBeNull();
+  await act(async () => release());
+  await waitFor(() => expect(screen.queryByLabelText('Loading posts')).toBeNull());
 });

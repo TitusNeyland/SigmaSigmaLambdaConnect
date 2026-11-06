@@ -1,10 +1,12 @@
 import { router } from 'expo-router';
+import { useEffect } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '@/features/auth/AuthProvider';
 import { checkInCode } from '@/features/attendance/checkInCode';
+import { markCheckInCodeSeen } from '@/features/feed/welcomeStore';
 import { colors, palette, radius, spacing } from '@/theme';
 import { AppText, Avatar, NavHeader } from '@/ui';
 
@@ -26,6 +28,11 @@ export function CheckInCodeScreen() {
   const name = profile.state === 'ready' && profile.data ? profile.data.displayName : '';
   const photo = profile.state === 'ready' && profile.data ? profile.data.photoURL : null;
   const { width } = useWindowDimensions();
+
+  // Ticks the step on Home's welcome card.
+  useEffect(() => {
+    if (uid) void markCheckInCodeSeen(uid);
+  }, [uid]);
   const size = Math.min(MAX_CODE, width - spacing.xxl * 2 - spacing.xl * 2);
 
   return (

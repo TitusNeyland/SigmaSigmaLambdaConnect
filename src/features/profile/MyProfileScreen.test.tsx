@@ -306,9 +306,12 @@ describe('My profile', () => {
     expect(screen.getByTestId('profile-text-p3')).toHaveTextContent(/Hello/);
   });
 
-  it('shows a friendly empty state with no posts', async () => {
-    await openProfile();
-    await waitFor(() => expect(screen.getByText('Your posts will show up here.')).toBeTruthy());
+  it('invites you to share your first post when you have none', async () => {
+    const r = await renderRouter('src/app', { initialUrl: '/profile' });
+    await waitFor(() => expect(screen.getByTestId('profile-empty')).toBeTruthy());
+    expect(screen.getByText('Share your first post')).toBeTruthy();
+    await press(screen.getByTestId('profile-new-post'));
+    expect(r.getPathname()).toBe('/new-post');
   });
 
   it('lists attended events in the Activity tab with the privacy note', async () => {

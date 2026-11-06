@@ -14,6 +14,7 @@ import { useCan } from '@/features/roles/RoleProvider';
 import { colors, MIN_TOUCH, radius, spacing } from '@/theme';
 import { AppText, BottomSheet, Button, ListRow, ListSection, NavHeader } from '@/ui';
 
+import { ProfileSkeleton } from './ProfileSkeleton';
 import { ProfileView } from './ProfileView';
 import { useProfile, useProfileExtras } from './useProfileData';
 
@@ -193,14 +194,14 @@ export function MemberProfileScreen({ uid }: { uid: string }) {
             }
           />
         </>
+      ) : profile.state === 'loading' ? (
+        <ProfileSkeleton />
       ) : (
         <View style={styles.center}>
           <AppText variant="callout" color={colors.textSecondary} align="center">
-            {profile.state === 'loading'
-              ? 'Loading…'
-              : profile.state === 'error'
-                ? 'Couldn’t load this profile.'
-                : 'This profile isn’t available.'}
+            {profile.state === 'error'
+              ? 'Couldn’t load this profile.'
+              : 'This profile isn’t available.'}
           </AppText>
         </View>
       )}

@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { fetchUpcomingEvents, type EventSummary } from '@/data/events';
 import { useAuth } from '@/features/auth/AuthProvider';
-import { colors, palette, radius, spacing } from '@/theme';
+import { colors, motion, palette, radius, spacing } from '@/theme';
 import {
   AppText,
   Button,
@@ -21,6 +21,7 @@ import { CalendarView } from './CalendarView';
 
 import { CoverageBar } from './CoverageBar';
 import { EventRow, openEvent, StatusBadge } from './EventRow';
+import { EventsSkeleton } from './EventsSkeleton';
 import {
   arrangeEvents,
   CATEGORY_LABELS,
@@ -60,7 +61,12 @@ function FeaturedEvent({ event, now }: { event: EventSummary; now: Date }) {
       testID="featured-event"
     >
       {event.photoURL ? (
-        <Image source={{ uri: event.photoURL }} style={styles.hero} contentFit="cover" />
+        <Image
+          source={{ uri: event.photoURL }}
+          style={styles.hero}
+          contentFit="cover"
+          transition={motion.photoFade}
+        />
       ) : (
         <View style={[styles.hero, styles.heroBlank]}>
           <AppText variant="title2" color={palette.goldSoftText}>
@@ -179,9 +185,7 @@ export function EventsScreen() {
         {view === 'calendar' ? (
           <CalendarView uid={uid} search={search} />
         ) : value.state === 'loading' ? (
-          <AppText variant="callout" color={colors.textSecondary} align="center">
-            Loading…
-          </AppText>
+          <EventsSkeleton />
         ) : value.state === 'error' ? (
           <View style={styles.empty}>
             <AppText variant="callout" color={colors.textSecondary} align="center">
@@ -216,6 +220,14 @@ export function EventsScreen() {
             <AppText variant="callout" color={colors.textSecondary} align="center">
               {emptyMessage(search)}
             </AppText>
+            {search.trim() ? null : (
+              // Any approved member can host an event.
+              <Button
+                title="Host an event"
+                onPress={() => router.push('/events/new')}
+                testID="events-host"
+              />
+            )}
           </View>
         )}
       </ScrollView>
