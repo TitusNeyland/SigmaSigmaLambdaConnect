@@ -95,7 +95,7 @@ export function WelcomeCard({ uid }: { uid: string }) {
       {steps.map((step) => (
         <Pressable
           key={step.key}
-          onPress={() => router.push(step.href)}
+          onPress={() => router.push(step.href, { withAnchor: true })}
           accessibilityRole="button"
           accessibilityLabel={`${step.title}${step.done ? ', done' : ''}`}
           style={({ pressed }) => [styles.step, pressed && styles.pressed]}

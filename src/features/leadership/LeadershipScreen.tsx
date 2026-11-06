@@ -334,7 +334,7 @@ export function LeadershipScreen() {
           {canEvents ? (
             <ListRow
               title="Create event"
-              onPress={() => router.push('/events/new')}
+              onPress={() => router.push('/events/new', { withAnchor: true })}
               testID="action-event"
             />
           ) : null}

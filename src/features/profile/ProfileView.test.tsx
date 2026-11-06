@@ -17,6 +17,8 @@ const baseProps = (overrides: Partial<ProfileViewProps> = {}): ProfileViewProps 
     initiationTerm: 'Fall 2020',
     initiationDate: null,
     headline: 'Teacher',
+    industry: '',
+    businesses: [],
     bio: '',
     interests: [],
     photoURL: null,
@@ -117,6 +119,32 @@ describe('ProfileView', () => {
   it('shows the role badge when given one', async () => {
     await render(<ProfileView {...baseProps({ roleLabel: 'Service Chair' })} />);
     expect(screen.getByTestId('role-chip')).toHaveTextContent('Service Chair');
+  });
+});
+
+describe('about him', () => {
+  it('shows his line of work and the businesses he owns', async () => {
+    await render(
+      <ProfileView
+        {...baseProps({
+          profile: {
+            ...baseProps().profile,
+            industry: 'Real estate',
+            businesses: ['Sample Realty', 'Sample Barbershop'],
+          },
+        })}
+      />,
+    );
+    expect(screen.getByTestId('profile-industry')).toHaveTextContent('Works in Real estate');
+    expect(screen.getByTestId('profile-businesses')).toHaveTextContent(
+      'Owns Sample Realty and Sample Barbershop',
+    );
+  });
+
+  it('leaves them out when he hasn’t said', async () => {
+    await render(<ProfileView {...baseProps()} />);
+    expect(screen.queryByTestId('profile-industry')).toBeNull();
+    expect(screen.queryByTestId('profile-businesses')).toBeNull();
   });
 });
 

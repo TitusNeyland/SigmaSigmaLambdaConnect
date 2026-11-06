@@ -23,6 +23,7 @@ import { AppText, Avatar, Button, SegmentedControl, StatusChip } from '@/ui';
 
 import { timeAgo } from '@/features/feed/feedLogic';
 
+import { businessLine, industryLine } from './aboutYou';
 import { GridSkeleton } from './ProfileSkeleton';
 import { buildTimeline, type TimelineItem } from './timelineLogic';
 import type { Loadable } from './useProfileData';
@@ -47,6 +48,8 @@ export type ProfileViewProps = {
   onOpenPost: (postId: string) => void;
   /** Opens an event from Activity. */
   onOpenEvent: (eventId: string) => void;
+  /** Opens everyone from his line, from the "Initiated Spring 2019" under his name. */
+  onOpenLine?: (term: string) => void;
   /** On your own empty profile, opens the composer. */
   onNewPost?: () => void;
   /** Gold ring around the photo on the member's own profile. */
@@ -72,6 +75,39 @@ export function profileSubtitle(profile: Pick<Profile, 'headline' | 'initiationT
 export function formatHours(hours: number): string {
   const rounded = Math.round(hours * 10) / 10;
   return `${rounded} service ${rounded === 1 ? 'hour' : 'hours'}`;
+}
+
+/** A small line icon beside a fact on the profile: a briefcase for work, a shop for businesses. */
+function FactIcon({ kind }: { kind: 'work' | 'business' }) {
+  return (
+    <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" accessibilityElementsHidden>
+      {kind === 'work' ? (
+        <>
+          <Rect
+            x={3}
+            y={7}
+            width={18}
+            height={13}
+            rx={2.5}
+            stroke={colors.textSecondary}
+            strokeWidth={1.8}
+          />
+          <Path
+            d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7M3 12.5h18"
+            stroke={colors.textSecondary}
+            strokeWidth={1.8}
+          />
+        </>
+      ) : (
+        <Path
+          d="M4 10v9.5h16V10M3 10l1.5-5.5h15L21 10c0 1.4-1.1 2.5-2.5 2.5S16 11.4 16 10c0 1.4-1.1 2.5-2.5 2.5S11 11.4 11 10c0 1.4-1.1 2.5-2.5 2.5S6 11.4 6 10c0 1.4-1.1 2.5-2.5 2.5M10 19.5V15h4v4.5"
+          stroke={colors.textSecondary}
+          strokeWidth={1.6}
+          strokeLinejoin="round"
+        />
+      )}
+    </Svg>
+  );
 }
 
 function Stat({
@@ -455,6 +491,7 @@ export function ProfileView({
   actions,
   onOpenPost,
   onOpenEvent,
+  onOpenLine,
   onNewPost,
   own = false,
   onRefresh,
@@ -498,11 +535,44 @@ export function ProfileView({
           {profile.displayName}
         </AppText>
         {subtitle ? (
-          <AppText variant="subhead" color={colors.textSecondary}>
-            {subtitle}
-          </AppText>
+          onOpenLine && profile.initiationTerm.trim() ? (
+            // "Initiated Spring 2019" opens his line; the headline before it stays plain.
+            <AppText variant="subhead" color={colors.textSecondary}>
+              {profile.headline.trim() ? `${profile.headline.trim()} · ` : ''}
+              <AppText
+                variant="subhead"
+                color={colors.link}
+                onPress={() => onOpenLine(profile.initiationTerm.trim())}
+                accessibilityRole="link"
+                accessibilityHint="Shows everyone from this line"
+                testID="profile-line"
+              >
+                {`Initiated ${profile.initiationTerm.trim()}`}
+              </AppText>
+            </AppText>
+          ) : (
+            <AppText variant="subhead" color={colors.textSecondary}>
+              {subtitle}
+            </AppText>
+          )
         ) : null}
         {profile.bio ? <AppText variant="subhead">{profile.bio}</AppText> : null}
+        {profile.industry ? (
+          <View style={styles.fact} testID="profile-industry">
+            <FactIcon kind="work" />
+            <AppText variant="subhead" style={styles.factText}>
+              {industryLine(profile.industry)}
+            </AppText>
+          </View>
+        ) : null}
+        {profile.businesses.length > 0 ? (
+          <View style={styles.fact} testID="profile-businesses">
+            <FactIcon kind="business" />
+            <AppText variant="subhead" style={styles.factText}>
+              {businessLine(profile.businesses)}
+            </AppText>
+          </View>
+        ) : null}
         {roleLabel || profile.interests.length > 0 ? (
           <View style={styles.chips}>
             {roleLabel ? <StatusChip label={roleLabel} tone="gold" testID="role-chip" /> : null}
@@ -614,6 +684,8 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     shadowOffset: { width: 0, height: 0 },
   },
+  fact: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
+  factText: { flex: 1, paddingTop: 0 },
   activityRow: {
     flexDirection: 'row',
     alignItems: 'center',

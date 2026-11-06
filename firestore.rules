@@ -74,6 +74,9 @@ service cloud.firestore {
       return isText(data.displayName, 1, 60)
         && isText(data.initiationTerm, 1, 40)
         && optionalText(data, 'headline', 80)
+        // Line of work and businesses owned, from sign up and Edit profile. Optional.
+        && optionalText(data, 'industry', 60)
+        && (!('businesses' in data) || (data.businesses is list && data.businesses.size() <= 3))
         && optionalText(data, 'bio', 150)
         && optionalText(data, 'email', 254)
         && optionalText(data, 'phone', 30)
@@ -97,8 +100,8 @@ service cloud.firestore {
     }
 
     function memberEditableFields() {
-      return ['displayName', 'initiationTerm', 'initiationDate', 'headline', 'bio', 'interests',
-              'photoURL',
+      return ['displayName', 'initiationTerm', 'initiationDate', 'headline', 'industry',
+              'businesses', 'bio', 'interests', 'photoURL',
               'email', 'phone', 'notificationPrefs',
               'guidelinesAcceptedAt', 'updatedAt'];
     }

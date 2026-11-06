@@ -35,6 +35,7 @@ export { cleanUpDeletedPost, countCommentLikes, countComments, countLikes } from
 export { memberStatsNightly, memberStatsOnCheckIn } from './memberStats.js';
 export { notifyProgramHelp } from './programs.js';
 export { notifyApproval } from './push.js';
+export { postWelcomeOnApproval } from './welcome.js';
 export {
   likeDigests,
   notifyNewComment,

@@ -43,17 +43,17 @@ Push tokens are stored so notifications reach the member's phone. If App Store C
 - **Do you provide a way for users to request that their data is deleted?** Yes: Profile › Settings › Delete account in the app, or by emailing support.
 - **Shared with third parties:** No. Firebase, Expo and Resend process data on the chapter's behalf, which Google doesn't count as sharing. Committee report emails go to the chapter's own officers.
 
-| Data type                                  | Collected | Optional | Purpose                                                                |
-| ------------------------------------------ | --------- | -------- | ---------------------------------------------------------------------- |
-| Personal info: Name                        | Yes       | No       | App functionality, account management                                  |
-| Personal info: Email address               | Yes       | No       | App functionality, account management                                  |
-| Personal info: Phone number                | Yes       | Yes      | App functionality                                                      |
-| Personal info: User IDs                    | Yes       | No       | App functionality, account management                                  |
-| Personal info: Other info                  | Yes       | Yes      | App functionality (initiation term and date, interests, headline, bio) |
-| Photos and videos: Photos                  | Yes       | Yes      | App functionality                                                      |
-| Files and docs                             | Yes       | Yes      | App functionality (committee report files)                             |
-| App activity: Other user-generated content | Yes       | Yes      | App functionality (posts, comments, committee reports)                 |
-| App activity: Other actions                | Yes       | Yes      | App functionality (likes, RSVPs, check-ins, reports, blocks)           |
+| Data type                                  | Collected | Optional | Purpose                                                                                            |
+| ------------------------------------------ | --------- | -------- | -------------------------------------------------------------------------------------------------- |
+| Personal info: Name                        | Yes       | No       | App functionality, account management                                                              |
+| Personal info: Email address               | Yes       | No       | App functionality, account management                                                              |
+| Personal info: Phone number                | Yes       | Yes      | App functionality                                                                                  |
+| Personal info: User IDs                    | Yes       | No       | App functionality, account management                                                              |
+| Personal info: Other info                  | Yes       | Yes      | App functionality (initiation term and date, headline, industry, businesses owned, interests, bio) |
+| Photos and videos: Photos                  | Yes       | Yes      | App functionality                                                                                  |
+| Files and docs                             | Yes       | Yes      | App functionality (committee report files)                                                         |
+| App activity: Other user-generated content | Yes       | Yes      | App functionality (posts, comments, committee reports)                                             |
+| App activity: Other actions                | Yes       | Yes      | App functionality (likes, RSVPs, check-ins, reports, blocks)                                       |
 
 Not collected: location, financial info, health and fitness, messages, audio, calendar, contacts, web browsing, app info and performance (no crash logs or diagnostics), device or other IDs for advertising.
 

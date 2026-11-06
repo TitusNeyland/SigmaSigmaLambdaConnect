@@ -8,6 +8,11 @@ import type { Timestamp } from 'firebase/firestore';
 export const LIMITS = {
   bio: 150,
   headline: 80,
+  /** The line of work a member picks, like Real estate. */
+  industry: 60,
+  /** Businesses a member owns, and how long each name can be. */
+  businesses: 3,
+  businessName: 60,
   caption: 2200,
   comment: 1000,
   photosPerPost: 10,

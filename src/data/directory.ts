@@ -9,6 +9,10 @@ export type DirectoryEntry = {
   uid: string;
   displayName: string;
   headline: string;
+  /** His line of work, like Real estate. Empty if he didn't say. */
+  industry: string;
+  /** Businesses he owns. */
+  businesses: string[];
   initiationTerm: string;
   /** The day they crossed, if they added it. */
   initiationDate: Date | null;
@@ -18,6 +22,12 @@ export type DirectoryEntry = {
 };
 
 const text = (value: unknown) => (typeof value === 'string' ? value : '');
+const textList = (value: unknown) =>
+  Array.isArray(value)
+    ? value
+        .filter((i): i is string => typeof i === 'string' && i.trim() !== '')
+        .map((i) => i.trim())
+    : [];
 
 /** Chapter-sized cap. A chapter has dozens of members, not thousands. */
 const MAX_MEMBERS = 500;
@@ -46,14 +56,14 @@ export async function fetchDirectory(): Promise<DirectoryEntry[]> {
         uid: d.id,
         displayName,
         headline: text(data.headline).trim(),
+        industry: text(data.industry).trim(),
+        businesses: textList(data.businesses),
         initiationTerm: text(data.initiationTerm).trim(),
         initiationDate:
           typeof data.initiationDate?.toDate === 'function'
             ? (data.initiationDate.toDate() as Date)
             : null,
-        interests: Array.isArray(data.interests)
-          ? data.interests.filter((i): i is string => typeof i === 'string' && i.trim() !== '')
-          : [],
+        interests: textList(data.interests),
         photoURL: typeof data.photoURL === 'string' && data.photoURL ? data.photoURL : null,
         role: roleByUid.get(d.id) ?? null,
       };

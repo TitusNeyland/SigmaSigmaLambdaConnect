@@ -18,6 +18,8 @@ export function sampleProfile(overrides: Partial<Profile> = {}): Profile {
     initiationTerm: 'Spring 2019',
     initiationDate: null,
     headline: 'Software engineer',
+    industry: '',
+    businesses: [],
     bio: 'Mentoring chair. Happy to review a resume.',
     interests: ['Tech', 'Career mentoring'],
     photoURL: null,

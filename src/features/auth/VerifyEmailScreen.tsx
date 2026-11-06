@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
-import { AppState, StyleSheet, View } from 'react-native';
+import { AppState, Linking, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { resendVerificationEmail } from '@/data/auth';
 import { signOutHere } from './signOut';
-import { colors, palette, spacing } from '@/theme';
+import { colors, radius, spacing } from '@/theme';
 import { AppText, Button } from '@/ui';
 
 import { useAuth } from './AuthProvider';
+import { journey, OnboardingArt, OnboardingSteps } from './OnboardingArt';
 import { friendlyAuthError } from './validation';
 
 export const RESEND_COOLDOWN_SECONDS = 60;
@@ -58,14 +59,13 @@ export function VerifyEmailScreen() {
     }
   }
 
+  // iOS can open the Mail app's inbox. Android has no one inbox to open.
+  const canOpenMail = Platform.OS === 'ios';
+
   return (
     <SafeAreaView style={styles.safe}>
-      <View style={styles.body}>
-        <View style={styles.icon}>
-          <AppText variant="title" color={palette.goldText}>
-            @
-          </AppText>
-        </View>
+      <ScrollView contentContainerStyle={styles.body}>
+        <OnboardingArt name="mail" size={112} />
         <AppText variant="title" align="center" accessibilityRole="header">
           Check your email
         </AppText>
@@ -86,10 +86,22 @@ export function VerifyEmailScreen() {
             {message}
           </AppText>
         ) : null}
-      </View>
+        <View style={styles.card}>
+          <OnboardingSteps steps={journey('verify')} testID="verify-steps" />
+        </View>
+      </ScrollView>
       <View style={styles.actions}>
+        {canOpenMail ? (
+          <Button
+            title="Open Mail"
+            onPress={() => Linking.openURL('message://').catch(() => {})}
+            fullWidth
+            testID="verify-open-mail"
+          />
+        ) : null}
         <Button
           title="I've verified my email"
+          variant={canOpenMail ? 'secondary' : 'primary'}
           onPress={checkNow}
           loading={checking}
           fullWidth
@@ -97,7 +109,7 @@ export function VerifyEmailScreen() {
         />
         <Button
           title={cooldown > 0 ? `Resend in ${cooldown}s` : 'Resend email'}
-          variant="secondary"
+          variant="plain"
           onPress={resend}
           disabled={cooldown > 0}
           fullWidth
@@ -111,14 +123,14 @@ export function VerifyEmailScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background, padding: spacing.xl },
-  body: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.md },
-  icon: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: palette.goldSoft,
-    alignItems: 'center',
-    justifyContent: 'center',
+  body: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.md },
+  card: {
+    alignSelf: 'stretch',
+    marginTop: spacing.lg,
+    padding: spacing.lg,
+    paddingBottom: 0,
+    borderRadius: radius.xl,
+    backgroundColor: colors.backgroundGrouped,
   },
-  actions: { gap: spacing.md },
+  actions: { gap: spacing.sm },
 });

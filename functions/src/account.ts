@@ -2,6 +2,7 @@ import { getAuth, type Auth } from 'firebase-admin/auth';
 import { FieldValue, getFirestore, type Firestore } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
+import { welcomePostId } from './welcome.js';
 
 /** How recently the member must have entered their password before deleting (seconds). */
 export const RECENT_LOGIN_SECONDS = 5 * 60;
@@ -39,6 +40,10 @@ export async function deleteUserData(
   const posts = await db.collection('posts').where('authorId', '==', uid).get();
   for (const post of posts.docs) await db.recursiveDelete(post.ref);
   const deletedPosts = new Set(posts.docs.map((p) => p.ref.path));
+  // The chapter's welcome post about them, which names them.
+  const welcome = db.doc(`posts/${welcomePostId(uid)}`);
+  await db.recursiveDelete(welcome);
+  deletedPosts.add(welcome.path);
 
   // Their comments and likes on other people's posts, keeping those posts' counts right.
   const comments = await db.collectionGroup('comments').where('authorId', '==', uid).get();

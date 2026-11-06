@@ -1,4 +1,4 @@
-import { Redirect, router } from 'expo-router';
+import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Linking, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -73,6 +73,19 @@ function useIsBlocked(me: string, other: string): boolean {
   return blocked?.key === key ? blocked.value : false;
 }
 
+/**
+ * Your own member page, reached some odd way (a shared link, say): goes to your Profile tab,
+ * once. It takes itself off this tab's stack first; left there, it would send you to Profile
+ * again every time this tab opened.
+ */
+function LeaveForOwnProfile() {
+  useEffect(() => {
+    if (router.canGoBack()) router.back();
+    router.navigate('/profile');
+  }, []);
+  return null;
+}
+
 /** Another brother's profile: My profile's layout without edit controls, plus a menu. */
 export function MemberProfileScreen({ uid }: { uid: string }) {
   const auth = useAuth();
@@ -87,7 +100,7 @@ export function MemberProfileScreen({ uid }: { uid: string }) {
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
 
-  if (uid === me) return <Redirect href="/profile" />;
+  if (uid === me) return <LeaveForOwnProfile />;
 
   const data = profile.state === 'ready' ? profile.data : null;
   const name = data?.displayName ?? 'this brother';
@@ -153,7 +166,15 @@ export function MemberProfileScreen({ uid }: { uid: string }) {
             upcoming={extras.upcoming}
             onRefresh={extras.reload}
             onOpenPost={(id) => router.push({ pathname: '/chapter/post/[id]', params: { id } })}
-            onOpenEvent={(id) => router.push({ pathname: '/events/[id]', params: { id } })}
+            onOpenLine={(term) =>
+              router.push(
+                { pathname: '/chapter/line/[term]', params: { term } },
+                { withAnchor: true },
+              )
+            }
+            onOpenEvent={(id) =>
+              router.push({ pathname: '/events/[id]', params: { id } }, { withAnchor: true })
+            }
             actions={
               // Only what he chose to show in Edit profile; the rules keep the rest private.
               data.email || data.phone ? (

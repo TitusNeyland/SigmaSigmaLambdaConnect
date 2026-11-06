@@ -65,12 +65,16 @@ export type PostCardProps = {
 
 function openAuthor(post: FeedPost, me: string) {
   if (post.authorId === me) router.push('/profile');
-  else router.push({ pathname: '/chapter/member/[uid]', params: { uid: post.authorId } });
+  else
+    router.push(
+      { pathname: '/chapter/member/[uid]', params: { uid: post.authorId } },
+      { withAnchor: true },
+    );
 }
 
 function openMember(uid: string, me: string) {
   if (uid === me) router.push('/profile');
-  else router.push({ pathname: '/chapter/member/[uid]', params: { uid } });
+  else router.push({ pathname: '/chapter/member/[uid]', params: { uid } }, { withAnchor: true });
 }
 
 /**

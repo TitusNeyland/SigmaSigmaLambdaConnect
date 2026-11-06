@@ -72,6 +72,23 @@ async function seed() {
     ],
     ['posts/mine/comments/c1', { authorId: 'stays', text: 'Nice', createdAt: now() }],
     ['posts/mine/likes/stays', { memberId: 'stays', createdAt: now() }],
+    // The chapter's welcome post about the leaving member, by an officer, with a comment.
+    [
+      'posts/welcome-gone',
+      {
+        authorId: 'stays',
+        caption: 'Please welcome Brother Leaving Member to the chapter!',
+        photoPaths: [],
+        allowComments: true,
+        official: true,
+        removed: false,
+        likeCount: 0,
+        commentCount: 1,
+        welcomeFor: 'gone',
+        createdAt: now(),
+      },
+    ],
+    ['posts/welcome-gone/comments/c4', { authorId: 'stays', text: 'Welcome!', createdAt: now() }],
     // Someone else's post the leaving member commented on and liked.
     [
       'posts/theirs',
@@ -222,6 +239,12 @@ describe('deleteUserData', () => {
     expect(await exists('posts/mine')).toBe(false);
     expect(await exists('posts/mine/comments/c1')).toBe(false);
     expect(await exists('posts/mine/likes/stays')).toBe(false);
+  });
+
+  it('removes the welcome post that names them, though an officer wrote it', async () => {
+    await run();
+    expect(await exists('posts/welcome-gone')).toBe(false);
+    expect(await exists('posts/welcome-gone/comments/c4')).toBe(false);
   });
 
   it('removes their comments and likes on other posts and fixes those counts', async () => {

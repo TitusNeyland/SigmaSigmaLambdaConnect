@@ -43,6 +43,8 @@ describe('email verification gate', () => {
     await waitFor(() => expect(screen).toHavePathname('/verify-email'));
     expect(screen.getByRole('header', { name: 'Check your email' })).toBeTruthy();
     expect(screen.getByText('sample-marcus@example.com')).toBeTruthy();
+    expect(screen.getByLabelText('Confirm your email, in progress')).toBeTruthy();
+    expect(screen.getByLabelText('Officer approval, to do')).toBeTruthy();
   });
 
   it('keeps unverified users out of the tabs', async () => {

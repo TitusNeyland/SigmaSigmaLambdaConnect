@@ -21,7 +21,10 @@ function Row({ a, me, now }: { a: Anniversary; me: string; now: Date }) {
       onPress={() =>
         a.uid === me
           ? router.push('/profile')
-          : router.push({ pathname: '/chapter/member/[uid]', params: { uid: a.uid } })
+          : router.push(
+              { pathname: '/chapter/member/[uid]', params: { uid: a.uid } },
+              { withAnchor: true },
+            )
       }
       accessibilityRole="button"
       accessibilityLabel={`${a.displayName}, ${yearsLabel(a.years)}, ${when}`}
