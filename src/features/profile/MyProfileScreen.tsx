@@ -74,8 +74,10 @@ export function MyProfileScreen() {
           posts={extras.posts}
           tagged={extras.tagged}
           activity={extras.activity}
+          upcoming={extras.upcoming}
           onRefresh={extras.reload}
           onOpenPost={(id) => router.push({ pathname: '/profile/post/[id]', params: { id } })}
+          onOpenEvent={(id) => router.push({ pathname: '/events/[id]', params: { id } })}
           onNewPost={() => router.push(NEW_POST_ROUTE)}
           actions={
             <>

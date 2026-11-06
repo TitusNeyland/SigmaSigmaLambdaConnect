@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import Svg, { Path, Rect } from 'react-native-svg';
 
+import type { EventSummary } from '@/data/events';
 import {
   photoUrl,
   type ActivityItem,
@@ -23,6 +24,7 @@ import { AppText, Avatar, Button, SegmentedControl, StatusChip } from '@/ui';
 import { timeAgo } from '@/features/feed/feedLogic';
 
 import { GridSkeleton } from './ProfileSkeleton';
+import { buildTimeline, type TimelineItem } from './timelineLogic';
 import type { Loadable } from './useProfileData';
 
 type Tab = 'photos' | 'text' | 'tagged' | 'activity';
@@ -35,12 +37,16 @@ export type ProfileViewProps = {
   posts: Loadable<ProfilePost[]>;
   /** Posts others tagged this member in. Leave out to hide the Tagged tab. */
   tagged?: Loadable<ProfilePost[]>;
-  /** Null when the viewer isn't allowed to see attendance; the Activity tab is hidden. */
+  /** Check-ins. Null when the viewer isn't allowed to see attendance; they're left out. */
   activity: Loadable<ActivityItem[] | null>;
+  /** Upcoming events with this member's RSVP, for the events he's going to. */
+  upcoming: Loadable<EventSummary[]>;
   /** Shown under the avatar row, e.g. Edit profile. */
   actions?: ReactNode;
-  /** Opens a post from the grid or the Text tab. */
+  /** Opens a post from the grid, the Text tab or Activity. */
   onOpenPost: (postId: string) => void;
+  /** Opens an event from Activity. */
+  onOpenEvent: (eventId: string) => void;
   /** On your own empty profile, opens the composer. */
   onNewPost?: () => void;
   /** Gold ring around the photo on the member's own profile. */
@@ -252,14 +258,62 @@ function PostTile({
   );
 }
 
-function ActivityRow({ item }: { item: ActivityItem }) {
-  const date = item.startsAt;
-  const meta = [item.location, item.serviceHours > 0 ? formatHours(item.serviceHours) : '']
-    .filter(Boolean)
-    .join(' · ');
+function ChevronIcon() {
   return (
-    <View style={styles.activityRow} testID={`activity-${item.eventId}`}>
-      <View style={styles.dateBlock}>
+    <Svg width={8} height={13} viewBox="0 0 8 13" fill="none" accessibilityElementsHidden>
+      <Path
+        d="M1.5 1.5 6.5 6.5l-5 5"
+        stroke={colors.textSecondary}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
+const ordinalYears = (n: number) => `${n} ${n === 1 ? 'year' : 'years'}`;
+
+/** What a timeline row says: a title and a line under it. */
+function describe(item: TimelineItem): { title: string; detail: string } {
+  const join = (...parts: string[]) => parts.filter(Boolean).join(' · ');
+  switch (item.kind) {
+    case 'going':
+      return { title: item.title, detail: join('Going', item.location) };
+    case 'attended':
+      return {
+        title: item.title,
+        detail: join(
+          'Attended',
+          item.location,
+          item.serviceHours > 0 ? formatHours(item.serviceHours) : '',
+        ),
+      };
+    case 'posted':
+      return { title: 'Shared a post', detail: item.caption };
+    case 'tagged':
+      return { title: item.by ? `Tagged by ${item.by}` : 'Tagged in a post', detail: item.caption };
+    case 'initiated':
+      return item.years === 0
+        ? { title: 'Initiated into Sigma Sigma Lambda', detail: '' }
+        : { title: `Line anniversary: ${ordinalYears(item.years)}`, detail: '' };
+  }
+}
+
+function TimelineRow({ item, onPress }: { item: TimelineItem; onPress?: () => void }) {
+  const date = item.at;
+  const { title, detail } = describe(item);
+  const label = [title, detail, date ? date.toDateString() : ''].filter(Boolean).join(', ');
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={!onPress}
+      accessibilityRole={onPress ? 'button' : undefined}
+      accessibilityLabel={label}
+      style={({ pressed }) => [styles.activityRow, pressed && onPress && styles.pressed]}
+      testID={`activity-${item.key}`}
+    >
+      <View style={[styles.dateBlock, item.kind === 'going' && styles.dateBlockSoon]}>
         <AppText variant="caption" weight="700" color={colors.link}>
           {date ? MONTHS[date.getMonth()] : ''}
         </AppText>
@@ -268,18 +322,113 @@ function ActivityRow({ item }: { item: ActivityItem }) {
         </AppText>
       </View>
       <View style={styles.flex}>
-        <AppText variant="callout" weight="600">
-          {item.title}
+        <AppText variant="callout" weight="600" numberOfLines={2}>
+          {title}
         </AppText>
-        {meta ? (
-          <AppText variant="footnote" color={colors.textSecondary}>
-            {meta}
+        {detail ? (
+          <AppText variant="footnote" color={colors.textSecondary} numberOfLines={2}>
+            {detail}
           </AppText>
         ) : null}
       </View>
-      <AppText variant="footnote" weight="600" color={colors.link}>
-        Attended
-      </AppText>
+      {onPress ? <ChevronIcon /> : null}
+    </Pressable>
+  );
+}
+
+/**
+ * Everything a brother has been up to: events he's going to, then check-ins, posts, tags
+ * and line anniversaries, newest first. Each row opens what it's about.
+ */
+function ActivityTimeline({
+  own,
+  initiationDate,
+  now,
+  activity,
+  upcoming,
+  posts,
+  tagged,
+  onOpenPost,
+  onOpenEvent,
+  onRetry,
+}: {
+  own: boolean;
+  initiationDate: Date | null;
+  now: Date;
+  activity: Loadable<ActivityItem[] | null>;
+  upcoming: Loadable<EventSummary[]>;
+  posts: Loadable<ProfilePost[]>;
+  tagged?: Loadable<ProfilePost[]>;
+  onOpenPost: (postId: string) => void;
+  onOpenEvent: (eventId: string) => void;
+  onRetry: () => void;
+}) {
+  const parts = [activity, upcoming, posts, ...(tagged ? [tagged] : [])];
+  if (parts.some((p) => p.state === 'error')) {
+    return <Message text="Couldn’t load activity." onRetry={onRetry} />;
+  }
+  if (activity.state !== 'ready' || upcoming.state !== 'ready' || posts.state !== 'ready') {
+    return <Message text="Loading activity…" />;
+  }
+  const timeline = buildTimeline({
+    attended: activity.data,
+    posts: posts.data,
+    tagged: tagged?.state === 'ready' ? tagged.data : [],
+    upcoming: upcoming.data,
+    initiationDate,
+    now,
+  });
+  const open = (item: TimelineItem) => {
+    if (item.kind === 'going' || item.kind === 'attended') return () => onOpenEvent(item.eventId);
+    if (item.kind === 'posted' || item.kind === 'tagged') return () => onOpenPost(item.postId);
+    return undefined;
+  };
+  const seesCheckIns = activity.data !== null;
+
+  return (
+    <View>
+      {timeline.upcoming.length === 0 && timeline.recent.length === 0 ? (
+        <Message
+          text={own ? 'Your posts, RSVPs and check-ins will show up here.' : 'Nothing here yet.'}
+        />
+      ) : null}
+      {timeline.upcoming.length > 0 ? (
+        <View testID="activity-upcoming">
+          <AppText
+            variant="footnote"
+            weight="600"
+            color={colors.textSecondary}
+            style={styles.sectionLabel}
+          >
+            COMING UP
+          </AppText>
+          {timeline.upcoming.map((item) => (
+            <TimelineRow key={item.key} item={item} onPress={open(item)} />
+          ))}
+        </View>
+      ) : null}
+      {timeline.recent.length > 0 ? (
+        <View testID="activity-recent">
+          <AppText
+            variant="footnote"
+            weight="600"
+            color={colors.textSecondary}
+            style={styles.sectionLabel}
+          >
+            RECENT
+          </AppText>
+          {timeline.recent.map((item) => (
+            <TimelineRow key={item.key} item={item} onPress={open(item)} />
+          ))}
+        </View>
+      ) : null}
+      {seesCheckIns ? (
+        <AppText variant="caption" color={colors.textSecondary} style={styles.privacy}>
+          {own
+            ? 'Only you and chapter officers can see your check-ins.'
+            : 'Only this brother and chapter officers can see his check-ins.'}
+        </AppText>
+      ) : null}
     </View>
   );
 }
@@ -302,8 +451,10 @@ export function ProfileView({
   posts,
   tagged,
   activity,
+  upcoming,
   actions,
   onOpenPost,
+  onOpenEvent,
   onNewPost,
   own = false,
   onRefresh,
@@ -313,16 +464,15 @@ export function ProfileView({
   const [tab, setTab] = useState<Tab>('photos');
   const screenWidth = useWindowDimensions().width;
   const [now] = useState(() => new Date());
-  const showActivity = !(activity.state === 'ready' && activity.data === null);
   const photoPosts = posts.state === 'ready' ? posts.data.filter((p) => p.coverPath) : [];
   const textPosts = posts.state === 'ready' ? posts.data.filter((p) => !p.coverPath) : [];
   const taggedPosts = tagged?.state === 'ready' ? tagged.data : [];
-  // Photos is always there; Text only when there are text posts; Activity only when allowed.
+  // Photos and Activity are always there; Text and Tagged only when there are some.
   const segments = [
     { value: 'photos' as const, label: 'Photos' },
     ...(textPosts.length > 0 ? [{ value: 'text' as const, label: 'Text' }] : []),
     ...(taggedPosts.length > 0 ? [{ value: 'tagged' as const, label: 'Tagged' }] : []),
-    ...(showActivity ? [{ value: 'activity' as const, label: 'Activity' }] : []),
+    { value: 'activity' as const, label: 'Activity' },
   ];
   const current: Tab = segments.some((s) => s.value === tab) ? tab : 'photos';
   const subtitle = profileSubtitle(profile);
@@ -415,22 +565,18 @@ export function ProfileView({
         </View>
       ) : (
         <View testID="profile-activity">
-          {activity.state === 'loading' ? (
-            <Message text="Loading activity…" />
-          ) : activity.state === 'error' ? (
-            <Message text="Couldn’t load activity." onRetry={onRefresh} />
-          ) : activity.data && activity.data.length > 0 ? (
-            activity.data.map((item) => <ActivityRow key={item.eventId} item={item} />)
-          ) : (
-            <Message
-              text={own ? 'Events you’re checked in at will show up here.' : 'No check-ins yet.'}
-            />
-          )}
-          <AppText variant="caption" color={colors.textSecondary} style={styles.privacy}>
-            {own
-              ? 'Only you and chapter officers can see your attendance history.'
-              : 'Only this brother and chapter officers can see his attendance history.'}
-          </AppText>
+          <ActivityTimeline
+            own={own}
+            initiationDate={profile.initiationDate}
+            now={now}
+            activity={activity}
+            upcoming={upcoming}
+            posts={posts}
+            tagged={tagged}
+            onOpenPost={onOpenPost}
+            onOpenEvent={onOpenEvent}
+            onRetry={onRefresh}
+          />
         </View>
       )}
     </ScrollView>
@@ -484,6 +630,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  dateBlockSoon: { backgroundColor: palette.goldSoft },
+  sectionLabel: { paddingTop: spacing.lg, paddingBottom: spacing.xs },
   flex: { flex: 1, gap: spacing.xxs },
   message: { paddingVertical: spacing.xxxl, alignItems: 'center', gap: spacing.sm },
   privacy: { paddingTop: spacing.md },

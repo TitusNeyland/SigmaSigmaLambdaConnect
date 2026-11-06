@@ -101,7 +101,7 @@ describe('layout', () => {
     expect(screen.queryByTestId('role-chip')).toBeNull();
   });
 
-  it('shows regular members his totals, but not which events he attended', async () => {
+  it('shows regular members his totals and activity, but not which events he attended', async () => {
     profile.setMockExtras({ stats: { posts: 2, eventsAttended: 6, serviceHours: 14 } });
     await openMember();
     expect(profile.fetchProfileStats).toHaveBeenCalledWith(OTHER);
@@ -109,7 +109,9 @@ describe('layout', () => {
     await waitFor(() => expect(screen.getByLabelText('6 Events')).toBeTruthy());
     expect(screen.getByLabelText('14 Service hrs')).toBeTruthy();
     expect(screen.getByLabelText('2 Posts')).toBeTruthy();
-    expect(screen.queryByTestId('profile-tabs')).toBeNull();
+    await press(screen.getByRole('tab', { name: 'Activity' }));
+    await waitFor(() => expect(screen.getByTestId('profile-activity')).toBeTruthy());
+    expect(screen.queryByText(/can see his check-ins/)).toBeNull();
   });
 
   it('shows attendance to officers', async () => {
@@ -120,7 +122,7 @@ describe('layout', () => {
     await waitFor(() => expect(screen.getByTestId('profile-tabs')).toBeTruthy());
     await press(screen.getByRole('tab', { name: 'Activity' }));
     expect(
-      screen.getByText('Only this brother and chapter officers can see his attendance history.'),
+      screen.getByText('Only this brother and chapter officers can see his check-ins.'),
     ).toBeTruthy();
   });
 

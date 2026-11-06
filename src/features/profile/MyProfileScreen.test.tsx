@@ -13,6 +13,7 @@ jest.mock('@/data/account');
 jest.mock('@/data/directory');
 jest.mock('@/data/reports');
 jest.mock('@/data/events');
+const events = jest.requireMock<typeof import('@/data/__mocks__/events')>('@/data/events');
 jest.mock('@/data/eventAdmin');
 jest.mock('@/data/feed');
 jest.mock('@/data/likes');
@@ -315,6 +316,7 @@ describe('My profile', () => {
   });
 
   it('lists attended events in the Activity tab with the privacy note', async () => {
+    events.resetEventsMock([]);
     profile.setMockExtras({
       activity: [
         {
@@ -335,21 +337,36 @@ describe('My profile', () => {
     });
     await openProfile();
     await press(screen.getByRole('tab', { name: 'Activity' }));
-    await waitFor(() => expect(screen.getByTestId('activity-e1')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('activity-attended-e1')).toBeTruthy());
     expect(screen.getByText('Q2 Service Day')).toBeTruthy();
-    expect(screen.getByText('Food bank · 4 service hours')).toBeTruthy();
+    expect(screen.getByText('Attended · Food bank · 4 service hours')).toBeTruthy();
     expect(screen.getByText('OCT')).toBeTruthy();
-    expect(screen.getByText('Library')).toBeTruthy();
-    expect(
-      screen.getByText('Only you and chapter officers can see your attendance history.'),
-    ).toBeTruthy();
+    expect(screen.getByText('Attended · Library')).toBeTruthy();
+    expect(screen.getByText('Only you and chapter officers can see your check-ins.')).toBeTruthy();
+    // Tapping a check-in opens the event.
+    await press(screen.getByTestId('activity-attended-e1'));
+    await waitFor(() => expect(screen).toHavePathname('/events/e1'));
   });
 
-  it('shows an empty Activity tab before any check-ins', async () => {
+  it('shows events you’re going to under Coming up', async () => {
+    events.resetEventsMock([
+      events.sampleEvent({ id: 'gala', title: 'Sample gala', myRsvp: 'going' }),
+      events.sampleEvent({ id: 'maybe', title: 'Sample maybe', myRsvp: 'maybe' }),
+    ]);
+    await openProfile();
+    await press(screen.getByRole('tab', { name: 'Activity' }));
+    await waitFor(() => expect(screen.getByTestId('activity-going-gala')).toBeTruthy());
+    expect(screen.queryByTestId('activity-going-maybe')).toBeNull();
+    // His own RSVPs: the upcoming events are loaded for him.
+    expect(events.fetchUpcomingEvents).toHaveBeenCalledWith(auth.sampleUser().uid);
+  });
+
+  it('shows an empty Activity tab before anything happens', async () => {
+    events.resetEventsMock([]);
     await openProfile();
     await press(screen.getByRole('tab', { name: 'Activity' }));
     await waitFor(() =>
-      expect(screen.getByText('Events you’re checked in at will show up here.')).toBeTruthy(),
+      expect(screen.getByText('Your posts, RSVPs and check-ins will show up here.')).toBeTruthy(),
     );
   });
 
