@@ -77,7 +77,7 @@ function RefinePill({
       style={({ pressed }) => [styles.pill, on && styles.pillOn, pressed && styles.pressed]}
       testID={testID}
     >
-      <AppText variant="subhead" weight="600" color={color} numberOfLines={1}>
+      <AppText variant="subhead" weight="500" color={color} numberOfLines={1}>
         {label}
       </AppText>
       {menu ? <DownIcon color={color} /> : null}
@@ -169,61 +169,68 @@ export function DirectoryScreen() {
         <SearchField
           value={search}
           onChangeText={setSearch}
-          label="Search name, job or interest"
+          label="Search name, job, city or interest"
           testID="directory-search"
         />
-        <FilterChips
-          options={FILTERS}
-          value={filter}
-          onChange={setFilter}
-          accessibilityLabel="Filter brothers"
-          testID="directory-filter"
-        />
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.refine}
-          testID="directory-refine"
-        >
-          {myCity ? (
+        {/* Two rows of pills that read as one set: who, then what to narrow by. Each row
+            scrolls to the screen's edges instead of cutting off at the padding. */}
+        <View style={styles.filters}>
+          <FilterChips
+            options={FILTERS}
+            value={filter}
+            onChange={setFilter}
+            accessibilityLabel="Filter brothers"
+            tone="card"
+            inset={spacing.lg}
+            testID="directory-filter"
+          />
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.bleed}
+            contentContainerStyle={styles.refine}
+            testID="directory-refine"
+          >
+            {myCity ? (
+              <RefinePill
+                label="Near me"
+                on={nearMe}
+                onPress={() => {
+                  haptics.select();
+                  setRefine((r) => ({ ...r, city: nearMe ? null : myCity }));
+                }}
+                testID="refine-near-me"
+              />
+            ) : null}
+            {(Object.keys(FACETS) as Facet[]).map((f) => (
+              <RefinePill
+                key={f}
+                label={refine[f] ?? FACETS[f].label}
+                on={refine[f] !== null}
+                menu
+                onPress={() => setFacet(f)}
+                testID={`refine-${f}`}
+              />
+            ))}
             <RefinePill
-              label="Near me"
-              on={nearMe}
+              label="Owns a business"
+              on={refine.owners}
               onPress={() => {
                 haptics.select();
-                setRefine((r) => ({ ...r, city: nearMe ? null : myCity }));
+                setRefine((r) => ({ ...r, owners: !r.owners }));
               }}
-              testID="refine-near-me"
+              testID="refine-owners"
             />
-          ) : null}
-          {(Object.keys(FACETS) as Facet[]).map((f) => (
-            <RefinePill
-              key={f}
-              label={refine[f] ?? FACETS[f].label}
-              on={refine[f] !== null}
-              menu
-              onPress={() => setFacet(f)}
-              testID={`refine-${f}`}
-            />
-          ))}
-          <RefinePill
-            label="Owns a business"
-            on={refine.owners}
-            onPress={() => {
-              haptics.select();
-              setRefine((r) => ({ ...r, owners: !r.owners }));
-            }}
-            testID="refine-owners"
-          />
-          {refined ? (
-            <RefinePill
-              label="Clear"
-              on={false}
-              onPress={() => setRefine(NO_REFINEMENTS)}
-              testID="refine-clear"
-            />
-          ) : null}
-        </ScrollView>
+            {refined ? (
+              <RefinePill
+                label="Clear"
+                on={false}
+                onPress={() => setRefine(NO_REFINEMENTS)}
+                testID="refine-clear"
+              />
+            ) : null}
+          </ScrollView>
+        </View>
         {value.state === 'loading' ? (
           <AppText variant="callout" color={colors.textSecondary} align="center">
             Loading…
@@ -333,13 +340,15 @@ const styles = StyleSheet.create({
   },
   content: { padding: spacing.lg, paddingTop: 0, gap: spacing.lg, paddingBottom: spacing.xxxl },
   empty: { paddingTop: spacing.xxl, gap: spacing.sm, alignItems: 'center' },
-  refine: { gap: spacing.sm, marginTop: -spacing.sm },
+  filters: { gap: spacing.sm },
+  bleed: { marginHorizontal: -spacing.lg },
+  refine: { gap: spacing.sm, paddingHorizontal: spacing.lg },
   pill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
     minHeight: MIN_TOUCH - spacing.sm,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.lg - 2,
     borderRadius: radius.pill,
     backgroundColor: colors.surface,
     borderWidth: StyleSheet.hairlineWidth,

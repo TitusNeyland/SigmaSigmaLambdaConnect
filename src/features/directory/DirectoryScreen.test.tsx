@@ -54,7 +54,7 @@ const BROTHERS = [
 
 async function type(text: string) {
   await act(async () => {
-    fireEvent.changeText(screen.getByLabelText('Search name, job or interest'), text);
+    fireEvent.changeText(screen.getByLabelText('Search name, job, city or interest'), text);
   });
 }
 
