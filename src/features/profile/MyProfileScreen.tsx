@@ -7,7 +7,7 @@ import Svg, { Path } from 'react-native-svg';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { useRole } from '@/features/roles/RoleProvider';
 import { colors, MIN_TOUCH, spacing } from '@/theme';
-import { AppText, Button } from '@/ui';
+import { AppText, Button, IconButton, Monogram, PlusIcon } from '@/ui';
 
 import { NEW_POST_ROUTE } from '@/features/navigation/TabLayout';
 
@@ -43,15 +43,18 @@ export function MyProfileScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.header}>
-        <AppText
-          variant="title3"
-          weight="700"
-          numberOfLines={1}
-          style={styles.flex}
-          accessibilityRole="header"
+        {/* Like Home: new post on the left, the ΣΣΛ monogram in the middle, Settings on the
+            right. The name under the photo says whose profile it is. */}
+        <IconButton
+          label="Create a post"
+          onPress={() => router.push(NEW_POST_ROUTE)}
+          testID="profile-header-new-post"
         >
-          Profile
-        </AppText>
+          <PlusIcon />
+        </IconButton>
+        <View style={styles.middle} testID="profile-monogram">
+          <Monogram size={34} />
+        </View>
         <Pressable
           onPress={() => router.push('/profile/settings')}
           accessibilityRole="button"
@@ -126,8 +129,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingLeft: spacing.xl,
-    paddingRight: spacing.sm,
+    paddingHorizontal: spacing.sm,
     minHeight: MIN_TOUCH + spacing.sm,
   },
   iconButton: {
@@ -137,5 +139,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   flex: { flex: 1 },
+  // Both sides are one touch target wide, so this sits in the true middle.
+  middle: { flex: 1, alignItems: 'center' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 });

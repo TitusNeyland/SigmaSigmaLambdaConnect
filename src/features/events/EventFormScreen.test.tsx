@@ -1,4 +1,5 @@
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
+import { ScrollView } from 'react-native';
 
 jest.mock('@/data/auth');
 const auth = jest.requireMock<typeof import('@/data/__mocks__/auth')>('@/data/auth');
@@ -125,6 +126,12 @@ describe('who can create and edit', () => {
   });
 });
 
+async function toggle(testID: string, on: boolean) {
+  await act(async () => {
+    fireEvent(screen.getByTestId(testID), 'valueChange', on);
+  });
+}
+
 describe('create', () => {
   async function openNew() {
     await renderRouter('src/app', { initialUrl: '/events/new' });
@@ -137,7 +144,9 @@ describe('create', () => {
     await press(screen.getByRole('button', { name: 'Social' }));
     await type('event-form-location', 'Riverside Park');
     await type('event-form-address', '1 Park Rd');
+    await toggle('event-form-paid', true);
     await type('event-form-fee', '10');
+    await toggle('event-form-has-slots', true);
     await type('event-form-slots', '15');
     await type('event-form-description', 'Sample cookout for families.');
     const start = inDays(14, 16);
@@ -170,7 +179,9 @@ describe('create', () => {
 
   it('shows what’s missing and saves nothing', async () => {
     await openNew();
+    await toggle('event-form-paid', true);
     await type('event-form-fee', 'abc');
+    await toggle('event-form-has-slots', true);
     await type('event-form-slots', '0');
     await press(screen.getByTestId('event-form-save'));
     expect(screen.getByText('Enter a number from 1 to 500, or leave it empty.')).toBeTruthy();
@@ -184,12 +195,90 @@ describe('create', () => {
     await openNew();
     await type('event-form-title', 'Sample meeting');
     await type('event-form-location', 'Chapter house');
-    await act(async () => {
-      fireEvent(screen.getByTestId('event-form-has-end'), 'valueChange', false);
-    });
+    await press(screen.getByTestId('event-form-length-none'));
     expect(screen.queryByTestId('event-form-ends')).toBeNull();
+    expect(screen.getByTestId('event-form-summary')).not.toHaveTextContent(/ to /);
     await press(screen.getByTestId('event-form-save'));
     expect(jest.mocked(admin.createEvent).mock.calls[0][2].endsAt).toBeNull();
+  });
+
+  it('picks how long and when RSVPs close in one tap, and says it back in a sentence', async () => {
+    await openNew();
+    await type('event-form-title', 'Sample meeting');
+    await type('event-form-location', 'Chapter house');
+    // Starts two hours long with RSVPs the day before, and no date pickers for either.
+    expect(screen.queryByTestId('event-form-ends')).toBeNull();
+    expect(screen.queryByTestId('event-form-deadline')).toBeNull();
+    expect(screen.getByTestId('event-form-summary')).toHaveTextContent(
+      /7:00 to 9:00 PM\. RSVPs close .*7:00 PM\./,
+    );
+    await press(screen.getByTestId('event-form-length-3h'));
+    await press(screen.getByTestId('event-form-rsvp-start'));
+    expect(screen.getByTestId('event-form-summary')).toHaveTextContent(
+      /7:00 to 10:00 PM\. RSVPs stay open until it starts\./,
+    );
+    await press(screen.getByTestId('event-form-submit'));
+    const saved = jest.mocked(admin.createEvent).mock.calls[0][2];
+    expect(saved.endsAt!.getTime() - saved.startsAt.getTime()).toBe(3 * 3600_000);
+    expect(saved.rsvpDeadline).toEqual(saved.startsAt);
+  });
+
+  it('Custom shows a picker for the exact time', async () => {
+    await openNew();
+    await press(screen.getByTestId('event-form-length-custom'));
+    expect(screen.getByTestId('event-form-ends')).toBeTruthy();
+    await press(screen.getByTestId('event-form-rsvp-custom'));
+    expect(screen.getByTestId('event-form-deadline')).toBeTruthy();
+  });
+
+  it('keeps price and brothers needed out of the way until switched on', async () => {
+    await openNew();
+    expect(screen.queryByTestId('event-form-fee')).toBeNull();
+    expect(screen.queryByTestId('event-form-slots')).toBeNull();
+    await toggle('event-form-paid', true);
+    await type('event-form-fee', '10');
+    // Switching it back off makes it free again.
+    await toggle('event-form-paid', false);
+    await type('event-form-title', 'Sample meeting');
+    await type('event-form-location', 'Chapter house');
+    await press(screen.getByTestId('event-form-submit'));
+    expect(jest.mocked(admin.createEvent).mock.calls[0][2].feeCents).toBe(0);
+  });
+
+  it('won’t create an event whose RSVPs would already be closed', async () => {
+    await openNew();
+    await type('event-form-title', 'Sample meeting');
+    await type('event-form-location', 'Chapter house');
+    await act(async () => {
+      screen.getByTestId('event-form-starts').props.onChange({ type: 'set' }, inDays(3, 19));
+    });
+    await press(screen.getByTestId('event-form-rsvp-week'));
+    await press(screen.getByTestId('event-form-submit'));
+    expect(screen.getByTestId('event-form-rsvp-error')).toHaveTextContent(
+      'RSVPs would already be closed. Pick a later deadline.',
+    );
+    expect(admin.createEvent).not.toHaveBeenCalled();
+  });
+
+  it('takes you to the first thing to fix', async () => {
+    const scrollTo = jest.spyOn(
+      ScrollView.prototype as unknown as { scrollTo: (o: object) => void },
+      'scrollTo',
+    );
+    await openNew();
+    await act(async () => {
+      fireEvent(screen.getByTestId('event-form-where'), 'layout', {
+        nativeEvent: { layout: { x: 0, y: 640, width: 390, height: 200 } },
+      });
+      fireEvent(screen.getByTestId('event-form-what'), 'layout', {
+        nativeEvent: { layout: { x: 0, y: 260, width: 390, height: 200 } },
+      });
+    });
+    // A title but no place: Where is the first section with a problem.
+    await type('event-form-title', 'Sample meeting');
+    await press(screen.getByTestId('event-form-submit'));
+    expect(scrollTo).toHaveBeenLastCalledWith({ y: 624, animated: true });
+    scrollTo.mockRestore();
   });
 
   it('uploads a chosen photo under the new event before saving', async () => {
@@ -246,8 +335,12 @@ describe('edit and cancel', () => {
     await openEdit();
     expect(screen.getByTestId('event-form-title').props.value).toBe('Sample scholarship gala');
     expect(screen.getByTestId('event-form-location').props.value).toBe('Hotel ballroom');
+    // A paid event opens with its price showing; no brothers number, so that stays tucked away.
+    expect(screen.getByTestId('event-form-paid').props.value).toBe(true);
     expect(screen.getByTestId('event-form-fee').props.value).toBe('25');
-    expect(screen.getByTestId('event-form-slots').props.value).toBe('');
+    expect(screen.getByTestId('event-form-has-slots').props.value).toBe(false);
+    expect(screen.queryByTestId('event-form-slots')).toBeNull();
+    expect(screen.getByTestId('event-form-submit')).toHaveTextContent('Save changes');
     expect(
       screen.getByRole('button', { name: 'Fundraiser' }).props.accessibilityState,
     ).toMatchObject({

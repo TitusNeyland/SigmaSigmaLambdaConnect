@@ -71,7 +71,8 @@ describe('tab bar', () => {
   it.each([
     ['events', '/events', 'Events'],
     ['chapter', '/chapter', 'Chapter'],
-    ['profile', '/profile', 'Profile'],
+    // Your profile has no title bar; your name is its heading.
+    ['profile', '/profile', 'Marcus Reed'],
   ])('tapping %s switches to that tab', async (name, path, title) => {
     await renderRouter(APP, { initialUrl: '/home' });
     await act(async () => {

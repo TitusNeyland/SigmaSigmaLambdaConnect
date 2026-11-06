@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
+import { act, fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/testing-library';
 
 jest.mock('@/data/auth');
 const auth = jest.requireMock<typeof import('@/data/__mocks__/auth')>('@/data/auth');
@@ -305,6 +305,21 @@ describe('My profile', () => {
     );
     await press(screen.getByRole('tab', { name: 'Text' }));
     expect(screen.getByTestId('profile-text-p3')).toHaveTextContent(/Hello/);
+  });
+
+  it('the plus in the top left starts a new post, and there’s no Profile title', async () => {
+    const r = await renderRouter('src/app', { initialUrl: '/profile' });
+    await waitFor(() => expect(screen.getByTestId('profile-header-new-post')).toBeTruthy());
+    expect(screen.queryByRole('header', { name: 'Profile' })).toBeNull();
+    // The chapter monogram in the middle, like Home.
+    expect(
+      within(screen.getByTestId('profile-monogram')).getByLabelText('Sigma Sigma Lambda'),
+    ).toBeTruthy();
+    expect(screen.getByTestId('profile-header-new-post').props.accessibilityLabel).toBe(
+      'Create a post',
+    );
+    await press(screen.getByTestId('profile-header-new-post'));
+    await waitFor(() => expect(r.getPathname()).toBe('/new-post'));
   });
 
   it('invites you to share your first post when you have none', async () => {

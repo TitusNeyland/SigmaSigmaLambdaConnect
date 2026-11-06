@@ -1,8 +1,14 @@
 import type { EventDetail } from '@/data/events';
 
 import {
+  applyLength,
+  applyRsvp,
   blankForm,
   centsToDollars,
+  firstErrorSection,
+  lengthChoice,
+  rsvpChoice,
+  whenSummary,
   formFromEvent,
   hasErrors,
   moveStart,
@@ -171,4 +177,67 @@ describe('brothers needed', () => {
   it.each(['0', '501', '2.5', '-3', 'ten'])('rejects %j', (slots) =>
     expect(parseSlots(slots)).toBeUndefined(),
   );
+});
+
+describe('one-tap length and RSVP choices', () => {
+  it('a blank form starts at two hours, RSVPs due the day before', () => {
+    const form = blankForm(NOW);
+    expect(lengthChoice(form)).toBe('2h');
+    expect(rsvpChoice(form)).toBe('day');
+  });
+
+  it('sets the end from a length, and clears it for No end time', () => {
+    const form = valid();
+    expect(applyLength(form, '3h').endsAt!.getTime() - form.startsAt.getTime()).toBe(3 * HOUR);
+    expect(applyLength(form, 'none').endsAt).toBeNull();
+    expect(lengthChoice(applyLength(form, '1h'))).toBe('1h');
+    // Custom keeps the end, or starts from two hours if there wasn't one.
+    expect(applyLength(form, 'custom').endsAt).toEqual(form.endsAt);
+    expect(applyLength({ ...form, endsAt: null }, 'custom').endsAt!.getTime()).toBe(
+      form.startsAt.getTime() + 2 * HOUR,
+    );
+    expect(lengthChoice({ ...form, endsAt: new Date(form.startsAt.getTime() + 90 * 60_000) })).toBe(
+      'custom',
+    );
+  });
+
+  it('sets the RSVP deadline from a choice', () => {
+    const form = valid();
+    const before = (f: EventForm) => (f.startsAt.getTime() - f.rsvpDeadline.getTime()) / HOUR;
+    expect(before(applyRsvp(form, 'start'))).toBe(0);
+    expect(before(applyRsvp(form, 'twoDays'))).toBe(48);
+    expect(before(applyRsvp(form, 'week'))).toBe(168);
+    expect(rsvpChoice(applyRsvp(form, 'week'))).toBe('week');
+    expect(applyRsvp(form, 'custom')).toBe(form);
+  });
+
+  it('won’t create an event whose RSVPs would already be closed', () => {
+    // Three days out with a week-before deadline.
+    const soon = moveStart(valid(), new Date(NOW.getTime() + 72 * HOUR));
+    const form = applyRsvp(soon, 'week');
+    expect(validateEventForm(form, { now: NOW, isNew: true }).rsvpDeadline).toBe(
+      'RSVPs would already be closed. Pick a later deadline.',
+    );
+    // Editing an event can close RSVPs on purpose.
+    expect(validateEventForm(form, { now: NOW, isNew: false }).rsvpDeadline).toBeUndefined();
+  });
+
+  it('sums up when it is in one line', () => {
+    const form = valid(); // Thu, Nov 5 at 7 PM, two hours, RSVPs the day before.
+    expect(whenSummary(form, NOW)).toBe(
+      'Thu, Nov 5, 7:00 to 9:00 PM. RSVPs close Wed, Nov 4, 7:00 PM.',
+    );
+    expect(whenSummary(applyRsvp(applyLength(form, 'none'), 'start'), NOW)).toBe(
+      'Thu, Nov 5, 7:00 PM. RSVPs stay open until it starts.',
+    );
+  });
+});
+
+describe('firstErrorSection', () => {
+  it('finds the first section, top to bottom, with a problem', () => {
+    expect(firstErrorSection({ fee: 'x', location: 'y' })).toBe('where');
+    expect(firstErrorSection({ slots: 'x', rsvpDeadline: 'y', title: 'z' })).toBe('what');
+    expect(firstErrorSection({ description: 'x' })).toBe('extras');
+    expect(firstErrorSection({})).toBeNull();
+  });
 });
