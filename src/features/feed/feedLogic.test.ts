@@ -6,6 +6,7 @@ import {
   captionPreview,
   commentsLabel,
   likesLabel,
+  taggedParts,
   timeAgo,
   visiblePosts,
 } from './feedLogic';
@@ -106,5 +107,13 @@ describe('lists', () => {
       'b',
       'c',
     ]);
+  });
+});
+
+describe('taggedParts', () => {
+  it('spells out up to three names, then two and how many others', () => {
+    expect(taggedParts([])).toEqual({ shown: [], others: 0 });
+    expect(taggedParts(['A', 'B', 'C'])).toEqual({ shown: ['A', 'B', 'C'], others: 0 });
+    expect(taggedParts(['A', 'B', 'C', 'D', 'E'])).toEqual({ shown: ['A', 'B'], others: 3 });
   });
 });

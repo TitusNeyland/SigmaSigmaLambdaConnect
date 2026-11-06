@@ -33,6 +33,18 @@ export function timeAgo(date: Date, now: Date): string {
   return date.getFullYear() === now.getFullYear() ? day : `${day}, ${date.getFullYear()}`;
 }
 
+/** How many tagged names the feed spells out before "and N others". */
+export const TAGGED_SHOWN = 2;
+
+/**
+ * Who's tagged, split for the "with" line: the names to show, and how many more there are.
+ * "with Chris", "with Chris and Zed", "with Chris, Zed and 3 others".
+ */
+export function taggedParts<T>(people: T[]): { shown: T[]; others: number } {
+  if (people.length <= TAGGED_SHOWN + 1) return { shown: people, others: 0 };
+  return { shown: people.slice(0, TAGGED_SHOWN), others: people.length - TAGGED_SHOWN };
+}
+
 export const likesLabel = (n: number) =>
   `${n.toLocaleString('en-US')} ${n === 1 ? 'like' : 'likes'}`;
 

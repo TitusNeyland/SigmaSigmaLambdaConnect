@@ -31,6 +31,7 @@ export function samplePost(overrides: Partial<FeedPost> = {}): FeedPost {
     likedByMe: false,
     previewComments: [],
     aspectRatio: 1,
+    tagged: [],
     ...overrides,
   };
 }

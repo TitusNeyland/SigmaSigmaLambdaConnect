@@ -78,6 +78,7 @@ describe('toFeedPost', () => {
       likedByMe: false,
       previewComments: [],
       aspectRatio: 1,
+      tagged: [],
     });
     expect(toFeedPost('p', { authorId: 'a' }, null, false)).toBeNull();
   });
@@ -173,6 +174,21 @@ describe('fetchFeedPage', () => {
     });
     const page = await fetchFeedPage('me', null, 10);
     expect(page.posts.map((p) => [p.id, p.previewComments])).toEqual([['p1', []]]);
+  });
+
+  it('names the brothers tagged in each post, leaving out deleted profiles', async () => {
+    respond(
+      [['p1', { authorId: 'a', createdAt: at(2), taggedMemberIds: ['z', 'gone', 'a', 'z', 7] }]],
+      {
+        'members/a': { displayName: 'Marcus Reed' },
+        'members/z': { displayName: 'Sample Zed' },
+      },
+    );
+    const page = await fetchFeedPage('me', null, 10);
+    expect(page.posts[0].tagged).toEqual([
+      { uid: 'z', displayName: 'Sample Zed' },
+      { uid: 'a', displayName: 'Marcus Reed' },
+    ]);
   });
 
   it('hands back a cursor only when the page was full', async () => {

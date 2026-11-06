@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
+import Svg, { Circle, Path } from 'react-native-svg';
 
 import type { FeedPost } from '@/data/feed';
 import type { PostEdit } from '@/data/posts';
@@ -15,6 +15,7 @@ import {
   commentsCountLabel,
   commentsLabel,
   likesLabel,
+  taggedParts,
   timeAgo,
 } from './feedLogic';
 import { OfficialEventCard } from './OfficialEventCard';
@@ -65,6 +66,63 @@ export type PostCardProps = {
 function openAuthor(post: FeedPost, me: string) {
   if (post.authorId === me) router.push('/profile');
   else router.push({ pathname: '/chapter/member/[uid]', params: { uid: post.authorId } });
+}
+
+function openMember(uid: string, me: string) {
+  if (uid === me) router.push('/profile');
+  else router.push({ pathname: '/chapter/member/[uid]', params: { uid } });
+}
+
+/**
+ * "with Chris and Zed" under a post: who's tagged in it, each name opening their profile.
+ * Past two names (and a third), the rest read as "and N others".
+ */
+function TaggedLine({ post, me }: { post: FeedPost; me: string }) {
+  if (post.tagged.length === 0) return null;
+  const { shown, others } = taggedParts(post.tagged);
+  const pieces = [
+    ...shown.map((p) => ({ key: p.uid, text: p.displayName, uid: p.uid })),
+    ...(others > 0
+      ? [{ key: 'others', text: `${others} ${others === 1 ? 'other' : 'others'}`, uid: '' }]
+      : []),
+  ];
+  return (
+    <View style={styles.tagged} testID={`tagged-${post.id}`}>
+      <PersonIcon />
+      <AppText variant="subhead" color={colors.textSecondary} style={styles.flex}>
+        with{' '}
+        {pieces.map((piece, i) => (
+          <AppText key={piece.key} variant="subhead">
+            {i === 0 ? '' : i === pieces.length - 1 ? ' and ' : ', '}
+            <AppText
+              variant="subhead"
+              weight="600"
+              color={colors.text}
+              onPress={piece.uid ? () => openMember(piece.uid, me) : undefined}
+              accessibilityRole={piece.uid ? 'link' : undefined}
+              testID={piece.uid ? `tagged-${post.id}-${piece.uid}` : undefined}
+            >
+              {piece.text}
+            </AppText>
+          </AppText>
+        ))}
+      </AppText>
+    </View>
+  );
+}
+
+function PersonIcon() {
+  return (
+    <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" accessibilityElementsHidden>
+      <Circle cx={12} cy={8} r={4} stroke={colors.textSecondary} strokeWidth={1.8} />
+      <Path
+        d="M4.5 20.5a7.5 7.5 0 0 1 15 0"
+        stroke={colors.textSecondary}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+      />
+    </Svg>
+  );
 }
 
 /** Comments open in a sheet over the feed. */
@@ -225,6 +283,7 @@ export function PostCard({
             Couldn’t save your like. Try again.
           </AppText>
         ) : null}
+        <TaggedLine post={post} me={me} />
         {!textOnly && caption.text ? (
           <AppText variant="subhead" testID={`caption-${post.id}`}>
             <AppText variant="subhead" weight="600">
@@ -300,6 +359,7 @@ const styles = StyleSheet.create({
   },
   body: { paddingHorizontal: spacing.lg, gap: spacing.xs },
   commentsLink: { minHeight: MIN_TOUCH - spacing.md, justifyContent: 'center' },
+  tagged: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   // A text-only post's text starts at the left edge, in line with the avatar and actions.
   textPost: { paddingHorizontal: spacing.lg },
 });
