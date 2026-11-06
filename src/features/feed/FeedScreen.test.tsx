@@ -325,3 +325,31 @@ describe('line anniversaries', () => {
     expect(screen.queryByTestId('anniversaries')).toBeNull();
   });
 });
+
+describe('tagged brothers', () => {
+  it('shows who’s tagged under the post, each opening their profile', async () => {
+    feed.resetFeedMock([
+      feed.samplePost({
+        id: 'p1',
+        tagged: [
+          { uid: 'sample-chris', displayName: 'Sample Chris' },
+          { uid: 'sample-zed', displayName: 'Sample Zed' },
+        ],
+      }),
+      feed.samplePost({
+        id: 'p2',
+        tagged: ['a', 'b', 'c', 'd'].map((x) => ({ uid: x, displayName: `Sample ${x}` })),
+      }),
+      feed.samplePost({ id: 'p3' }),
+    ]);
+    const r = await renderRouter('src/app', { initialUrl: '/home' });
+    await waitFor(() => expect(screen.getByTestId('tagged-p1')).toBeTruthy());
+    expect(screen.getByTestId('tagged-p1')).toHaveTextContent('with Sample Chris and Sample Zed');
+    expect(screen.getByTestId('tagged-p2')).toHaveTextContent(
+      'with Sample a, Sample b and 2 others',
+    );
+    expect(screen.queryByTestId('tagged-p3')).toBeNull();
+    await press(screen.getByTestId('tagged-p1-sample-zed'));
+    expect(r.getPathname()).toBe('/chapter/member/sample-zed');
+  });
+});

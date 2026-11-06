@@ -48,7 +48,29 @@ export type FeedPost = {
   previewComments: CommentPreview[];
   /** Width over height the photos show at. Posts from before framing are square. */
   aspectRatio: number;
+  /** Brothers tagged in it, in the order they were tagged. Deleted profiles are left out. */
+  tagged: TaggedMember[];
 };
+
+export type TaggedMember = { uid: string; displayName: string };
+
+/** The tagged member IDs on a post document. */
+export function taggedIds(data: Record<string, unknown>): string[] {
+  return Array.isArray(data.taggedMemberIds)
+    ? [...new Set(data.taggedMemberIds.filter((u): u is string => typeof u === 'string' && !!u))]
+    : [];
+}
+
+/** Looks up tagged brothers' names, leaving out anyone whose profile is gone. */
+async function resolveTagged(
+  ids: string[],
+  authorOf: (uid: string) => Promise<FeedAuthor | null>,
+): Promise<TaggedMember[]> {
+  const people = await Promise.all(ids.map((id) => authorOf(id).catch(() => null)));
+  return people
+    .filter((p): p is FeedAuthor => p !== null)
+    .map((p) => ({ uid: p.uid, displayName: p.displayName }));
+}
 
 /** Opaque: pass it back to get the next page. Null when there are no more posts. */
 export type FeedCursor = QueryDocumentSnapshot | null;
@@ -112,6 +134,7 @@ export function toFeedPost(
     likedByMe,
     previewComments: [],
     aspectRatio: postAspect(data.aspectRatio),
+    tagged: [],
   };
 }
 
@@ -176,16 +199,17 @@ export async function fetchFeedPage(
   const posts = await Promise.all(
     snap.docs.map(async (d) => {
       const data = d.data();
-      const [liked, author, previewComments] = await Promise.all([
+      const [liked, author, previewComments, tagged] = await Promise.all([
         getDoc(doc(db, 'posts', d.id, 'likes', uid)),
         text(data.authorId) ? authorOf(text(data.authorId)) : Promise.resolve(null),
         // A preview that fails to load just isn't shown; the post still is.
         data.allowComments !== false
           ? fetchCommentPreview(d.id, (id) => authorOf(id).catch(() => null)).catch(() => [])
           : Promise.resolve([]),
+        resolveTagged(taggedIds(data), authorOf),
       ]);
       const post = toFeedPost(d.id, data, author, liked.exists());
-      return post ? { ...post, previewComments } : null;
+      return post ? { ...post, previewComments, tagged } : null;
     }),
   );
   return {
@@ -205,6 +229,10 @@ export async function fetchPost(postId: string, uid: string): Promise<FeedPost |
   ]);
   if (!snap.exists() || snap.data().removed === true) return null;
   const data = snap.data();
-  const author = await fetchAuthor(text(data.authorId));
-  return toFeedPost(snap.id, data, author, liked.exists());
+  const [author, tagged] = await Promise.all([
+    fetchAuthor(text(data.authorId)),
+    resolveTagged(taggedIds(data), fetchAuthor),
+  ]);
+  const post = toFeedPost(snap.id, data, author, liked.exists());
+  return post ? { ...post, tagged } : null;
 }
