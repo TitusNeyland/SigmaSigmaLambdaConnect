@@ -12,14 +12,17 @@ import { RequireCapability, useCan, useRole } from '@/features/roles/RoleProvide
 import { roleLabel } from '@/features/roles/permissions';
 import { colors, MIN_TOUCH, palette, radius, spacing } from '@/theme';
 import { AppText, Avatar, Chevron, ProgressRing, SectionTitle } from '@/ui';
+import { useAuth } from '@/features/auth/AuthProvider';
+import { openMember } from '@/features/profile/openMember';
 
 import { chapterStats, officersOf, progressSummary, waitingSummary } from './hubLogic';
 
-type Icon = 'people' | 'chart' | 'calendar' | 'doc' | 'shield' | 'plus';
+type Icon = 'people' | 'shop' | 'chart' | 'calendar' | 'doc' | 'shield' | 'plus';
 
 const ICONS: Record<Icon, string> = {
   people:
     'M16 19v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 17.5V19M10 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM20 19v-1.5a3.5 3.5 0 0 0-2.6-3.4M15.5 4.2a3.5 3.5 0 0 1 0 6.6',
+  shop: 'M4 10v10h16V10M3 10l1.5-5.5h15L21 10M3 10c0 1.4 1.1 2.5 2.5 2.5S8 11.4 8 10c0 1.4 1.1 2.5 2.5 2.5S13 11.4 13 10c0 1.4 1.1 2.5 2.5 2.5S18 11.4 18 10c0 1.4 1.1 2.5 2.5 2.5M10 20v-5h4v5',
   chart: 'M4 20V10M10 20V4M16 20v-7M22 20H2',
   calendar:
     'M7 3v3M17 3v3M3.5 9h17M5 5h14a1.5 1.5 0 0 1 1.5 1.5v12A1.5 1.5 0 0 1 19 20H5a1.5 1.5 0 0 1-1.5-1.5v-12A1.5 1.5 0 0 1 5 5z',
@@ -89,6 +92,8 @@ function Shortcut({
 
 /** The Chapter tab: leadership (officers), progress, shortcuts, announcements and officers. */
 export function ChapterHubScreen() {
+  const auth = useAuth();
+  const me = auth.status === 'signedIn' ? auth.user.uid : '';
   // Tapping the tab again scrolls back to the top.
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
   useScrollToTop(scroll);
@@ -212,6 +217,12 @@ export function ChapterHubScreen() {
             testID="directory-entry"
           />
           <Shortcut
+            icon="shop"
+            label="Businesses"
+            onPress={() => router.push('/chapter/businesses')}
+            testID="tile-businesses"
+          />
+          <Shortcut
             icon="chart"
             label="Programs"
             onPress={() => router.push('/chapter/progress')}
@@ -263,9 +274,7 @@ export function ChapterHubScreen() {
               {officers.map((o) => (
                 <Pressable
                   key={o.uid}
-                  onPress={() =>
-                    router.push({ pathname: '/chapter/member/[uid]', params: { uid: o.uid } })
-                  }
+                  onPress={() => openMember(o.uid, me)}
                   accessibilityRole="button"
                   accessibilityLabel={`${o.displayName}, ${roleLabel(o.role)}`}
                   style={({ pressed }) => [styles.officer, pressed && styles.pressed]}

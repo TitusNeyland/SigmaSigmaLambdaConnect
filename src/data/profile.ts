@@ -33,6 +33,10 @@ export type Profile = {
   /** The day they crossed, if they added it. */
   initiationDate: Date | null;
   headline: string;
+  /** His line of work, like Real estate. Empty if he didn't say. */
+  industry: string;
+  /** Businesses he owns, up to 3. */
+  businesses: string[];
   bio: string;
   interests: string[];
   photoURL: string | null;
@@ -73,6 +77,10 @@ export type ActivityItem = {
 };
 
 const text = (value: unknown) => (typeof value === 'string' ? value : '');
+const textList = (value: unknown) =>
+  Array.isArray(value)
+    ? value.filter((i): i is string => typeof i === 'string' && i.trim() !== '')
+    : [];
 
 export function toProfile(data: Record<string, unknown>): Profile {
   return {
@@ -83,10 +91,10 @@ export function toProfile(data: Record<string, unknown>): Profile {
         ? (data.initiationDate as Timestamp).toDate()
         : null,
     headline: text(data.headline),
+    industry: text(data.industry),
+    businesses: textList(data.businesses),
     bio: text(data.bio),
-    interests: Array.isArray(data.interests)
-      ? data.interests.filter((i): i is string => typeof i === 'string' && i.trim() !== '')
-      : [],
+    interests: textList(data.interests),
     photoURL: typeof data.photoURL === 'string' && data.photoURL ? data.photoURL : null,
     email: text(data.email),
     phone: text(data.phone),
@@ -325,6 +333,8 @@ export type ProfilePatch = {
   initiationTerm: string;
   initiationDate: Date | null;
   headline: string;
+  industry: string;
+  businesses: string[];
   bio: string;
   interests: string[];
   phone: string;

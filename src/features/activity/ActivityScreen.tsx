@@ -62,7 +62,7 @@ function Row({ row, now }: { row: ActivityRow; now: Date }) {
   const target = activityTarget(row);
   return (
     <Pressable
-      onPress={target ? () => router.push(target) : undefined}
+      onPress={target ? () => router.push(target, { withAnchor: true }) : undefined}
       disabled={!target}
       accessibilityRole={target ? 'button' : undefined}
       accessibilityLabel={`${names}${action} ${when}`}

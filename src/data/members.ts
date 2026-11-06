@@ -1,5 +1,7 @@
 import { doc, onSnapshot, serverTimestamp, writeBatch } from 'firebase/firestore';
 
+import type { SignUpAbout } from '@/features/auth/validation';
+
 import { db } from './firebase';
 import type { MemberStatus } from './types';
 
@@ -13,6 +15,10 @@ export type MemberSummary = {
 /**
  * Listens to the signed-in member's own profile. Calls back with null if there is no
  * profile yet (for example, sign up was interrupted before it was written).
+ *
+ * Only what the server has confirmed counts. Firestore shows the phone's own writes right
+ * away, before the server checks them; if a write is then rejected, it takes it back. Going
+ * by unconfirmed writes would send a brother to Waiting for approval and straight back again.
  */
 export function subscribeToOwnMember(
   uid: string,
@@ -21,7 +27,9 @@ export function subscribeToOwnMember(
 ): () => void {
   return onSnapshot(
     doc(db, 'members', uid),
+    { includeMetadataChanges: true },
     (snap) => {
+      if (snap.metadata.hasPendingWrites) return;
       if (!snap.exists()) {
         onChange(null);
         return;
@@ -43,14 +51,35 @@ export function newContact(email: string) {
 }
 
 /** Writes a pending profile for someone whose sign up didn't finish. */
+/** The optional About you answers, only the ones he filled in. */
+export function aboutFields(about: SignUpAbout | undefined): Record<string, string | string[]> {
+  if (!about) return {};
+  const fields: Record<string, string | string[]> = {};
+  const headline = about.headline.trim();
+  const industry = about.industry.trim();
+  const businesses = about.businesses.map((b) => b.trim()).filter(Boolean);
+  const interests = about.interests.map((i) => i.trim()).filter(Boolean);
+  if (headline) fields.headline = headline;
+  if (industry) fields.industry = industry;
+  if (businesses.length) fields.businesses = businesses;
+  if (interests.length) fields.interests = interests;
+  return fields;
+}
+
 export async function createPendingProfile(
   uid: string,
-  input: { displayName: string; initiationTerm: string; email: string | null },
+  input: {
+    displayName: string;
+    initiationTerm: string;
+    email: string | null;
+    about?: SignUpAbout;
+  },
 ): Promise<void> {
   const batch = writeBatch(db);
   batch.set(doc(db, 'members', uid), {
     displayName: input.displayName.trim(),
     initiationTerm: input.initiationTerm.trim(),
+    ...aboutFields(input.about),
     status: 'pending',
     createdAt: serverTimestamp(),
   });

@@ -126,6 +126,48 @@ describe('members', () => {
     await assertSucceeds(batch.commit());
   });
 
+  it('accepts what a new brother shares about himself on sign up (src/data/auth.ts)', async () => {
+    await assertSucceeds(
+      setDoc(
+        doc(as(USERS.stranger), 'members/stranger'),
+        newProfile({
+          headline: 'Realtor',
+          industry: 'Real estate',
+          businesses: ['Sample Realty', 'Sample Barbershop', 'Sample Studio'],
+          interests: ['Golf', 'Mentoring'],
+        }),
+      ),
+    );
+  });
+
+  it('rejects more than 3 businesses or an overlong industry', async () => {
+    await assertFails(
+      setDoc(
+        doc(as(USERS.stranger), 'members/stranger'),
+        newProfile({ businesses: ['A', 'B', 'C', 'D'] }),
+      ),
+    );
+    await assertFails(
+      setDoc(doc(as(USERS.stranger), 'members/stranger'), newProfile({ industry: 'x'.repeat(61) })),
+    );
+    await assertFails(
+      setDoc(
+        doc(as(USERS.stranger), 'members/stranger'),
+        newProfile({ businesses: 'Sample Realty' }),
+      ),
+    );
+  });
+
+  it('members can change their own industry and businesses', async () => {
+    await assertSucceeds(
+      updateDoc(doc(as(USERS.alice), 'members/alice'), {
+        industry: 'Education',
+        businesses: ['Sample Tutoring'],
+        updatedAt: serverTimestamp(),
+      }),
+    );
+  });
+
   it('accepts the profile written by Finish your profile, with no email (src/data/members.ts)', async () => {
     await assertSucceeds(
       setDoc(doc(as(USERS.stranger), 'members/stranger'), {

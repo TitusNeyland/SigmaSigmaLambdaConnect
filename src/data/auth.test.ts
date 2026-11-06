@@ -33,6 +33,8 @@ jest.mock('firebase/auth', () => ({
   signOut: jest.fn(),
   updateProfile: jest.fn(),
 }));
+jest.mock('./profile', () => ({ uploadAvatar: jest.fn(async () => 'https://cdn.test/a.jpg') }));
+const { uploadAvatar } = jest.requireMock<{ uploadAvatar: jest.Mock }>('./profile');
 jest.mock('firebase/firestore', () => ({
   doc: jest.fn((_db: unknown, ...segments: string[]) => ({ path: segments.join('/') })),
   serverTimestamp: jest.fn(() => 'SERVER_TIMESTAMP'),
@@ -87,6 +89,46 @@ describe('signUp', () => {
       },
     );
     expect(batch.commit).toHaveBeenCalled();
+  });
+
+  it('adds what he shared about himself, leaving out what he skipped', async () => {
+    await signUp({
+      ...input,
+      about: {
+        headline: ' Realtor ',
+        industry: 'Real estate',
+        businesses: [' Sample Realty ', ' '],
+        interests: [],
+      },
+    });
+    expect(batch.set).toHaveBeenCalledWith(
+      { path: 'members/new-uid' },
+      {
+        displayName: 'Marcus Reed',
+        initiationTerm: 'Spring 2019',
+        headline: 'Realtor',
+        industry: 'Real estate',
+        businesses: ['Sample Realty'],
+        status: 'pending',
+        createdAt: 'SERVER_TIMESTAMP',
+      },
+    );
+  });
+
+  it('uploads the photo picked during sign up, once the account exists', async () => {
+    await signUp({ ...input, photoUri: 'file:///me.jpg' });
+    expect(uploadAvatar).toHaveBeenCalledWith('new-uid', 'file:///me.jpg');
+    expect(batch.commit.mock.invocationCallOrder[0]).toBeLessThan(
+      uploadAvatar.mock.invocationCallOrder[0],
+    );
+  });
+
+  it('still finishes sign up if the photo upload fails, and skips it with no photo', async () => {
+    uploadAvatar.mockRejectedValueOnce(new Error('offline'));
+    await expect(signUp({ ...input, photoUri: 'file:///me.jpg' })).resolves.toBeUndefined();
+    uploadAvatar.mockClear();
+    await signUp(input);
+    expect(uploadAvatar).not.toHaveBeenCalled();
   });
 
   it('keeps the email in the private contact doc, hidden by default', async () => {

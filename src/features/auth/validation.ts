@@ -33,6 +33,18 @@ export type SignUpInput = {
   initiationTerm: string;
   email: string;
   password: string;
+  /** About him, from the optional sign up steps. Left out when skipped. */
+  about?: SignUpAbout;
+  /** A profile photo picked during sign up (a local file), uploaded once the account exists. */
+  photoUri?: string;
+};
+
+export type SignUpAbout = {
+  /** Job title, shown as his headline. */
+  headline: string;
+  industry: string;
+  businesses: string[];
+  interests: string[];
 };
 
 export type ProfileInput = Pick<SignUpInput, 'displayName' | 'initiationTerm'>;
@@ -94,6 +106,8 @@ export function friendlyAuthError(error: unknown): string {
       return 'No connection. Check your internet and try again.';
     case 'auth/user-disabled':
       return 'This account is turned off. Contact a chapter officer.';
+    case 'permission-denied':
+      return 'The chapter couldn’t save that. Try again, or contact the chapter if it keeps happening.';
     default:
       return 'Something went wrong. Try again.';
   }

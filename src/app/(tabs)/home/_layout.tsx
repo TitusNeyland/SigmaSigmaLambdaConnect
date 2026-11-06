@@ -3,7 +3,7 @@ import { Stack } from 'expo-router';
 import { radius } from '@/theme';
 
 // Opening a post from a link still puts the feed underneath it, so Back works.
-export const unstable_settings = { initialRouteName: 'index' };
+export const unstable_settings = { anchor: 'index' };
 
 // Each tab has its own stack, so going deeper in one tab doesn't affect the others.
 export default function TabStackLayout() {

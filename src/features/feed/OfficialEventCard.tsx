@@ -64,7 +64,9 @@ export function OfficialEventCard({
   return (
     <View style={styles.card} testID={`official-event-${eventId}`}>
       <Pressable
-        onPress={() => router.push({ pathname: '/events/[id]', params: { id: eventId } })}
+        onPress={() =>
+          router.push({ pathname: '/events/[id]', params: { id: eventId } }, { withAnchor: true })
+        }
         accessibilityRole="button"
         accessibilityLabel={`${event.title}, ${when}${event.location ? `, ${event.location}` : ''}`}
         style={styles.row}

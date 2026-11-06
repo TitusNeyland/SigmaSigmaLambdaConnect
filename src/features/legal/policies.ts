@@ -8,7 +8,7 @@ import { CHAPTER_NAME, SUPPORT_EMAIL } from '../../config/app';
  */
 
 /** Shown on the privacy policy and terms. Update it whenever their wording changes. */
-export const POLICIES_UPDATED = 'November 5, 2026';
+export const POLICIES_UPDATED = 'November 6, 2026';
 
 export const escapeHtml = (s: string) =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -29,8 +29,10 @@ export const PRIVACY_BODY = `<h1>Privacy policy</h1>
   </li>
   <li>
     <strong>Profile:</strong> your name and initiation term, and anything you add: a photo,
-    headline, bio, interests, the date you were initiated, and a phone number or email you choose to
-    show.
+    headline (job title), industry, businesses you own, bio, interests, the date you were
+    initiated, and a phone number or email you choose to show. Other approved members see these
+    on your profile. When an officer approves you, the app posts a welcome to the chapter feed
+    with your name, line, and the work and businesses you added.
   </li>
   <li>
     <strong>What you share:</strong> posts, photos, captions, comments, likes, and people or events

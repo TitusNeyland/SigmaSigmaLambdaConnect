@@ -4,7 +4,6 @@ import {
   KeyboardAvoidingView,
   Linking,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   View,
@@ -26,22 +25,21 @@ import {
   HeaderButton,
   ListRow,
   ListSection,
-  StatusChip,
   SwitchRow,
   TextField,
 } from '@/ui';
 
 import {
-  addInterest,
   dateFromTerm,
   formFromProfile,
   isDirty,
-  MAX_INTERESTS,
   normalizeForm,
   validateEditProfile,
   type EditProfileErrors,
   type EditProfileForm,
 } from './editProfileForm';
+import { MAX_BUSINESSES } from './aboutYou';
+import { BusinessList, IndustryPicker, InterestPicker } from './AboutYouFields';
 import { pickAvatar } from './pickAvatar';
 import { useProfile } from './useProfileData';
 
@@ -55,20 +53,25 @@ function EditProfileFormView({ uid, profile }: { uid: string; profile: Profile }
   const [original] = useState(() => formFromProfile(profile));
   const [form, setForm] = useState<EditProfileForm>(original);
   const [errors, setErrors] = useState<EditProfileErrors>({});
-  const [interestDraft, setInterestDraft] = useState('');
-  const [interestError, setInterestError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [photoSheet, setPhotoSheet] = useState(false);
   const [photoStatus, setPhotoStatus] = useState<'idle' | 'working' | 'denied' | 'failed'>('idle');
   const [photoURL, setPhotoURL] = useState(profile.photoURL);
+  // The photo saves as soon as it's picked; this is what it was when the screen opened.
+  const [originalPhotoURL] = useState(profile.photoURL);
 
   const set = <K extends keyof EditProfileForm>(key: K, value: EditProfileForm[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
 
   const dirty = isDirty(original, form);
+  const photoChanged = photoURL !== originalPhotoURL;
+  const photoBusy = photoStatus === 'working';
 
   async function save() {
+    if (photoBusy) return;
+    // Only the photo changed, and it's already saved: just close.
+    if (!dirty) return goBack();
     const next = validateEditProfile(form);
     setErrors(next);
     setSaveError(null);
@@ -82,17 +85,6 @@ function EditProfileFormView({ uid, profile }: { uid: string; profile: Profile }
     } finally {
       setSaving(false);
     }
-  }
-
-  function submitInterest() {
-    const result = addInterest(form.interests, interestDraft);
-    if ('error' in result) {
-      setInterestError(result.error);
-      return;
-    }
-    set('interests', result.interests);
-    setInterestDraft('');
-    setInterestError(null);
   }
 
   async function choosePhoto() {
@@ -134,7 +126,7 @@ function EditProfileFormView({ uid, profile }: { uid: string; profile: Profile }
           title={saving ? 'Saving…' : 'Done'}
           onPress={save}
           bold
-          disabled={saving || !dirty}
+          disabled={saving || photoBusy || !(dirty || photoChanged)}
           testID="edit-done"
         />
       </View>
@@ -198,6 +190,18 @@ function EditProfileFormView({ uid, profile }: { uid: string; profile: Profile }
               maxLength={LIMITS.headline}
               testID="edit-headline"
             />
+            <View style={styles.interests}>
+              <AppText variant="footnote" weight="600" color={colors.textSecondary}>
+                Industry
+              </AppText>
+              <IndustryPicker value={form.industry} onChange={(v) => set('industry', v)} />
+            </View>
+            <View style={styles.interests}>
+              <AppText variant="footnote" weight="600" color={colors.textSecondary}>
+                {`Businesses you own (${form.businesses.length}/${MAX_BUSINESSES})`}
+              </AppText>
+              <BusinessList value={form.businesses} onChange={(v) => set('businesses', v)} />
+            </View>
             <View>
               <TextField
                 label="Bio"
@@ -257,56 +261,7 @@ function EditProfileFormView({ uid, profile }: { uid: string; profile: Profile }
               />
             ) : null}
 
-            <View style={styles.interests}>
-              <AppText variant="footnote" weight="600" color={colors.textSecondary}>
-                {`Interests (${form.interests.length}/${MAX_INTERESTS})`}
-              </AppText>
-              {form.interests.length > 0 ? (
-                <View style={styles.chips}>
-                  {form.interests.map((interest) => (
-                    <Pressable
-                      key={interest}
-                      onPress={() =>
-                        set(
-                          'interests',
-                          form.interests.filter((i) => i !== interest),
-                        )
-                      }
-                      accessibilityRole="button"
-                      accessibilityLabel={`Remove ${interest}`}
-                      style={styles.chipButton}
-                    >
-                      <StatusChip label={`${interest}  ×`} tone="neutral" />
-                    </Pressable>
-                  ))}
-                </View>
-              ) : null}
-              <View style={styles.addRow}>
-                <View style={styles.flex}>
-                  <TextField
-                    label="Add an interest"
-                    value={interestDraft}
-                    onChangeText={(v) => {
-                      setInterestDraft(v);
-                      setInterestError(null);
-                    }}
-                    onSubmitEditing={submitInterest}
-                    returnKeyType="done"
-                    error={interestError ?? undefined}
-                    testID="interest-input"
-                  />
-                </View>
-                <Button
-                  title="Add"
-                  variant="secondary"
-                  size="small"
-                  onPress={submitInterest}
-                  disabled={form.interests.length >= MAX_INTERESTS}
-                  testID="interest-add"
-                  style={styles.addButton}
-                />
-              </View>
-            </View>
+            <InterestPicker value={form.interests} onChange={(v) => set('interests', v)} />
           </View>
 
           <View style={styles.group}>

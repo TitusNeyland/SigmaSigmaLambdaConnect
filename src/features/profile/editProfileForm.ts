@@ -2,8 +2,7 @@ import type { Profile, ProfilePatch } from '@/data/profile';
 import { LIMITS } from '@/data/types';
 import { validateProfile, type FieldErrors } from '@/features/auth/validation';
 
-export const MAX_INTERESTS = 10;
-export const MAX_INTEREST_LENGTH = 30;
+export { addInterest, MAX_INTEREST_LENGTH, MAX_INTERESTS } from './aboutYou';
 const MAX_PHONE = 30;
 
 export type EditProfileForm = ProfilePatch;
@@ -14,6 +13,8 @@ export function formFromProfile(profile: Profile): EditProfileForm {
     initiationTerm: profile.initiationTerm,
     initiationDate: profile.initiationDate,
     headline: profile.headline,
+    industry: profile.industry,
+    businesses: profile.businesses,
     bio: profile.bio,
     interests: profile.interests,
     phone: profile.phone,
@@ -30,6 +31,8 @@ export function normalizeForm(form: EditProfileForm): EditProfileForm {
     initiationTerm: form.initiationTerm.trim(),
     initiationDate: form.initiationDate,
     headline: form.headline.trim(),
+    industry: form.industry.trim(),
+    businesses: form.businesses.map((b) => b.trim()).filter(Boolean),
     bio: form.bio.trim(),
     interests: form.interests.map((i) => i.trim()).filter(Boolean),
     phone,
@@ -77,26 +80,6 @@ export function validateEditProfile(form: EditProfileForm): EditProfileErrors {
     errors.phone = 'Enter a phone number, like (555) 123-4567.';
   }
   return errors;
-}
-
-/**
- * Adds an interest typed by the member. Returns the new list, or an error message if it
- * can't be added (empty, too long, duplicate, or the list is full).
- */
-export function addInterest(
-  interests: string[],
-  raw: string,
-): { interests: string[] } | { error: string } {
-  const value = raw.trim().replace(/\s+/g, ' ');
-  if (!value) return { error: 'Type an interest first.' };
-  if (value.length > MAX_INTEREST_LENGTH) {
-    return { error: `Keep each interest to ${MAX_INTEREST_LENGTH} characters.` };
-  }
-  if (interests.some((i) => i.toLowerCase() === value.toLowerCase())) {
-    return { error: 'You already added that.' };
-  }
-  if (interests.length >= MAX_INTERESTS) return { error: `You can add up to ${MAX_INTERESTS}.` };
-  return { interests: [...interests, value] };
 }
 
 export function isDirty(original: EditProfileForm, current: EditProfileForm): boolean {

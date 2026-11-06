@@ -12,7 +12,12 @@ jest.mock('firebase/firestore', () => ({
 
 const batch = { set: jest.fn(), commit: jest.fn(async () => {}) };
 
-type SnapHandler = (snap: { exists(): boolean; data(): Record<string, unknown> }) => void;
+type Snap = {
+  exists(): boolean;
+  data(): Record<string, unknown>;
+  metadata?: { hasPendingWrites: boolean };
+};
+type SnapHandler = (snap: Snap) => void;
 
 function captureSnapshot() {
   const onChange = jest.fn();
@@ -20,12 +25,15 @@ function captureSnapshot() {
   const unsubscribe = jest.fn();
   jest.mocked(onSnapshot).mockReturnValue(unsubscribe as never);
   const stop = subscribeToOwnMember('u1', onChange, onError);
-  const [ref, next, error] = jest.mocked(onSnapshot).mock.calls[0] as unknown as [
+  const [ref, options, handler, error] = jest.mocked(onSnapshot).mock.calls[0] as unknown as [
+    unknown,
     unknown,
     SnapHandler,
     (e: unknown) => void,
   ];
-  return { ref, next, error, onChange, onError, stop, unsubscribe };
+  // Snapshots from the server unless a test says otherwise.
+  const next = (snap: Snap) => handler({ metadata: { hasPendingWrites: false }, ...snap });
+  return { ref, options, next, error, onChange, onError, stop, unsubscribe };
 }
 
 beforeEach(() => {
@@ -34,6 +42,25 @@ beforeEach(() => {
 });
 
 describe('subscribeToOwnMember', () => {
+  it('waits for the server to confirm the phone’s own writes', () => {
+    const { options, next, onChange } = captureSnapshot();
+    expect(options).toEqual({ includeMetadataChanges: true });
+    // Sign up's profile, shown locally before the server checked it: ignored.
+    next({
+      exists: () => true,
+      data: () => ({
+        displayName: 'Marcus Reed',
+        initiationTerm: 'Spring 2019',
+        status: 'pending',
+      }),
+      metadata: { hasPendingWrites: true },
+    });
+    expect(onChange).not.toHaveBeenCalled();
+    // The server said no, so it's gone again: still no profile.
+    next({ exists: () => false, data: () => ({}) });
+    expect(onChange).toHaveBeenLastCalledWith(null);
+  });
+
   it('listens to the member’s own profile document', () => {
     const { ref } = captureSnapshot();
     expect(doc).toHaveBeenCalledWith({ name: 'db' }, 'members', 'u1');

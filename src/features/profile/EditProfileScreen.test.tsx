@@ -68,7 +68,9 @@ describe('Edit profile', () => {
       'Mentoring chair. Happy to review a resume.',
     );
     expect(screen.getByTestId('edit-term').props.value).toBe('Spring 2019');
-    expect(screen.getByText('Tech  ×')).toBeTruthy();
+    expect(screen.getByTestId('interest-tech').props.accessibilityState).toMatchObject({
+      selected: true,
+    });
   });
 
   it('keeps Done disabled until something changes', async () => {
@@ -97,6 +99,8 @@ describe('Edit profile', () => {
         initiationTerm: 'Spring 2019',
         initiationDate: null,
         headline: 'Staff engineer',
+        industry: '',
+        businesses: [],
         bio: 'Mentoring chair. Happy to review a resume.',
         interests: ['Tech', 'Career mentoring'],
         phone: '',
@@ -169,16 +173,21 @@ describe('Edit profile', () => {
   describe('interests', () => {
     it('adds and removes interests', async () => {
       await openEdit();
-      await type('interest-input', 'Basketball');
+      // His own interests show picked alongside the suggestions.
+      expect(
+        screen.getByTestId('interest-career-mentoring').props.accessibilityState,
+      ).toMatchObject({ selected: true });
+      await type('interest-input', 'Chess');
       await press(screen.getByTestId('interest-add'));
-      expect(screen.getByText('Basketball  ×')).toBeTruthy();
+      expect(screen.getByTestId('interest-chess')).toBeTruthy();
       expect(screen.getByTestId('interest-input').props.value).toBe('');
-      await press(screen.getByRole('button', { name: 'Remove Tech' }));
-      expect(screen.queryByText('Tech  ×')).toBeNull();
+      // Tapping a picked one drops it; tapping a suggestion adds it.
+      await press(screen.getByTestId('interest-tech'));
+      await press(screen.getByTestId('interest-golf'));
       await press(screen.getByTestId('edit-done'));
       await waitFor(() => expect(profile.updateOwnProfile).toHaveBeenCalled());
       expect(jest.mocked(profile.updateOwnProfile).mock.calls[0][1]).toMatchObject({
-        interests: ['Career mentoring', 'Basketball'],
+        interests: ['Career mentoring', 'Chess', 'Golf'],
       });
     });
 
@@ -187,6 +196,37 @@ describe('Edit profile', () => {
       await type('interest-input', 'tech');
       await press(screen.getByTestId('interest-add'));
       expect(screen.getByText('You already added that.')).toBeTruthy();
+    });
+  });
+
+  describe('work and businesses', () => {
+    it('picks an industry and adds businesses he owns', async () => {
+      await openEdit();
+      await press(screen.getByTestId('industry-technology'));
+      await type('business-input', 'Sample Studio');
+      await press(screen.getByTestId('business-add'));
+      expect(screen.getByTestId('business-list')).toHaveTextContent(/Sample Studio/);
+      await press(screen.getByTestId('edit-done'));
+      await waitFor(() => expect(profile.updateOwnProfile).toHaveBeenCalled());
+      expect(jest.mocked(profile.updateOwnProfile).mock.calls[0][1]).toMatchObject({
+        industry: 'Technology',
+        businesses: ['Sample Studio'],
+      });
+    });
+
+    it('clears the industry and removes a business', async () => {
+      profile.setMockProfile(
+        profile.sampleProfile({ industry: 'Law', businesses: ['Sample Firm', 'Sample Cafe'] }),
+      );
+      await openEdit();
+      await press(screen.getByTestId('industry-law'));
+      await press(screen.getByRole('button', { name: 'Remove Sample Firm' }));
+      await press(screen.getByTestId('edit-done'));
+      await waitFor(() => expect(profile.updateOwnProfile).toHaveBeenCalled());
+      expect(jest.mocked(profile.updateOwnProfile).mock.calls[0][1]).toMatchObject({
+        industry: '',
+        businesses: ['Sample Cafe'],
+      });
     });
   });
 
@@ -242,6 +282,34 @@ describe('Edit profile', () => {
       await waitFor(() =>
         expect(profile.uploadAvatar).toHaveBeenCalledWith(uid(), 'file:///new.jpg'),
       );
+    });
+
+    it('Done closes the screen after changing only the photo', async () => {
+      jest.mocked(pickAvatar).mockResolvedValue({ status: 'picked', uri: 'file:///new.jpg' });
+      await openEdit();
+      expect(screen.getByTestId('edit-done')).toBeDisabled();
+      await press(screen.getByTestId('change-photo'));
+      await press(screen.getByTestId('photo-choose'));
+      await waitFor(() => expect(screen.getByTestId('edit-done')).not.toBeDisabled());
+      await press(screen.getByTestId('edit-done'));
+      await waitFor(() => expect(screen).toHavePathname('/profile'));
+      // Nothing else changed, so there's nothing else to save.
+      expect(profile.updateOwnProfile).not.toHaveBeenCalled();
+    });
+
+    it('Done waits while a new photo is still uploading', async () => {
+      let finish: (url: string) => void = () => {};
+      jest.mocked(pickAvatar).mockResolvedValue({ status: 'picked', uri: 'file:///new.jpg' });
+      profile.uploadAvatar.mockImplementationOnce(
+        () => new Promise<string>((resolve) => (finish = resolve)),
+      );
+      await openEdit();
+      await type('edit-name', 'Marcus J. Reed');
+      await press(screen.getByTestId('change-photo'));
+      await press(screen.getByTestId('photo-choose'));
+      await waitFor(() => expect(screen.getByTestId('edit-done')).toBeDisabled());
+      await act(async () => finish('https://example.com/new.jpg'));
+      await waitFor(() => expect(screen.getByTestId('edit-done')).not.toBeDisabled());
     });
 
     it('does nothing if the member cancels the picker', async () => {

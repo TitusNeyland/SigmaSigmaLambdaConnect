@@ -12,6 +12,8 @@ export function sampleEntry(overrides: Partial<DirectoryEntry> = {}): DirectoryE
     uid: 'sample-marcus',
     displayName: 'Marcus Reed',
     headline: 'Software engineer',
+    industry: '',
+    businesses: [],
     initiationTerm: 'Spring 2019',
     initiationDate: null,
     interests: ['Tech'],

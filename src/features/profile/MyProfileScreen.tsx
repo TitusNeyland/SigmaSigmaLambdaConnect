@@ -77,7 +77,15 @@ export function MyProfileScreen() {
           upcoming={extras.upcoming}
           onRefresh={extras.reload}
           onOpenPost={(id) => router.push({ pathname: '/profile/post/[id]', params: { id } })}
-          onOpenEvent={(id) => router.push({ pathname: '/events/[id]', params: { id } })}
+          onOpenLine={(term) =>
+            router.push(
+              { pathname: '/chapter/line/[term]', params: { term } },
+              { withAnchor: true },
+            )
+          }
+          onOpenEvent={(id) =>
+            router.push({ pathname: '/events/[id]', params: { id } }, { withAnchor: true })
+          }
           onNewPost={() => router.push(NEW_POST_ROUTE)}
           actions={
             <>

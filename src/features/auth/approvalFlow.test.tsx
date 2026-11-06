@@ -1,4 +1,6 @@
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
+
+import { forgetSignUp, rememberSignUp } from './pendingSignUp';
 import { Linking } from 'react-native';
 
 import { SUPPORT_EMAIL } from '@/config/app';
@@ -47,6 +49,11 @@ describe('pending members', () => {
     expect(screen.getByRole('header', { name: 'Waiting for approval' })).toBeTruthy();
     expect(screen.getByText('Marcus Reed')).toBeTruthy();
     expect(screen.getByText('Spring 2019')).toBeTruthy();
+    // Greets him and shows how far along he is.
+    expect(screen.getByText(/You’re almost in, Marcus/)).toBeTruthy();
+    expect(screen.getByLabelText('Account created, done')).toBeTruthy();
+    expect(screen.getByLabelText('Confirm your email, done')).toBeTruthy();
+    expect(screen.getByLabelText('Officer approval, in progress')).toBeTruthy();
   });
 
   it('cannot reach the tabs or the post modal', async () => {
@@ -129,36 +136,92 @@ describe('approved members', () => {
 
 describe('accounts without a profile', () => {
   beforeEach(() => signInAs(null));
+  afterEach(() => forgetSignUp());
 
-  it('are asked to finish their profile', async () => {
+  it('just review and send what they entered, when sign up didn’t finish saving', async () => {
+    rememberSignUp({
+      displayName: 'Marcus Reed',
+      initiationTerm: 'Spring 2019',
+      email: 'sample-marcus@example.com',
+      password: 'brother2019',
+      about: { headline: 'Broker', industry: 'Real estate', businesses: [], interests: ['Golf'] },
+    });
     await renderRouter('src/app', { initialUrl: '/' });
     await waitFor(() => expect(screen).toHavePathname('/complete-profile'));
-    expect(screen.getByRole('header', { name: 'Finish your profile' })).toBeTruthy();
-  });
-
-  it('must fill in both fields', async () => {
-    await renderRouter('src/app', { initialUrl: '/complete-profile' });
-    await act(async () => {
-      fireEvent.changeText(screen.getByTestId('profile-name'), '');
-    });
-    await press(screen.getByTestId('profile-submit'));
-    expect(screen.getByText('Enter your name.')).toBeTruthy();
-    expect(screen.getByText(/Enter when you were initiated/)).toBeTruthy();
-    expect(members.createPendingProfile).not.toHaveBeenCalled();
-  });
-
-  it('prefill the name from the account and save a pending profile', async () => {
-    await renderRouter('src/app', { initialUrl: '/complete-profile' });
-    expect(screen.getByTestId('profile-name')).toHaveProp('value', 'Marcus Reed');
-    await act(async () => {
-      fireEvent.changeText(screen.getByTestId('profile-term'), 'Spring 2019');
-    });
+    expect(screen.getByRole('header', { name: 'Review your information' })).toBeTruthy();
+    // Nothing to type again.
+    expect(screen.queryByTestId('profile-name')).toBeNull();
+    expect(screen.getByTestId('summary-work')).toHaveTextContent(/Broker · Real estate/);
     await press(screen.getByTestId('profile-submit'));
     expect(members.createPendingProfile).toHaveBeenCalledWith('sample-marcus', {
       displayName: 'Marcus Reed',
       initiationTerm: 'Spring 2019',
       email: 'sample-marcus@example.com',
+      about: { headline: 'Broker', industry: 'Real estate', businesses: [], interests: ['Golf'] },
     });
+  });
+
+  it('don’t see someone else’s answers', async () => {
+    rememberSignUp({
+      displayName: 'Other Brother',
+      initiationTerm: 'Fall 2010',
+      email: 'other@example.com',
+      password: 'brother2019',
+    });
+    await renderRouter('src/app', { initialUrl: '/complete-profile' });
+    expect(screen.getByRole('header', { name: 'What’s your name?' })).toBeTruthy();
+    expect(screen.queryByText('Other Brother')).toBeNull();
+  });
+
+  it('are asked to finish their profile', async () => {
+    await renderRouter('src/app', { initialUrl: '/' });
+    await waitFor(() => expect(screen).toHavePathname('/complete-profile'));
+    // The sign up questions, not a separate form; no email or password.
+    expect(screen.getByRole('header', { name: 'What’s your name?' })).toBeTruthy();
+    expect(screen.getByText(/Your account is set up/)).toBeTruthy();
+    expect(screen.getByTestId('sign-up-progress').props.accessibilityLabel).toBe('Step 1 of 7');
+    expect(screen.queryByRole('header', { name: 'Finish your profile' })).toBeNull();
+  });
+
+  it('won’t move on without the answers officers need', async () => {
+    await renderRouter('src/app', { initialUrl: '/complete-profile' });
+    await act(async () => {
+      fireEvent.changeText(screen.getByTestId('sign-up-name'), '');
+    });
+    await press(screen.getByTestId('sign-up-next'));
+    expect(screen.getByText('Enter your name.')).toBeTruthy();
+    expect(members.createPendingProfile).not.toHaveBeenCalled();
+  });
+
+  it('prefill the name, go through the questions to a review, and send the request', async () => {
+    await renderRouter('src/app', { initialUrl: '/complete-profile' });
+    expect(screen.getByTestId('sign-up-name')).toHaveProp('value', 'Marcus Reed');
+    await press(screen.getByTestId('sign-up-next'));
+    await press(screen.getByTestId('sign-up-season-Spring'));
+    await act(async () => {
+      fireEvent.changeText(screen.getByTestId('sign-up-year'), '2019');
+    });
+    await press(screen.getByTestId('sign-up-next'));
+    await press(screen.getByTestId('industry-law'));
+    await press(screen.getByTestId('sign-up-next'));
+    // Businesses, interests and photo: skip.
+    await press(screen.getByTestId('sign-up-skip'));
+    await press(screen.getByTestId('sign-up-skip'));
+    await press(screen.getByTestId('sign-up-next'));
+    // Straight to the review: the account already has an email and password.
+    expect(screen.getByRole('header', { name: 'Review your information' })).toBeTruthy();
+    expect(screen.getByTestId('summary-email')).toHaveTextContent(/sample-marcus@example.com/);
+    expect(screen.getByTestId('sign-up-submit')).toHaveTextContent('Send request');
+    await press(screen.getByTestId('sign-up-submit'));
+    expect(members.createPendingProfile).toHaveBeenCalledWith(
+      'sample-marcus',
+      expect.objectContaining({
+        displayName: 'Marcus Reed',
+        initiationTerm: 'Spring 2019',
+        email: 'sample-marcus@example.com',
+        about: { headline: '', industry: 'Law', businesses: [], interests: [] },
+      }),
+    );
   });
 
   it('move to the pending screen once the profile exists', async () => {

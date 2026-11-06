@@ -14,7 +14,8 @@ import { doc, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { normalizeEmail, type SignUpInput } from '@/features/auth/validation';
 
 import { auth, db } from './firebase';
-import { newContact } from './members';
+import { aboutFields, newContact } from './members';
+import { uploadAvatar } from './profile';
 
 /**
  * Account actions. Screens call these instead of firebase/auth directly, which keeps the
@@ -42,6 +43,7 @@ export async function signUp(input: SignUpInput): Promise<void> {
   batch.set(doc(db, 'members', user.uid), {
     displayName,
     initiationTerm: input.initiationTerm.trim(),
+    ...aboutFields(input.about),
     status: 'pending',
     createdAt: serverTimestamp(),
   });
@@ -50,6 +52,11 @@ export async function signUp(input: SignUpInput): Promise<void> {
   await sendEmailVerification(user).catch(() => {
     // Sign up still worked; the verify screen (#10) lets them resend.
   });
+  if (input.photoUri) {
+    await uploadAvatar(user.uid, input.photoUri).catch(() => {
+      // The account is made; he can add the photo later in Edit profile.
+    });
+  }
 }
 
 export async function signIn(email: string, password: string): Promise<void> {

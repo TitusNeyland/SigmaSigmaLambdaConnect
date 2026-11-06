@@ -15,6 +15,8 @@ export default function AuthLayout() {
       }}
     >
       <Stack.Screen name="welcome" options={{ headerShown: false }} />
+      {/* Sign up draws its own back button and step progress. */}
+      <Stack.Screen name="sign-up" options={{ headerShown: false }} />
     </Stack>
   );
 }

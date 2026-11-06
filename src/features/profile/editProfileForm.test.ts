@@ -13,6 +13,8 @@ const form = (overrides: Partial<EditProfileForm> = {}): EditProfileForm => ({
   initiationTerm: 'Spring 2019',
   initiationDate: null,
   headline: 'Software engineer',
+  industry: 'Technology',
+  businesses: ['Sample Studio'],
   bio: 'Mentoring chair.',
   interests: ['Tech'],
   phone: '',
@@ -42,6 +44,8 @@ describe('normalizeForm', () => {
         form({
           displayName: '  Marcus Reed ',
           headline: ' Engineer ',
+          industry: ' Technology ',
+          businesses: [' Sample Studio ', ' '],
           bio: ' Hi ',
           interests: [' Tech ', '  '],
           phone: ' 555 123 4567 ',
