@@ -202,6 +202,19 @@ function EditProfileFormView({ uid, profile }: { uid: string; profile: Profile }
               </AppText>
               <BusinessList value={form.businesses} onChange={(v) => set('businesses', v)} />
             </View>
+            <TextField
+              label="City"
+              hint="Optional. Just the city, like Atlanta, GA, so brothers nearby can find you."
+              placeholder="Atlanta, GA"
+              value={form.city}
+              onChangeText={(v) => set('city', v)}
+              error={errors.city}
+              maxLength={LIMITS.city}
+              autoCapitalize="words"
+              autoComplete="off"
+              textContentType="addressCity"
+              testID="edit-city"
+            />
             <View>
               <TextField
                 label="Bio"

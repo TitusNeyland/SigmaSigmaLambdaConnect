@@ -25,6 +25,7 @@ import {
 
 import {
   buildSections,
+  cityKey,
   entrySubtitle,
   facetOptions,
   FILTERS,
@@ -33,12 +34,13 @@ import {
   type Refinements,
 } from './directoryLogic';
 
-type Facet = 'industry' | 'interest' | 'line';
+type Facet = 'industry' | 'interest' | 'line' | 'city';
 
 const FACETS: Record<Facet, { label: string; any: string; title: string }> = {
   industry: { label: 'Industry', any: 'Any industry', title: 'Industry' },
   interest: { label: 'Interest', any: 'Any interest', title: 'Interest' },
   line: { label: 'Line', any: 'Every line', title: 'Line' },
+  city: { label: 'City', any: 'Every city', title: 'City' },
 };
 
 function DownIcon({ color }: { color: string }) {
@@ -138,7 +140,11 @@ export function DirectoryScreen() {
         : [],
     [value, search, filter, refine],
   );
-  const refined = refine.industry || refine.interest || refine.line || refine.owners;
+  const refined = refine.industry || refine.interest || refine.line || refine.city || refine.owners;
+  // Brothers near you: only once you've added your own city.
+  const myCity =
+    value.state === 'ready' ? (value.entries.find((e) => e.uid === me)?.city ?? '') : '';
+  const nearMe = !!myCity && !!refine.city && cityKey(refine.city) === cityKey(myCity);
   const options = useMemo(
     () => (facet && value.state === 'ready' ? facetOptions(value.entries, facet) : []),
     [facet, value],
@@ -179,6 +185,17 @@ export function DirectoryScreen() {
           contentContainerStyle={styles.refine}
           testID="directory-refine"
         >
+          {myCity ? (
+            <RefinePill
+              label="Near me"
+              on={nearMe}
+              onPress={() => {
+                haptics.select();
+                setRefine((r) => ({ ...r, city: nearMe ? null : myCity }));
+              }}
+              testID="refine-near-me"
+            />
+          ) : null}
           {(Object.keys(FACETS) as Facet[]).map((f) => (
             <RefinePill
               key={f}

@@ -3,6 +3,7 @@ import type { DirectoryEntry } from '@/data/directory';
 import {
   brotherBusinesses,
   buildSections,
+  cityKey,
   entrySubtitle,
   facetOptions,
   lineKey,
@@ -22,6 +23,7 @@ const entry = (overrides: Partial<DirectoryEntry>): DirectoryEntry => ({
   displayName: 'Sample Brother',
   headline: '',
   industry: '',
+  city: '',
   businesses: [],
   initiationTerm: '',
   initiationDate: null,
@@ -228,5 +230,36 @@ describe('finding brothers by what they do', () => {
     ]);
     expect(brotherBusinesses(chapter, 'reed').map((b) => b.name)).toEqual(['Sample Realty']);
     expect(brotherBusinesses(chapter, 'real estate')).toHaveLength(3);
+  });
+});
+
+describe('brothers near you', () => {
+  const chapter = [
+    entry({ displayName: 'Sample Reed', city: 'Atlanta, GA' }),
+    entry({ displayName: 'Sample Allen', city: 'atlanta,ga' }),
+    entry({ displayName: 'Sample Baker', city: 'Houston, TX' }),
+    entry({ displayName: 'Sample Cole' }),
+  ];
+  const names = (list: DirectoryEntry[]) => list.map((e) => e.displayName);
+
+  it('treats the same city typed differently as one place', () => {
+    expect(cityKey(' Atlanta ,GA ')).toBe('atlanta, ga');
+    expect(cityKey('atlanta,  ga')).toBe(cityKey('Atlanta, GA'));
+  });
+
+  it('narrows to one city, and search finds a city too', () => {
+    expect(
+      names(
+        chapter.filter((e) => matchesRefinements(e, { ...NO_REFINEMENTS, city: 'Atlanta, GA' })),
+      ),
+    ).toEqual(['Sample Reed', 'Sample Allen']);
+    expect(names(chapter.filter((e) => matchesSearch(e, 'houston')))).toEqual(['Sample Baker']);
+  });
+
+  it('lists the cities brothers live in, most brothers first', () => {
+    expect(facetOptions(chapter, 'city')).toEqual([
+      { value: 'Atlanta, GA', count: 2 },
+      { value: 'Houston, TX', count: 1 },
+    ]);
   });
 });

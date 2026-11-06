@@ -170,3 +170,36 @@ describe('brother-owned businesses', () => {
     await waitFor(() => expect(screen.getByTestId('businesses-empty')).toBeTruthy());
   });
 });
+
+describe('brothers near you', () => {
+  function chapterWithCities(myCity: string) {
+    directory.resetDirectoryMock([
+      directory.sampleEntry({ uid: me(), displayName: 'Marcus Reed', city: myCity }),
+      directory.sampleEntry({ uid: 'sample-zed', displayName: 'Zed Allen', city: 'atlanta,ga' }),
+      directory.sampleEntry({ uid: 'sample-ty', displayName: 'Ty Baker', city: 'Houston, TX' }),
+    ]);
+  }
+
+  it('Near me shows brothers in your city, and turns off again', async () => {
+    chapterWithCities('Atlanta, GA');
+    await renderRouter('src/app', { initialUrl: '/chapter/directory' });
+    await waitFor(() => expect(screen.getByTestId('refine-near-me')).toBeTruthy());
+    await tap('refine-near-me');
+    // The same city typed differently still counts.
+    expect(shown()).toEqual(['sample-marcus', 'sample-zed']);
+    expect(screen.getByTestId('refine-city')).toHaveTextContent('Atlanta, GA');
+    await tap('refine-near-me');
+    expect(shown()).toHaveLength(3);
+  });
+
+  it('City lists where brothers live, and Near me waits until you add yours', async () => {
+    chapterWithCities('');
+    await renderRouter('src/app', { initialUrl: '/chapter/directory' });
+    await waitFor(() => expect(screen.getByTestId('refine-city')).toBeTruthy());
+    expect(screen.queryByTestId('refine-near-me')).toBeNull();
+    await tap('refine-city');
+    expect(screen.getByTestId('refine-option-houston-tx')).toHaveTextContent(/Houston, TX.*1/);
+    await tap('refine-option-houston-tx');
+    expect(shown()).toEqual(['sample-ty']);
+  });
+});

@@ -10,6 +10,8 @@ export const LIMITS = {
   headline: 80,
   /** The line of work a member picks, like Real estate. */
   industry: 60,
+  /** The city a member lives in, like Atlanta, GA. Never a street or exact location. */
+  city: 60,
   /** Businesses a member owns, and how long each name can be. */
   businesses: 3,
   businessName: 60,

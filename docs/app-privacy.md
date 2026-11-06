@@ -22,17 +22,18 @@ The site is built from `tools/site` and published with `firebase deploy --only h
 
 Every type below is **linked to the user**, **not used for tracking**, and used only for **App Functionality**.
 
-| Category     | Type               | What it is in the app                                                                  |
-| ------------ | ------------------ | -------------------------------------------------------------------------------------- |
-| Contact Info | Name               | Display name on the profile                                                            |
-| Contact Info | Email Address      | Sign-in email; shown on the profile only if the member turns it on                     |
-| Contact Info | Phone Number       | Optional; shown only if the member turns it on                                         |
-| User Content | Photos or Videos   | Profile photo, post photos, photos attached to committee reports                       |
-| User Content | Other User Content | Posts, captions, comments, bio, committee reports and their files                      |
-| Identifiers  | User ID            | The member's account ID (also in their check-in QR code)                               |
-| Other Data   | Other Data Types   | Initiation term and date, RSVPs, event check-ins and service hours, reports and blocks |
+| Category     | Type               | What it is in the app                                                                                        |
+| ------------ | ------------------ | ------------------------------------------------------------------------------------------------------------ |
+| Contact Info | Name               | Display name on the profile                                                                                  |
+| Contact Info | Email Address      | Sign-in email; shown on the profile only if the member turns it on                                           |
+| Contact Info | Phone Number       | Optional; shown only if the member turns it on                                                               |
+| User Content | Photos or Videos   | Profile photo, post photos, photos attached to committee reports                                             |
+| User Content | Other User Content | Posts, captions, comments, bio, committee reports and their files                                            |
+| Identifiers  | User ID            | The member's account ID (also in their check-in QR code)                                                     |
+| Location     | Coarse Location    | Optional city the member types on their profile (like Atlanta, GA). The app never reads the phone's location |
+| Other Data   | Other Data Types   | Initiation term and date, RSVPs, event check-ins and service hours, reports and blocks                       |
 
-Not collected: location, health and fitness, financial info, sensitive info, contacts, browsing or search history, purchases, usage data or analytics, diagnostics or crash data, device ID for advertising.
+Not collected: precise location (and no GPS or device location of any kind), health and fitness, financial info, sensitive info, contacts, browsing or search history, purchases, usage data or analytics, diagnostics or crash data, device ID for advertising.
 
 Push tokens are stored so notifications reach the member's phone. If App Store Connect's guidance at the time asks for them, declare them under Identifiers › Device ID, App Functionality, linked.
 
@@ -49,13 +50,14 @@ Push tokens are stored so notifications reach the member's phone. If App Store C
 | Personal info: Email address               | Yes       | No       | App functionality, account management                                                              |
 | Personal info: Phone number                | Yes       | Yes      | App functionality                                                                                  |
 | Personal info: User IDs                    | Yes       | No       | App functionality, account management                                                              |
+| Location: Approximate location             | Yes       | Yes      | App functionality (an optional city the member types; the app never reads the device's location)   |
 | Personal info: Other info                  | Yes       | Yes      | App functionality (initiation term and date, headline, industry, businesses owned, interests, bio) |
 | Photos and videos: Photos                  | Yes       | Yes      | App functionality                                                                                  |
 | Files and docs                             | Yes       | Yes      | App functionality (committee report files)                                                         |
 | App activity: Other user-generated content | Yes       | Yes      | App functionality (posts, comments, committee reports)                                             |
 | App activity: Other actions                | Yes       | Yes      | App functionality (likes, RSVPs, check-ins, reports, blocks)                                       |
 
-Not collected: location, financial info, health and fitness, messages, audio, calendar, contacts, web browsing, app info and performance (no crash logs or diagnostics), device or other IDs for advertising.
+Not collected: precise location (and no device location at all), financial info, health and fitness, messages, audio, calendar, contacts, web browsing, app info and performance (no crash logs or diagnostics), device or other IDs for advertising.
 
 **Is data processed ephemerally?** No. It's stored until the member deletes it or their account.
 

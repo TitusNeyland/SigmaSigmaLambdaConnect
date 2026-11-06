@@ -29,8 +29,9 @@ export const PRIVACY_BODY = `<h1>Privacy policy</h1>
   </li>
   <li>
     <strong>Profile:</strong> your name and initiation term, and anything you add: a photo,
-    headline (job title), industry, businesses you own, bio, interests, the date you were
-    initiated, and a phone number or email you choose to show. Other approved members see these
+    headline (job title), industry, businesses you own, the city you live in, bio, interests,
+    the date you were initiated, and a phone number or email you choose to show. The city is
+    only what you type, like Atlanta, GA; the app never reads your phone's location. Other approved members see these
     on your profile. When an officer approves you, the app posts a welcome to the chapter feed
     with your name, line, and the work and businesses you added.
   </li>

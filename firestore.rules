@@ -76,6 +76,8 @@ service cloud.firestore {
         && optionalText(data, 'headline', 80)
         // Line of work and businesses owned, from sign up and Edit profile. Optional.
         && optionalText(data, 'industry', 60)
+        // The city they live in, typed by them, for Brothers near you. Never an exact location.
+        && optionalText(data, 'city', 60)
         && (!('businesses' in data) || (data.businesses is list && data.businesses.size() <= 3))
         && optionalText(data, 'bio', 150)
         && optionalText(data, 'email', 254)
@@ -100,7 +102,7 @@ service cloud.firestore {
     }
 
     function memberEditableFields() {
-      return ['displayName', 'initiationTerm', 'initiationDate', 'headline', 'industry',
+      return ['displayName', 'initiationTerm', 'initiationDate', 'headline', 'industry', 'city',
               'businesses', 'bio', 'interests', 'photoURL',
               'email', 'phone', 'notificationPrefs',
               'guidelinesAcceptedAt', 'updatedAt'];

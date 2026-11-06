@@ -18,6 +18,7 @@ const baseProps = (overrides: Partial<ProfileViewProps> = {}): ProfileViewProps 
     initiationDate: null,
     headline: 'Teacher',
     industry: '',
+    city: '',
     businesses: [],
     bio: '',
     interests: [],
@@ -130,12 +131,14 @@ describe('about him', () => {
           profile: {
             ...baseProps().profile,
             industry: 'Real estate',
+            city: 'Atlanta, GA',
             businesses: ['Sample Realty', 'Sample Barbershop'],
           },
         })}
       />,
     );
     expect(screen.getByTestId('profile-industry')).toHaveTextContent('Works in Real estate');
+    expect(screen.getByTestId('profile-city')).toHaveTextContent('Lives in Atlanta, GA');
     expect(screen.getByTestId('profile-businesses')).toHaveTextContent(
       'Owns Sample Realty and Sample Barbershop',
     );
@@ -145,6 +148,7 @@ describe('about him', () => {
     await render(<ProfileView {...baseProps()} />);
     expect(screen.queryByTestId('profile-industry')).toBeNull();
     expect(screen.queryByTestId('profile-businesses')).toBeNull();
+    expect(screen.queryByTestId('profile-city')).toBeNull();
   });
 });
 
