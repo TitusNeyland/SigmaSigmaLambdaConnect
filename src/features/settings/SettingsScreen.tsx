@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Linking, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { PRIVACY_URL, SUPPORT_EMAIL, TERMS_URL } from '@/config/app';
+import { SUPPORT_EMAIL } from '@/config/app';
 import { AccountDeletionError, deleteAccount, type DeleteAccountError } from '@/data/account';
 import { sendPasswordReset } from '@/data/auth';
 import { signOutHere } from '@/features/auth/signOut';
@@ -232,13 +232,13 @@ export function SettingsScreen() {
           />
           <ListRow
             title="Terms of service"
-            onPress={() => open(TERMS_URL)}
+            onPress={() => router.push('/profile/terms')}
             showChevron
             testID="row-terms"
           />
           <ListRow
             title="Privacy policy"
-            onPress={() => open(PRIVACY_URL)}
+            onPress={() => router.push('/profile/privacy')}
             showChevron
             testID="row-privacy"
           />
