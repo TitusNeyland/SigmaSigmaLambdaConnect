@@ -1,5 +1,5 @@
 /** Test double for src/data/programs.ts. Use with `jest.mock('@/data/programs')`. */
-import type { ProgramSummary } from '../programs';
+import type { ProgramInput, ProgramSummary } from '../programs';
 
 let programs: ProgramSummary[] = [];
 let failing = false;
@@ -11,6 +11,7 @@ export function sampleProgram(overrides: Partial<ProgramSummary> = {}): ProgramS
     description: '',
     ownerTitle: 'Director of Education',
     ownerId: null,
+    ownerName: '',
     dueAt: new Date(Date.now() + 30 * 86_400_000),
     createdAt: null,
     status: 'in_progress',
@@ -48,6 +49,11 @@ export const setMilestoneDone = jest.fn(
   async (_p: string, _m: string, _done: boolean, _uid: string, _status: string) => {},
 );
 
+export const createProgram = jest.fn(async (_input: ProgramInput, _uid: string) => 'new-program');
+export const updateProgram = jest.fn(async (_program: ProgramSummary, _input: ProgramInput) => {});
+export const setNeedsHelp = jest.fn(async (_program: ProgramSummary, _needsHelp: boolean) => {});
+export const deleteProgram = jest.fn(async (_id: string) => {});
+
 let offers = new Set<string>();
 
 export const fetchMyHelpOffers = jest.fn(async (_ids: string[], _uid: string) => new Set(offers));
@@ -65,6 +71,10 @@ export function resetProgramsMock(initial: ProgramSummary[] = []) {
   fetchPrograms.mockClear();
   fetchProgram.mockClear();
   setMilestoneDone.mockReset().mockResolvedValue(undefined);
+  createProgram.mockReset().mockResolvedValue('new-program');
+  updateProgram.mockReset().mockResolvedValue(undefined);
+  setNeedsHelp.mockReset().mockResolvedValue(undefined);
+  deleteProgram.mockReset().mockResolvedValue(undefined);
   offers = new Set();
   fetchMyHelpOffers.mockClear();
   offerHelp.mockClear();

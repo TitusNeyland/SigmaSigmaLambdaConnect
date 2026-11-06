@@ -11,6 +11,8 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 
+import { chapterYearOf, statusFromMilestones } from '@/features/programs/programLogic';
+
 import { db } from './firebase';
 import type { ProgressStatus } from './types';
 
@@ -28,6 +30,8 @@ export type ProgramSummary = {
   description: string;
   ownerTitle: string;
   ownerId: string | null;
+  /** The lead's name when the program was saved, so the list doesn't look each one up. */
+  ownerName: string;
   dueAt: Date | null;
   /** When the program was set up. Chapter health measures its pace from here. */
   createdAt: Date | null;
@@ -59,6 +63,7 @@ export function toProgram(
     description: text(data.description),
     ownerTitle: text(data.ownerTitle),
     ownerId: text(data.ownerId) || null,
+    ownerName: text(data.ownerName),
     dueAt: data.dueAt instanceof Timestamp ? data.dueAt.toDate() : null,
     createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : null,
     status: STATUSES.includes(data.status as ProgressStatus)
@@ -127,4 +132,116 @@ export async function offerHelp(programId: string, uid: string): Promise<void> {
     memberId: uid,
     createdAt: serverTimestamp(),
   });
+}
+
+/** What the program form saves. Milestones in order; ones with an id already exist. */
+export type ProgramInput = {
+  name: string;
+  description: string;
+  ownerId: string | null;
+  ownerName: string;
+  ownerTitle: string;
+  dueAt: Date;
+  milestones: { id?: string; name: string }[];
+};
+
+/** A new program and its milestones, in one write. Officers only; the rules check. */
+export async function createProgram(input: ProgramInput, uid: string): Promise<string> {
+  const ref = doc(collection(db, 'programs'));
+  const batch = writeBatch(db);
+  batch.set(ref, {
+    name: input.name.trim(),
+    description: input.description.trim(),
+    ownerId: input.ownerId,
+    ownerName: input.ownerId ? input.ownerName.trim() : '',
+    ownerTitle: input.ownerTitle.trim(),
+    dueAt: Timestamp.fromDate(input.dueAt),
+    status: 'not_started',
+    chapterYear: chapterYearOf(input.dueAt),
+    createdAt: serverTimestamp(),
+    createdBy: uid,
+  });
+  input.milestones.forEach((m, i) => {
+    batch.set(doc(collection(ref, 'milestones')), {
+      name: m.name.trim(),
+      order: i + 1,
+      done: false,
+      doneAt: null,
+      doneBy: null,
+    });
+  });
+  await batch.commit();
+  return ref.id;
+}
+
+/**
+ * Saves an edited program: its details, and its milestones added, renamed, reordered or
+ * removed. Checked-off milestones stay checked off. The status follows the milestones, except
+ * Needs help, which stays until someone turns it off.
+ */
+export async function updateProgram(program: ProgramSummary, input: ProgramInput): Promise<void> {
+  const ref = doc(db, 'programs', program.id);
+  const batch = writeBatch(db);
+  const kept = new Map(program.milestones.map((m) => [m.id, m]));
+  const after: ProgramMilestone[] = [];
+  input.milestones.forEach((m, i) => {
+    const order = i + 1;
+    const name = m.name.trim();
+    const existing = m.id ? kept.get(m.id) : undefined;
+    if (existing) {
+      kept.delete(existing.id);
+      after.push({ ...existing, name, order });
+      if (existing.name !== name || existing.order !== order) {
+        batch.update(doc(ref, 'milestones', existing.id), { name, order });
+      }
+    } else {
+      const added = doc(collection(ref, 'milestones'));
+      after.push({ id: added.id, name, order, done: false });
+      batch.set(added, { name, order, done: false, doneAt: null, doneBy: null });
+    }
+  });
+  for (const removed of kept.values()) batch.delete(doc(ref, 'milestones', removed.id));
+  batch.update(ref, {
+    name: input.name.trim(),
+    description: input.description.trim(),
+    ownerId: input.ownerId,
+    ownerName: input.ownerId ? input.ownerName.trim() : '',
+    ownerTitle: input.ownerTitle.trim(),
+    dueAt: Timestamp.fromDate(input.dueAt),
+    chapterYear: chapterYearOf(input.dueAt),
+    status:
+      program.status === 'at_risk' && !after.every((m) => m.done)
+        ? 'at_risk'
+        : statusFromMilestones(after),
+    updatedAt: serverTimestamp(),
+  });
+  await batch.commit();
+}
+
+/**
+ * Flags a program as needing help, or clears the flag (its status then follows its
+ * milestones). Officers and the program's lead; the rules check.
+ */
+export async function setNeedsHelp(program: ProgramSummary, needsHelp: boolean): Promise<void> {
+  await setDoc(
+    doc(db, 'programs', program.id),
+    {
+      status: needsHelp ? 'at_risk' : statusFromMilestones(program.milestones),
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true },
+  );
+}
+
+/** Deletes a program with its milestones and help offers. Officers only. */
+export async function deleteProgram(programId: string): Promise<void> {
+  const ref = doc(db, 'programs', programId);
+  const [milestones, helpers] = await Promise.all([
+    getDocs(collection(ref, 'milestones')),
+    getDocs(collection(ref, 'helpers')),
+  ]);
+  const batch = writeBatch(db);
+  for (const d of [...milestones.docs, ...helpers.docs]) batch.delete(d.ref);
+  batch.delete(ref);
+  await batch.commit();
 }

@@ -16,6 +16,7 @@ import {
   query,
   serverTimestamp,
   setDoc,
+  Timestamp,
   updateDoc,
   where,
   deleteField,
@@ -1717,14 +1718,130 @@ describe('announcements (#43)', () => {
 });
 
 describe('officer-managed chapter content', () => {
-  const paths = ['programs/new', 'programs/scholarship/milestones/new'];
-
-  it.each(paths)('officers can write %s', async (path) => {
-    await assertSucceeds(setDoc(doc(as(USERS.olivia), path), { name: 'x' }));
+  // The exact new program the app writes (src/data/programs.ts createProgram).
+  const newProgram = (by: string, extra: object = {}) => ({
+    name: 'Sample food drive',
+    description: 'Collect cans for the sample pantry.',
+    ownerId: USERS.alice,
+    ownerName: 'Alice Sample',
+    ownerTitle: 'Service committee',
+    dueAt: Timestamp.fromDate(new Date(2027, 2, 1)),
+    status: 'not_started',
+    chapterYear: '2026-27',
+    createdAt: serverTimestamp(),
+    createdBy: by,
+    ...extra,
+  });
+  const milestone = (extra: object = {}) => ({
+    name: 'Book the venue',
+    order: 1,
+    done: false,
+    doneAt: null,
+    doneBy: null,
+    ...extra,
   });
 
-  it.each(paths)('members cannot write %s', async (path) => {
-    await assertFails(setDoc(doc(as(USERS.alice), path), { name: 'x' }));
+  it('officers create a program with its milestones; members can’t', async () => {
+    const create = (db: Firestore, by: string, extra: object = {}) => {
+      const batch = writeBatch(db);
+      batch.set(doc(db, 'programs/drive'), newProgram(by, extra));
+      batch.set(doc(db, 'programs/drive/milestones/m1'), milestone());
+      return batch.commit();
+    };
+    await assertFails(create(as(USERS.alice), USERS.alice));
+    await assertFails(create(as(USERS.olivia), USERS.adam)); // as someone else
+    await assertFails(create(as(USERS.olivia), USERS.olivia, { name: '' }));
+    await assertFails(create(as(USERS.olivia), USERS.olivia, { chapterYear: 'this year' }));
+    await assertFails(create(as(USERS.olivia), USERS.olivia, { budget: 500 }));
+    await assertFails(create(as(USERS.olivia), USERS.olivia, { dueAt: null }));
+    await assertSucceeds(create(as(USERS.olivia), USERS.olivia));
+  });
+
+  it('officers edit a program and its milestones, but not who made it', async () => {
+    const db = as(USERS.olivia);
+    await assertSucceeds(
+      updateDoc(doc(db, 'programs/scholarship'), {
+        name: 'Scholarship fund',
+        ownerId: null,
+        ownerName: '',
+        ownerTitle: 'Education committee',
+        dueAt: Timestamp.fromDate(new Date(2027, 3, 1)),
+        chapterYear: '2026-27',
+        updatedAt: serverTimestamp(),
+      }),
+    );
+    await assertSucceeds(
+      updateDoc(doc(db, 'programs/scholarship/milestones/m1'), { name: 'Form it', order: 2 }),
+    );
+    await assertSucceeds(setDoc(doc(db, 'programs/scholarship/milestones/m9'), milestone()));
+    await assertFails(
+      setDoc(doc(db, 'programs/scholarship/milestones/m8'), milestone({ name: '' })),
+    );
+    await assertFails(updateDoc(doc(db, 'programs/scholarship'), { createdBy: USERS.olivia }));
+    await assertSucceeds(deleteDoc(doc(db, 'programs/scholarship/milestones/m9')));
+  });
+
+  it('only officers delete programs, and they can clear its help offers', async () => {
+    await assertSucceeds(
+      setDoc(doc(as(USERS.alice), 'programs/scholarship/helpers/alice'), {
+        memberId: USERS.alice,
+        createdAt: serverTimestamp(),
+      }),
+    );
+    await assertFails(deleteDoc(doc(as(USERS.alice), 'programs/scholarship')));
+    await assertSucceeds(deleteDoc(doc(as(USERS.olivia), 'programs/scholarship/helpers/alice')));
+    await assertSucceeds(deleteDoc(doc(as(USERS.olivia), 'programs/scholarship')));
+  });
+
+  describe('the program’s lead', () => {
+    beforeEach(async () => {
+      await env.withSecurityRulesDisabled(async (ctx) => {
+        await updateDoc(doc(ctx.firestore() as unknown as Firestore, 'programs/scholarship'), {
+          ownerId: USERS.alice,
+        });
+      });
+    });
+
+    it('checks milestones off and flags it as needing help, though not an officer', async () => {
+      const db = as(USERS.alice);
+      const batch = writeBatch(db);
+      batch.update(doc(db, 'programs/scholarship/milestones/m1'), {
+        done: false,
+        doneAt: null,
+        doneBy: null,
+      });
+      batch.update(doc(db, 'programs/scholarship'), {
+        status: 'not_started',
+        updatedAt: serverTimestamp(),
+      });
+      await assertSucceeds(batch.commit());
+      await assertSucceeds(
+        updateDoc(doc(db, 'programs/scholarship'), {
+          status: 'at_risk',
+          updatedAt: serverTimestamp(),
+        }),
+      );
+    });
+
+    it('can’t rename, reassign or delete it, or rename milestones', async () => {
+      const db = as(USERS.alice);
+      await assertFails(updateDoc(doc(db, 'programs/scholarship'), { name: 'Mine' }));
+      await assertFails(updateDoc(doc(db, 'programs/scholarship'), { ownerId: USERS.bob }));
+      await assertFails(deleteDoc(doc(db, 'programs/scholarship')));
+      await assertFails(
+        updateDoc(doc(db, 'programs/scholarship/milestones/m1'), { name: 'Renamed' }),
+      );
+      await assertFails(setDoc(doc(db, 'programs/scholarship/milestones/m2'), milestone()));
+    });
+
+    it('other members still can’t track it', async () => {
+      await assertFails(
+        updateDoc(doc(as(USERS.bob), 'programs/scholarship'), {
+          status: 'at_risk',
+          updatedAt: serverTimestamp(),
+        }),
+      );
+    });
   });
 
   it('accepts the exact check-off from mobile (src/data/programs.ts), recording who', async () => {

@@ -1,6 +1,14 @@
 import type { ProgramMilestone, ProgramSummary } from '@/data/programs';
 
-import { chapterPercent, dueLabel, groupPrograms, percentDone, statusAfter } from './programLogic';
+import {
+  chapterPercent,
+  chapterYearOf,
+  dueLabel,
+  groupPrograms,
+  percentDone,
+  statusAfter,
+  statusFromMilestones,
+} from './programLogic';
 
 const ms = (...done: boolean[]): ProgramMilestone[] =>
   done.map((d, i) => ({ id: `m${i}`, name: `M${i}`, order: i, done: d }));
@@ -76,5 +84,23 @@ describe('groupPrograms', () => {
 
   it('leaves out empty groups', () => {
     expect(groupPrograms([p('a', 'completed', 1)]).map((g) => g.key)).toEqual(['done']);
+  });
+});
+
+describe('statusFromMilestones', () => {
+  it('is not started, on track or completed by what’s checked off', () => {
+    expect(statusFromMilestones([])).toBe('not_started');
+    expect(statusFromMilestones([{ done: false }, { done: false }])).toBe('not_started');
+    expect(statusFromMilestones([{ done: true }, { done: false }])).toBe('in_progress');
+    expect(statusFromMilestones([{ done: true }, { done: true }])).toBe('completed');
+  });
+});
+
+describe('chapterYearOf', () => {
+  it('starts each chapter year in August, like the KPIs', () => {
+    expect(chapterYearOf(new Date(2026, 7, 1))).toBe('2026-27');
+    expect(chapterYearOf(new Date(2027, 6, 31))).toBe('2026-27');
+    expect(chapterYearOf(new Date(2027, 7, 1))).toBe('2027-28');
+    expect(chapterYearOf(new Date(2099, 11, 1))).toBe('2099-00');
   });
 });

@@ -4,7 +4,7 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
-import { fetchProgram, setMilestoneDone, type ProgramSummary } from '@/data/programs';
+import { fetchProgram, setMilestoneDone, setNeedsHelp, type ProgramSummary } from '@/data/programs';
 import type { ProgressStatus } from '@/data/types';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { useCan } from '@/features/roles/RoleProvider';
@@ -12,14 +12,23 @@ import { colors, MIN_TOUCH, palette, radius, spacing } from '@/theme';
 import {
   AppText,
   Button,
+  HeaderButton,
   ListSection,
   NavHeader,
   ProgressBar,
   StatusChip,
+  SwitchRow,
   type ChipTone,
 } from '@/ui';
 
-import { dueLabel, percentDone, STATUS_LABELS, statusAfter } from './programLogic';
+import { ledBy } from './programForm';
+import {
+  dueLabel,
+  percentDone,
+  STATUS_LABELS,
+  statusAfter,
+  statusFromMilestones,
+} from './programLogic';
 
 export const STATUS_TONES: Record<ProgressStatus, ChipTone> = {
   not_started: 'neutral',
@@ -54,7 +63,10 @@ function Check({ done }: { done: boolean }) {
   );
 }
 
-/** One program: owner, due date, percent and milestones. Officers check milestones off. */
+/**
+ * One program: who leads it, due date, percent and milestones. Officers and the program's
+ * lead check milestones off and flag it as needing help; officers also edit it.
+ */
 export function ProgramDetailScreen({ id }: { id: string }) {
   const auth = useAuth();
   const uid = auth.status === 'signedIn' ? auth.user.uid : '';
@@ -77,6 +89,25 @@ export function ProgramDetailScreen({ id }: { id: string }) {
   }, [id, attempt]);
 
   const program = loaded.state === 'ready' ? loaded.program : null;
+  // The lead tracks his own program even if he isn't an officer; the rules allow the same.
+  const canTrack = canManage || (!!uid && program?.ownerId === uid);
+
+  async function flag(needsHelp: boolean) {
+    if (!program || saving) return;
+    const before = program;
+    const status = needsHelp ? 'at_risk' : statusFromMilestones(program.milestones);
+    setLoaded({ state: 'ready', program: { ...program, status } });
+    setSaving('flag');
+    setFailed(false);
+    try {
+      await setNeedsHelp(program, needsHelp);
+    } catch {
+      setLoaded({ state: 'ready', program: before });
+      setFailed(true);
+    } finally {
+      setSaving(null);
+    }
+  }
 
   async function toggle(milestoneId: string) {
     if (!program || saving) return;
@@ -130,9 +161,25 @@ export function ProgramDetailScreen({ id }: { id: string }) {
   const percent = percentDone(program.milestones);
   const doneCount = program.milestones.filter((m) => m.done).length;
 
+  const led = ledBy(program);
+
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <NavHeader onBack={goBack} backTestID="program-back" />
+      <NavHeader
+        onBack={goBack}
+        backTestID="program-back"
+        trailing={
+          canManage ? (
+            <HeaderButton
+              title="Edit"
+              onPress={() =>
+                router.push({ pathname: '/chapter/programs/[id]/edit', params: { id: program.id } })
+              }
+              testID="program-edit"
+            />
+          ) : undefined
+        }
+      />
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.heading}>
           <AppText variant="title2" accessibilityRole="header">
@@ -148,9 +195,9 @@ export function ProgramDetailScreen({ id }: { id: string }) {
               {dueLabel(program.dueAt, now, program.status)}
             </AppText>
           </View>
-          {program.ownerTitle ? (
-            <AppText variant="subhead" color={colors.textSecondary}>
-              Led by {program.ownerTitle}
+          {led ? (
+            <AppText variant="subhead" color={colors.textSecondary} testID="program-led-by">
+              {led}
             </AppText>
           ) : null}
           {program.description ? <AppText variant="callout">{program.description}</AppText> : null}
@@ -168,16 +215,27 @@ export function ProgramDetailScreen({ id }: { id: string }) {
           <ProgressBar percent={percent} accessibilityLabel={`${percent} percent done`} />
         </View>
 
+        {canTrack && program.status !== 'completed' ? (
+          <ListSection footer="Shows the program under Needs help, where brothers can offer to help.">
+            <SwitchRow
+              title="Needs help"
+              value={program.status === 'at_risk'}
+              onValueChange={(on) => void flag(on)}
+              testID="program-needs-help"
+            />
+          </ListSection>
+        ) : null}
+
         <ListSection
           header="Milestones"
           footer={
-            canManage
+            canTrack
               ? 'Tap a milestone to check it off. Members see the change right away.'
               : undefined
           }
         >
           {program.milestones.map((m) =>
-            canManage ? (
+            canTrack ? (
               <Pressable
                 key={m.id}
                 onPress={() => toggle(m.id)}
