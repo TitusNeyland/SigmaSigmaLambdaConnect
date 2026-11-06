@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
-import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
+import { router, useFocusEffect, useLocalSearchParams, useScrollToTop } from 'expo-router';
+import { useCallback, useMemo, useRef, useState, type ComponentRef } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -90,6 +90,9 @@ function FeaturedEvent({ event, now }: { event: EventSummary; now: Date }) {
 }
 
 export function EventsScreen() {
+  // Tapping the tab again scrolls back to the top.
+  const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
+  useScrollToTop(scroll);
   const auth = useAuth();
   const uid = auth.status === 'signedIn' ? auth.user.uid : '';
   const [value, setValue] = useState<State>({ state: 'loading' });
@@ -143,6 +146,7 @@ export function EventsScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScrollView
+        ref={scroll}
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
         refreshControl={

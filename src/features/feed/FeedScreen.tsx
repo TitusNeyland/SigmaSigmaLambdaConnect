@@ -1,4 +1,4 @@
-import { router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect, useScrollToTop } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -37,6 +37,9 @@ const ACTIVITY_CHECK = 10;
 
 /** Home: the chapter's posts, newest first. */
 export function FeedScreen() {
+  // Tapping the tab again scrolls back to the top.
+  const list = useRef<FlatList<FeedPost>>(null);
+  useScrollToTop(list);
   const auth = useAuth();
   const uid = auth.status === 'signedIn' ? auth.user.uid : '';
   const { blocked, hidden } = useHiddenContent(uid);
@@ -151,6 +154,7 @@ export function FeedScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <HomeHeader hasNew={hasNew} />
       <FlatList
+        ref={list}
         data={posts}
         keyExtractor={(p) => p.id}
         renderItem={({ item }) => (
