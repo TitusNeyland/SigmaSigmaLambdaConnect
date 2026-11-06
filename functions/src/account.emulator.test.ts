@@ -72,6 +72,17 @@ async function seed() {
     ],
     ['posts/mine/comments/c1', { authorId: 'stays', text: 'Nice', createdAt: now() }],
     ['posts/mine/likes/stays', { memberId: 'stays', createdAt: now() }],
+    // A program the leaving member leads.
+    [
+      'programs/drive',
+      {
+        name: 'Sample food drive',
+        ownerId: 'gone',
+        ownerName: 'Leaving Member',
+        ownerTitle: 'Service committee',
+        status: 'in_progress',
+      },
+    ],
     // The chapter's welcome post about the leaving member, by an officer, with a comment.
     [
       'posts/welcome-gone',
@@ -209,6 +220,7 @@ beforeEach(async () => {
     'hidden',
     'restrictions',
     'decisions',
+    'programs',
   ]) {
     await db.recursiveDelete(db.collection(name));
   }
@@ -239,6 +251,17 @@ describe('deleteUserData', () => {
     expect(await exists('posts/mine')).toBe(false);
     expect(await exists('posts/mine/comments/c1')).toBe(false);
     expect(await exists('posts/mine/likes/stays')).toBe(false);
+  });
+
+  it('keeps programs they led, without their name', async () => {
+    await run();
+    const program = (await db.doc('programs/drive').get()).data();
+    expect(program).toMatchObject({
+      name: 'Sample food drive',
+      ownerId: null,
+      ownerName: '',
+      ownerTitle: 'Service committee',
+    });
   });
 
   it('removes the welcome post that names them, though an officer wrote it', async () => {

@@ -5,8 +5,17 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { fetchMyHelpOffers, fetchPrograms, offerHelp, type ProgramSummary } from '@/data/programs';
 import { useAuth } from '@/features/auth/AuthProvider';
+import { useCan } from '@/features/roles/RoleProvider';
 import { colors, palette, radius, spacing } from '@/theme';
-import { AppText, Button, NavHeader, ProgressBar, ProgressRing, StatusChip } from '@/ui';
+import {
+  AppText,
+  Button,
+  HeaderButton,
+  NavHeader,
+  ProgressBar,
+  ProgressRing,
+  StatusChip,
+} from '@/ui';
 
 import { STATUS_TONES } from './ProgramDetailScreen';
 import {
@@ -149,6 +158,8 @@ function ProgramCard({
 /** How the chapter's programs are going, grouped so brothers can see where help is needed. */
 export function ProgressScreen() {
   const auth = useAuth();
+  const canManage = useCan('programs.manage');
+  const newProgram = () => router.push('/chapter/programs/new');
   const uid = auth.status === 'signedIn' ? auth.user.uid : '';
   const [loaded, setLoaded] = useState<Loaded>({ state: 'loading' });
   const [attempt, setAttempt] = useState(0);
@@ -180,7 +191,15 @@ export function ProgressScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <NavHeader onBack={goBack} backTestID="progress-back" />
+      <NavHeader
+        onBack={goBack}
+        backTestID="progress-back"
+        trailing={
+          canManage ? (
+            <HeaderButton title="New" bold onPress={newProgram} testID="progress-new" />
+          ) : undefined
+        }
+      />
       <ScrollView contentContainerStyle={styles.content}>
         <AppText variant="largeTitle" accessibilityRole="header">
           Chapter progress
@@ -206,14 +225,16 @@ export function ProgressScreen() {
             />
           </View>
         ) : loaded.programs.length === 0 ? (
-          <AppText
-            variant="callout"
-            color={colors.textSecondary}
-            align="center"
-            testID="progress-empty"
-          >
-            No programs yet. Officers add them for the chapter year.
-          </AppText>
+          <View style={styles.empty} testID="progress-empty">
+            <AppText variant="callout" color={colors.textSecondary} align="center">
+              {canManage
+                ? 'No programs yet. Set up the chapter’s programs for the year: name each one, pick who leads it and list its milestones.'
+                : 'No programs yet. Officers add them for the chapter year.'}
+            </AppText>
+            {canManage ? (
+              <Button title="New program" onPress={newProgram} testID="progress-empty-new" />
+            ) : null}
+          </View>
         ) : (
           <>
             <View style={styles.summary}>
@@ -261,6 +282,7 @@ export function ProgressScreen() {
 }
 
 const styles = StyleSheet.create({
+  empty: { gap: spacing.lg, alignItems: 'center', paddingTop: spacing.lg },
   safe: { flex: 1, backgroundColor: colors.backgroundGrouped },
   content: { padding: spacing.lg, paddingTop: 0, gap: spacing.lg, paddingBottom: spacing.xxxl },
   center: { alignItems: 'center', gap: spacing.md, paddingTop: spacing.xl },

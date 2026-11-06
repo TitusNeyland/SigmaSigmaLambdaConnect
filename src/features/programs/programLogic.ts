@@ -86,3 +86,19 @@ export function groupPrograms(programs: ProgramSummary[]): ProgramGroup[] {
     .map((g) => ({ ...g, programs: [...g.programs].sort(byDue) }))
     .filter((g) => g.programs.length > 0);
 }
+
+/** The status the milestones alone give: none done, some done, or all done. */
+export function statusFromMilestones(milestones: { done: boolean }[]): ProgressStatus {
+  const done = milestones.filter((m) => m.done).length;
+  if (milestones.length > 0 && done === milestones.length) return 'completed';
+  return done > 0 ? 'in_progress' : 'not_started';
+}
+
+/** Chapter years start in August, like the KPIs: Aug 2026 to Jul 2027 is "2026-27". */
+export const CHAPTER_YEAR_START_MONTH = 7;
+
+export function chapterYearOf(date: Date): string {
+  const start =
+    date.getMonth() >= CHAPTER_YEAR_START_MONTH ? date.getFullYear() : date.getFullYear() - 1;
+  return `${start}-${String((start + 1) % 100).padStart(2, '0')}`;
+}

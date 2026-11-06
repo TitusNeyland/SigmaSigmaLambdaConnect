@@ -91,6 +91,10 @@ export async function deleteUserData(
     await r.ref.update({ authorId: FieldValue.delete(), authorName: FieldValue.delete() });
   }
 
+  // Programs they led stay with the chapter, but without their name; officers pick a new lead.
+  const led = await db.collection('programs').where('ownerId', '==', uid).get();
+  for (const p of led.docs) await p.ref.update({ ownerId: null, ownerName: '' });
+
   // Their block list, push tokens, read marks, hidden items, Activity, any posting pause,
   // role and profile (with its private contact doc).
   await db.recursiveDelete(db.doc(`blocks/${uid}`));

@@ -438,13 +438,58 @@ service cloud.firestore {
 
     // ---------- Chapter content officers manage ----------
 
+    // A chapter program (#44). Officers create, edit and delete them from the app.
+    function programValid(p) {
+      return p.keys().hasOnly(['name', 'description', 'ownerId', 'ownerName', 'ownerTitle',
+                               'dueAt', 'status', 'chapterYear', 'createdAt', 'createdBy',
+                               'updatedAt'])
+        && isText(p.name, 1, 80)
+        && optionalText(p, 'description', 500)
+        && (!('ownerId' in p) || p.ownerId == null || p.ownerId is string)
+        && optionalText(p, 'ownerName', 60)
+        && optionalText(p, 'ownerTitle', 60)
+        && (!('dueAt' in p) || p.dueAt is timestamp)
+        && p.status in ['not_started', 'in_progress', 'at_risk', 'completed']
+        && (!('chapterYear' in p) || p.chapterYear.matches('^[0-9]{4}-[0-9]{2}$'));
+    }
+
+    // The brother leading a program, who can track it even if he isn't an officer.
+    function leadsProgram(programId) {
+      return isApproved()
+        && get(/databases/$(database)/documents/programs/$(programId)).data.get('ownerId', null)
+             == request.auth.uid;
+    }
+
+    // Checking a milestone off records who and when; unchecking clears both.
+    function milestoneCheckValid() {
+      return !changed().hasAny(['done', 'doneAt', 'doneBy'])
+        || (incoming().done == true
+            && incoming().doneBy == request.auth.uid
+            && isNow(incoming().doneAt))
+        || (incoming().done == false
+            && incoming().doneBy == null
+            && incoming().doneAt == null);
+    }
+
     match /programs/{programId} {
       allow read: if isApproved();
-      allow create, delete: if isOfficer();
-      allow update: if isOfficer()
-        && incoming().status in ['not_started', 'in_progress', 'at_risk', 'completed'];
+      allow create: if isOfficer()
+        && programValid(incoming())
+        && incoming().dueAt is timestamp
+        && incoming().createdBy == request.auth.uid
+        && isNow(incoming().createdAt);
+      // Officers edit everything but who made it and when. The lead only moves its status,
+      // like flagging it as needing help.
+      allow update: if (isOfficer()
+          && programValid(incoming())
+          && !changed().hasAny(['createdAt', 'createdBy']))
+        || (leadsProgram(programId)
+          && changed().hasOnly(['status', 'updatedAt'])
+          && incoming().status in ['not_started', 'in_progress', 'at_risk', 'completed']);
+      allow delete: if isOfficer();
 
-      // "I can help" offers (#45). Members offer as themselves; officers see who offered.
+      // "I can help" offers (#45). Members offer as themselves; officers see who offered and
+      // clear them when a program is deleted.
       match /helpers/{userId} {
         allow read: if isOfficer() || (isApproved() && isSelf(userId));
         allow create: if isApproved()
@@ -452,21 +497,26 @@ service cloud.firestore {
           && incoming().keys().hasOnly(['memberId', 'createdAt'])
           && incoming().memberId == userId
           && isNow(incoming().createdAt);
-        allow delete: if isApproved() && isSelf(userId);
+        allow delete: if (isApproved() && isSelf(userId)) || isOfficer();
       }
 
-      // Officers check milestones off from mobile (#44). Whoever checks it off is recorded.
+      // Milestones: officers add, rename, reorder and remove them. Officers and the program's
+      // lead check them off (#44); whoever checks one off is recorded.
       match /milestones/{milestoneId} {
         allow read: if isApproved();
-        allow create, delete: if isOfficer();
-        allow update: if isOfficer()
-          && (!changed().hasAny(['done', 'doneAt', 'doneBy'])
-              || (incoming().done == true
-                  && incoming().doneBy == request.auth.uid
-                  && isNow(incoming().doneAt))
-              || (incoming().done == false
-                  && incoming().doneBy == null
-                  && incoming().doneAt == null));
+        allow create: if isOfficer()
+          && incoming().keys().hasOnly(['name', 'order', 'done', 'doneAt', 'doneBy'])
+          && isText(incoming().name, 1, 80)
+          && incoming().order is number
+          && incoming().done == false;
+        allow delete: if isOfficer();
+        allow update: if (isOfficer()
+            && incoming().keys().hasOnly(['name', 'order', 'done', 'doneAt', 'doneBy'])
+            && isText(incoming().name, 1, 80)
+            && milestoneCheckValid())
+          || (leadsProgram(programId)
+            && changed().hasOnly(['done', 'doneAt', 'doneBy'])
+            && milestoneCheckValid());
       }
     }
 
