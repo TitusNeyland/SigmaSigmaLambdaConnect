@@ -2,7 +2,7 @@ import { Image } from 'expo-image';
 import { useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 
-import { colors, palette, radius, spacing } from '@/theme';
+import { colors, motion, palette, radius, spacing } from '@/theme';
 
 import { useStorageUrl } from './useStorageUrl';
 
@@ -28,6 +28,7 @@ function Photo({
           source={{ uri }}
           style={StyleSheet.absoluteFill}
           contentFit="cover"
+          transition={motion.photoFade}
           accessibilityLabel={label}
           testID={`photo-${path}`}
         />

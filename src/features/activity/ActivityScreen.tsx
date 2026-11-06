@@ -14,7 +14,7 @@ import { useAuth } from '@/features/auth/AuthProvider';
 import { timeAgo } from '@/features/feed/feedLogic';
 import { useHiddenContent } from '@/features/feed/useHidden';
 import { useStorageUrl } from '@/features/feed/useStorageUrl';
-import { colors, MIN_TOUCH, radius, spacing } from '@/theme';
+import { colors, MIN_TOUCH, motion, radius, spacing } from '@/theme';
 import { AppText, Avatar, Button, Monogram, NavHeader } from '@/ui';
 
 import {
@@ -42,7 +42,14 @@ function Thumb({ path }: { path: string }) {
   const uri = useStorageUrl(path);
   return (
     <View style={styles.thumb}>
-      {uri ? <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" /> : null}
+      {uri ? (
+        <Image
+          source={{ uri }}
+          style={StyleSheet.absoluteFill}
+          contentFit="cover"
+          transition={motion.photoFade}
+        />
+      ) : null}
     </View>
   );
 }

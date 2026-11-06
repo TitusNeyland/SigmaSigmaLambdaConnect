@@ -124,3 +124,13 @@ it('hides the comment button when comments are off', async () => {
   await openHome({ allowComments: false });
   expect(screen.queryByTestId('comment-p1')).toBeNull();
 });
+
+it('taps the phone when you like, not when you unlike', async () => {
+  const haptics = jest.requireMock<{ impactAsync: jest.Mock }>('expo-haptics');
+  haptics.impactAsync.mockClear();
+  await openHome({ likeCount: 0 });
+  await press(likeButton());
+  expect(haptics.impactAsync).toHaveBeenCalledTimes(1);
+  await press(likeButton());
+  expect(haptics.impactAsync).toHaveBeenCalledTimes(1);
+});

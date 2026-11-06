@@ -13,6 +13,7 @@ import {
   AppText,
   Avatar,
   Button,
+  haptics,
   NavHeader,
   ProgressBar,
   SearchField,
@@ -156,6 +157,7 @@ export function AttendanceScreen() {
   const shown = visibleRoster(members, checked, filter, search);
 
   function toggle(memberId: string) {
+    haptics.select();
     setSaved(null);
     setChecked((prev) => {
       const next = new Set(prev);
@@ -169,6 +171,7 @@ export function AttendanceScreen() {
   function scanned(data: string): string {
     const result = scanCheckIn(data, members, checked);
     if (result.kind === 'added') {
+      haptics.success();
       setSaved(null);
       setChecked((prev) => new Set(prev).add(result.uid));
     }
@@ -196,6 +199,7 @@ export function AttendanceScreen() {
       };
       setLoaded({ state: 'ready', roster });
       setSaved(savedMessage(summary.checkedIn, hours));
+      haptics.success();
     } catch {
       setFailed(true);
     } finally {

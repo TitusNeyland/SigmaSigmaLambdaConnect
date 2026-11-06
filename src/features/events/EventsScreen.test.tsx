@@ -158,16 +158,20 @@ it('shows an empty state when nothing matches the search', async () => {
   await openEvents();
   await type('nothing like this');
   expect(screen.getByTestId('events-empty')).toBeTruthy();
+  // Searching found nothing, so it doesn't suggest hosting.
+  expect(screen.queryByTestId('events-host')).toBeNull();
   expect(screen.getByText('No events match your search.')).toBeTruthy();
   expect(screen.queryByTestId('featured-event')).toBeNull();
 });
 
-it('shows an empty state when nothing is scheduled', async () => {
+it('shows an empty state when nothing is scheduled, with a way to host one', async () => {
   events.resetEventsMock([]);
   await renderRouter('src/app', { initialUrl: '/events' });
   await waitFor(() =>
     expect(screen.getByText('Nothing on the calendar yet. Check back soon.')).toBeTruthy(),
   );
+  await press(screen.getByTestId('events-host'));
+  await waitFor(() => expect(screen).toHavePathname('/events/new'));
 });
 
 it('opens an event from the featured card and from a row', async () => {

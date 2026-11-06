@@ -8,6 +8,9 @@ import { useRole } from '@/features/roles/RoleProvider';
 import { colors, MIN_TOUCH, spacing } from '@/theme';
 import { AppText, Button } from '@/ui';
 
+import { NEW_POST_ROUTE } from '@/features/navigation/TabLayout';
+
+import { ProfileSkeleton } from './ProfileSkeleton';
 import { ProfileView } from './ProfileView';
 import { useProfile, useProfileExtras } from './useProfileData';
 
@@ -68,6 +71,7 @@ export function MyProfileScreen() {
           activity={extras.activity}
           onRefresh={extras.reload}
           onOpenPost={(id) => router.push({ pathname: '/profile/post/[id]', params: { id } })}
+          onNewPost={() => router.push(NEW_POST_ROUTE)}
           actions={
             <>
               <Button
@@ -89,10 +93,12 @@ export function MyProfileScreen() {
             </>
           }
         />
+      ) : profile.state === 'loading' ? (
+        <ProfileSkeleton />
       ) : (
         <View style={styles.center}>
           <AppText variant="callout" color={colors.textSecondary}>
-            {profile.state === 'error' ? 'Couldn’t load your profile.' : 'Loading…'}
+            Couldn’t load your profile.
           </AppText>
         </View>
       )}

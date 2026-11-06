@@ -17,11 +17,12 @@ import {
   type ProfilePost,
   type ProfileStats,
 } from '@/data/profile';
-import { colors, MIN_TOUCH, palette, radius, spacing } from '@/theme';
+import { colors, MIN_TOUCH, motion, palette, radius, spacing } from '@/theme';
 import { AppText, Avatar, Button, SegmentedControl, StatusChip } from '@/ui';
 
 import { timeAgo } from '@/features/feed/feedLogic';
 
+import { GridSkeleton } from './ProfileSkeleton';
 import type { Loadable } from './useProfileData';
 
 type Tab = 'photos' | 'text' | 'tagged' | 'activity';
@@ -40,6 +41,8 @@ export type ProfileViewProps = {
   actions?: ReactNode;
   /** Opens a post from the grid or the Text tab. */
   onOpenPost: (postId: string) => void;
+  /** On your own empty profile, opens the composer. */
+  onNewPost?: () => void;
   /** Gold ring around the photo on the member's own profile. */
   own?: boolean;
   onRefresh: () => void;
@@ -235,7 +238,12 @@ function PostTile({
       testID={`profile-post-${post.id}`}
     >
       {post.coverPath && uri ? (
-        <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" />
+        <Image
+          source={{ uri }}
+          style={StyleSheet.absoluteFill}
+          contentFit="cover"
+          transition={motion.photoFade}
+        />
       ) : null}
       {post.photoCount > 1 ? <MorePhotosIcon /> : null}
     </Pressable>
@@ -294,11 +302,13 @@ export function ProfileView({
   activity,
   actions,
   onOpenPost,
+  onNewPost,
   own = false,
   onRefresh,
   refreshing = false,
 }: ProfileViewProps) {
   const [tab, setTab] = useState<Tab>('photos');
+  const screenWidth = useWindowDimensions().width;
   const [now] = useState(() => new Date());
   const showActivity = !(activity.state === 'ready' && activity.data === null);
   const photoPosts = posts.state === 'ready' ? posts.data.filter((p) => p.coverPath) : [];
@@ -363,11 +373,23 @@ export function ProfileView({
 
       {current === 'photos' ? (
         posts.state === 'loading' ? (
-          <Message text="Loading posts…" />
+          <GridSkeleton tileSize={gridTileSize(screenWidth)} />
         ) : posts.state === 'error' ? (
           <Message text="Couldn’t load posts." onRetry={onRefresh} />
         ) : posts.data.length === 0 ? (
-          <Message text={own ? 'Your posts will show up here.' : 'No posts yet.'} />
+          own && onNewPost ? (
+            <View style={styles.empty} testID="profile-empty">
+              <AppText variant="headline" align="center">
+                Share your first post
+              </AppText>
+              <AppText variant="callout" color={colors.textSecondary} align="center">
+                Photos and updates you share show up here for the chapter.
+              </AppText>
+              <Button title="Share a post" onPress={onNewPost} testID="profile-new-post" />
+            </View>
+          ) : (
+            <Message text="No posts yet." />
+          )
         ) : photoPosts.length === 0 ? (
           <Message text={own ? 'Your photo posts will show up here.' : 'No photos yet.'} />
         ) : (
@@ -430,6 +452,7 @@ const styles = StyleSheet.create({
   textPostHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   shrink: { flexShrink: 1 },
   pressed: { opacity: 0.7 },
+  empty: { paddingTop: spacing.xl, gap: spacing.sm, alignItems: 'center' },
   tagged: { gap: spacing.md },
   textPostDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.separator },
   more: {

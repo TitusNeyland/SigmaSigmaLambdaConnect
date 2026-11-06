@@ -82,6 +82,12 @@ export const radius = {
 /** Apple's minimum touch target. */
 export const MIN_TOUCH = 44;
 
+/** How long things animate, in milliseconds. */
+export const motion = {
+  /** Photos fade in as they load, instead of popping in. */
+  photoFade: 250,
+} as const;
+
 /** Type scale modeled on the iOS text styles. Uses the system font (SF Pro, Roboto). */
 export const type = {
   largeTitle: { fontSize: 34, lineHeight: 41, fontWeight: '700', letterSpacing: -0.6 },

@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { haptics } from '@/ui/haptics';
 
 import { likeComment, unlikeComment } from '@/data/comments';
 import { likePost, unlikePost } from '@/data/likes';
@@ -33,6 +34,7 @@ export function useLikeToggle(
     inFlight.current = true;
     const before = state;
     const liked = !before.liked;
+    if (liked) haptics.tap();
     setState({ liked, count: Math.max(0, before.count + (liked ? 1 : -1)) });
     setSaving(true);
     setFailed(false);

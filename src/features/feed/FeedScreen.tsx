@@ -1,4 +1,4 @@
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -7,13 +7,16 @@ import { fetchActivity, fetchActivitySeen, type ActivityItem } from '@/data/acti
 import { fetchFeedPage, type FeedCursor, type FeedPost } from '@/data/feed';
 import { hasNewActivity } from '@/features/activity/activityLogic';
 import { useAuth } from '@/features/auth/AuthProvider';
+import { NEW_POST_ROUTE } from '@/features/navigation/TabLayout';
 import { colors, spacing } from '@/theme';
-import { AppText, Button } from '@/ui';
+import { AppText, Button, haptics } from '@/ui';
 
 import { onCommentsChanged, onFeedChanged } from './feedEvents';
 import { appendPage, visiblePosts } from './feedLogic';
+import { FeedSkeleton } from './FeedSkeleton';
 import { HomeHeader } from './HomeHeader';
 import { LineAnniversaries } from './LineAnniversaries';
+import { WelcomeCard } from './WelcomeCard';
 import { PostCard } from './PostCard';
 import { ReportedNotice } from './ReportedNotice';
 import { useHiddenContent } from './useHidden';
@@ -154,17 +157,15 @@ export function FeedScreen() {
           <PostCard post={item} now={now} me={uid} onDeleted={removePost} />
         )}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
-        ListHeaderComponent={<LineAnniversaries me={uid} />}
+        ListHeaderComponent={
+          <>
+            <WelcomeCard uid={uid} />
+            <LineAnniversaries me={uid} />
+          </>
+        }
         ListEmptyComponent={
           feed.state === 'loading' ? (
-            <AppText
-              variant="callout"
-              color={colors.textSecondary}
-              align="center"
-              style={styles.message}
-            >
-              Loading…
-            </AppText>
+            <FeedSkeleton />
           ) : feed.state === 'error' ? (
             <View style={styles.message}>
               <AppText variant="callout" color={colors.textSecondary} align="center">
@@ -186,8 +187,13 @@ export function FeedScreen() {
                 No posts yet
               </AppText>
               <AppText variant="callout" color={colors.textSecondary} align="center">
-                Photos from chapter events and brotherhood will show up here.
+                Photos from chapter events and brotherhood will show up here. Be the first.
               </AppText>
+              <Button
+                title="Share a post"
+                onPress={() => router.push(NEW_POST_ROUTE)}
+                testID="feed-new-post"
+              />
             </View>
           )
         }
@@ -211,6 +217,7 @@ export function FeedScreen() {
         onEndReachedThreshold={0.6}
         refreshing={refreshing}
         onRefresh={() => {
+          haptics.tap();
           setRefreshing(true);
           loadFirst();
         }}

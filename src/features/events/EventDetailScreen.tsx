@@ -8,11 +8,12 @@ import { fetchEventDetail, RsvpSaveError, setRsvp, type EventDetail } from '@/da
 import type { RsvpStatus } from '@/data/types';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { useCan } from '@/features/roles/RoleProvider';
-import { colors, palette, radius, spacing } from '@/theme';
+import { colors, motion, palette, radius, spacing } from '@/theme';
 import {
   AppText,
   Avatar,
   Button,
+  haptics,
   HeaderButton,
   ListSection,
   NavHeader,
@@ -131,6 +132,7 @@ export function EventDetailScreen({ id }: { id: string }) {
   const current: State = value?.id === id ? value.state : { state: 'loading' };
 
   async function rsvp(status: RsvpStatus, previous: RsvpStatus | null) {
+    haptics.select();
     setChoice({ id, status });
     setRsvpError(null);
     try {
@@ -202,6 +204,7 @@ export function EventDetailScreen({ id }: { id: string }) {
             source={{ uri: event.photoURL }}
             style={styles.hero}
             contentFit="cover"
+            transition={motion.photoFade}
             accessibilityLabel={`Photo for ${event.title}`}
             testID="event-hero"
           />

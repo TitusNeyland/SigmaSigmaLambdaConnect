@@ -117,6 +117,14 @@ jest.mock('@/data/push');
 jest.mock('@/data/activity');
 // The Chapter routes load committee reports (Documents), and most app tests render them.
 jest.mock('@/data/committeeReports');
+// Haptics are native; tests can check they were asked for.
+jest.mock('expo-haptics', () => ({
+  impactAsync: jest.fn(async () => {}),
+  selectionAsync: jest.fn(async () => {}),
+  notificationAsync: jest.fn(async () => {}),
+  ImpactFeedbackStyle: { Light: 'light' },
+  NotificationFeedbackType: { Success: 'success' },
+}));
 // The camera is native. Tests that scan call the CameraView's onBarcodeScanned prop, and
 // set permission with __setCameraPermission.
 jest.mock('expo-camera', () => {

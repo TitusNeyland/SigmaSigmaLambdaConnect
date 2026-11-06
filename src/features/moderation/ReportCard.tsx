@@ -5,7 +5,7 @@ import { StyleSheet, View } from 'react-native';
 import { RESTRICT_DAYS, type ReportAction, type ReportCase } from '@/data/moderation';
 import { timeAgo } from '@/features/feed/feedLogic';
 import { useStorageUrl } from '@/features/feed/useStorageUrl';
-import { colors, radius, spacing } from '@/theme';
+import { colors, motion, radius, spacing } from '@/theme';
 import { AppText, Avatar, Button, StatusChip } from '@/ui';
 
 import {
@@ -35,6 +35,7 @@ function Thumb({ path }: { path: string }) {
           source={{ uri }}
           style={StyleSheet.absoluteFill}
           contentFit="cover"
+          transition={motion.photoFade}
           accessible={false}
         />
       ) : null}

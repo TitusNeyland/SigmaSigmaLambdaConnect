@@ -5,7 +5,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { fetchEventPhotos, type EventPhoto } from '@/data/events';
 import { useStorageUrl } from '@/features/feed/useStorageUrl';
-import { colors, spacing } from '@/theme';
+import { colors, motion, spacing } from '@/theme';
 import { ListSection } from '@/ui';
 
 const COLUMNS = 3;
@@ -26,7 +26,14 @@ function Photo({ photo, size }: { photo: EventPhoto; size: number }) {
       ]}
       testID={`event-photo-${photo.path}`}
     >
-      {uri ? <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" /> : null}
+      {uri ? (
+        <Image
+          source={{ uri }}
+          style={StyleSheet.absoluteFill}
+          contentFit="cover"
+          transition={motion.photoFade}
+        />
+      ) : null}
     </Pressable>
   );
 }

@@ -108,7 +108,7 @@ describe('ProfileView', () => {
     );
     expect(screen.getByLabelText('– Posts')).toBeTruthy();
     expect(screen.getByLabelText('– Events')).toBeTruthy();
-    expect(screen.getByText('Loading posts…')).toBeTruthy();
+    expect(screen.getByLabelText('Loading posts')).toBeTruthy();
   });
 
   it('shows the role badge when given one', async () => {
