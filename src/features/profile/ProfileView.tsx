@@ -1,6 +1,14 @@
 import { Image } from 'expo-image';
 import { useEffect, useState, type ReactNode } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import {
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  useWindowDimensions,
+  View,
+} from 'react-native';
+import Svg, { Path, Rect } from 'react-native-svg';
 
 import {
   photoUrl,
@@ -9,12 +17,14 @@ import {
   type ProfilePost,
   type ProfileStats,
 } from '@/data/profile';
-import { colors, MIN_TOUCH, radius, spacing } from '@/theme';
+import { colors, MIN_TOUCH, palette, radius, spacing } from '@/theme';
 import { AppText, Avatar, Button, SegmentedControl, StatusChip } from '@/ui';
+
+import { timeAgo } from '@/features/feed/feedLogic';
 
 import type { Loadable } from './useProfileData';
 
-type Tab = 'posts' | 'activity';
+type Tab = 'photos' | 'text' | 'activity';
 
 export type ProfileViewProps = {
   profile: Profile;
@@ -26,6 +36,8 @@ export type ProfileViewProps = {
   activity: Loadable<ActivityItem[] | null>;
   /** Shown under the avatar row, e.g. Edit profile. */
   actions?: ReactNode;
+  /** Opens a post from the grid or the Text tab. */
+  onOpenPost: (postId: string) => void;
   /** Gold ring around the photo on the member's own profile. */
   own?: boolean;
   onRefresh: () => void;
@@ -88,7 +100,7 @@ export function gridTileSize(gridWidth: number): number {
  * percentage widths plus gaps overflow the row and aspectRatio doesn't hold up in a
  * wrapping row.
  */
-function PostGrid({ posts }: { posts: ProfilePost[] }) {
+function PostGrid({ posts, onOpen }: { posts: ProfilePost[]; onOpen: (id: string) => void }) {
   // The grid runs edge to edge, so the screen width is right until it's measured.
   const screen = useWindowDimensions().width;
   const [width, setWidth] = useState<number | null>(null);
@@ -100,13 +112,94 @@ function PostGrid({ posts }: { posts: ProfilePost[] }) {
       testID="profile-grid"
     >
       {posts.map((post) => (
-        <PostTile key={post.id} post={post} size={size} />
+        <PostTile key={post.id} post={post} size={size} onOpen={onOpen} />
       ))}
     </View>
   );
 }
 
-function PostTile({ post, size }: { post: ProfilePost; size: number }) {
+const TEXT_POST_AVATAR = 40;
+
+/**
+ * Posts without photos, as a list you can read, like a feed of tweets: the member's photo,
+ * their name and when, then the words.
+ */
+function TextPosts({
+  posts,
+  author,
+  now,
+  onOpen,
+}: {
+  posts: ProfilePost[];
+  author: Pick<Profile, 'displayName' | 'photoURL'>;
+  now: Date;
+  onOpen: (id: string) => void;
+}) {
+  return (
+    <View testID="profile-text-posts">
+      {posts.map((post, i) => {
+        const when = post.createdAt ? timeAgo(post.createdAt, now) : '';
+        return (
+          <Pressable
+            key={post.id}
+            onPress={() => onOpen(post.id)}
+            style={({ pressed }) => [
+              styles.textPost,
+              i > 0 && styles.textPostDivider,
+              pressed && styles.pressed,
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel={[author.displayName, when, post.caption].filter(Boolean).join(', ')}
+            accessibilityHint="Opens the post"
+            testID={`profile-text-${post.id}`}
+          >
+            <Avatar name={author.displayName} uri={author.photoURL} size={TEXT_POST_AVATAR} />
+            <View style={styles.textPostBody}>
+              <View style={styles.textPostHead}>
+                <AppText variant="subhead" weight="600" numberOfLines={1} style={styles.shrink}>
+                  {author.displayName}
+                </AppText>
+                {when ? (
+                  <AppText variant="subhead" color={colors.textSecondary}>
+                    · {when}
+                  </AppText>
+                ) : null}
+              </View>
+              <AppText numberOfLines={8}>{post.caption}</AppText>
+            </View>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+/** Two stacked squares in a tile's corner, Instagram's sign for a post with more photos. */
+function MorePhotosIcon() {
+  return (
+    <View style={styles.more} testID="more-photos">
+      <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" accessibilityElementsHidden>
+        <Rect x={7} y={3} width={14} height={14} rx={2.5} fill={palette.onInk} />
+        <Path
+          d="M4 7v12a1.5 1.5 0 0 0 1.5 1.5H17"
+          stroke={palette.onInk}
+          strokeWidth={2}
+          strokeLinecap="round"
+        />
+      </Svg>
+    </View>
+  );
+}
+
+function PostTile({
+  post,
+  size,
+  onOpen,
+}: {
+  post: ProfilePost;
+  size: number;
+  onOpen: (id: string) => void;
+}) {
   const [uri, setUri] = useState<string | null>(null);
   useEffect(() => {
     if (!post.coverPath) return;
@@ -120,28 +213,28 @@ function PostTile({ post, size }: { post: ProfilePost; size: number }) {
     };
   }, [post.coverPath]);
 
+  const label =
+    post.photoCount > 1
+      ? `${post.caption || 'Photo post'}, ${post.photoCount} photos`
+      : post.caption || 'Photo post';
   return (
-    <View style={[styles.tile, { width: size, height: size }]} testID={`profile-post-${post.id}`}>
-      {post.coverPath ? (
-        uri ? (
-          <Image
-            source={{ uri }}
-            style={StyleSheet.absoluteFill}
-            contentFit="cover"
-            accessibilityLabel={post.caption || 'Photo post'}
-          />
-        ) : null
-      ) : (
-        <AppText
-          variant="caption"
-          color={colors.textSecondary}
-          numberOfLines={4}
-          style={styles.tileText}
-        >
-          {post.caption}
-        </AppText>
-      )}
-    </View>
+    <Pressable
+      onPress={() => onOpen(post.id)}
+      style={({ pressed }) => [
+        styles.tile,
+        { width: size, height: size },
+        pressed && styles.pressed,
+      ]}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityHint="Opens the post"
+      testID={`profile-post-${post.id}`}
+    >
+      {post.coverPath && uri ? (
+        <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" />
+      ) : null}
+      {post.photoCount > 1 ? <MorePhotosIcon /> : null}
+    </Pressable>
   );
 }
 
@@ -195,13 +288,23 @@ export function ProfileView({
   posts,
   activity,
   actions,
+  onOpenPost,
   own = false,
   onRefresh,
   refreshing = false,
 }: ProfileViewProps) {
-  const [tab, setTab] = useState<Tab>('posts');
+  const [tab, setTab] = useState<Tab>('photos');
+  const [now] = useState(() => new Date());
   const showActivity = !(activity.state === 'ready' && activity.data === null);
-  const current: Tab = showActivity ? tab : 'posts';
+  const photoPosts = posts.state === 'ready' ? posts.data.filter((p) => p.coverPath) : [];
+  const textPosts = posts.state === 'ready' ? posts.data.filter((p) => !p.coverPath) : [];
+  // Photos is always there; Text only when there are text posts; Activity only when allowed.
+  const segments = [
+    { value: 'photos' as const, label: 'Photos' },
+    ...(textPosts.length > 0 ? [{ value: 'text' as const, label: 'Text' }] : []),
+    ...(showActivity ? [{ value: 'activity' as const, label: 'Activity' }] : []),
+  ];
+  const current: Tab = segments.some((s) => s.value === tab) ? tab : 'photos';
   const subtitle = profileSubtitle(profile);
 
   return (
@@ -241,12 +344,9 @@ export function ProfileView({
 
       {actions ? <View style={styles.actions}>{actions}</View> : null}
 
-      {showActivity ? (
+      {segments.length > 1 ? (
         <SegmentedControl
-          segments={[
-            { value: 'posts', label: 'Posts' },
-            { value: 'activity', label: 'Activity' },
-          ]}
+          segments={segments}
           value={current}
           onChange={setTab}
           accessibilityLabel="Profile sections"
@@ -254,16 +354,20 @@ export function ProfileView({
         />
       ) : null}
 
-      {current === 'posts' ? (
+      {current === 'photos' ? (
         posts.state === 'loading' ? (
           <Message text="Loading posts…" />
         ) : posts.state === 'error' ? (
           <Message text="Couldn’t load posts." onRetry={onRefresh} />
         ) : posts.data.length === 0 ? (
           <Message text={own ? 'Your posts will show up here.' : 'No posts yet.'} />
+        ) : photoPosts.length === 0 ? (
+          <Message text={own ? 'Your photo posts will show up here.' : 'No photos yet.'} />
         ) : (
-          <PostGrid posts={posts.data} />
+          <PostGrid posts={photoPosts} onOpen={onOpenPost} />
         )
+      ) : current === 'text' ? (
+        <TextPosts posts={textPosts} author={profile} now={now} onOpen={onOpenPost} />
       ) : (
         <View testID="profile-activity">
           {activity.state === 'loading' ? (
@@ -302,7 +406,21 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     justifyContent: 'center',
   },
-  tileText: { padding: spacing.sm },
+  textPost: { flexDirection: 'row', gap: spacing.md, paddingVertical: spacing.md },
+  textPostBody: { flex: 1, gap: spacing.xxs },
+  textPostHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  shrink: { flexShrink: 1 },
+  pressed: { opacity: 0.7 },
+  textPostDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.separator },
+  more: {
+    position: 'absolute',
+    top: spacing.xs,
+    right: spacing.xs,
+    shadowColor: palette.ink,
+    shadowOpacity: 0.35,
+    shadowRadius: 2,
+    shadowOffset: { width: 0, height: 0 },
+  },
   activityRow: {
     flexDirection: 'row',
     alignItems: 'center',

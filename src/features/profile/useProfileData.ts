@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
   fetchActivity,
@@ -32,17 +33,25 @@ export function useProfile(uid: string, options: { own?: boolean } = {}): Loadab
   return result && result.uid === uid ? result.value : { state: 'loading' };
 }
 
-/** Runs a one-off load, with reload for pull to refresh and retry. */
+/**
+ * Runs a one-off load, with reload for pull to refresh, retry and coming back to the
+ * screen. While reloading, what was already loaded for the same key stays on screen, so a
+ * refresh doesn't flash "Loading…".
+ */
 function useLoad<T>(key: string, load: () => Promise<T>) {
   const [attempt, setAttempt] = useState(0);
   const tag = `${key}:${attempt}`;
-  const [result, setResult] = useState<{ tag: string; value: Loadable<T> } | null>(null);
+  const [result, setResult] = useState<{
+    key: string;
+    tag: string;
+    value: Loadable<T>;
+  } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     load().then(
-      (data) => !cancelled && setResult({ tag, value: { state: 'ready', data } }),
-      () => !cancelled && setResult({ tag, value: { state: 'error' } }),
+      (data) => !cancelled && setResult({ key, tag, value: { state: 'ready', data } }),
+      () => !cancelled && setResult({ key, tag, value: { state: 'error' } }),
     );
     return () => {
       cancelled = true;
@@ -52,7 +61,9 @@ function useLoad<T>(key: string, load: () => Promise<T>) {
   }, [tag]);
 
   const reload = useCallback(() => setAttempt((n) => n + 1), []);
-  const value: Loadable<T> = result && result.tag === tag ? result.value : { state: 'loading' };
+  const current = result && result.tag === tag;
+  const stale = result && result.key === key && result.value.state === 'ready';
+  const value: Loadable<T> = current || stale ? result.value : { state: 'loading' };
   return { value, reload };
 }
 
@@ -76,6 +87,16 @@ export function useProfileExtras(uid: string, includeAttendance: boolean) {
     reloadPosts();
     reloadActivity();
   }, [reloadStats, reloadPosts, reloadActivity]);
+
+  // Coming back to the profile (say, after deleting a post you opened from it) reloads it.
+  // The first focus is the first load, which has already started.
+  const focusedBefore = useRef(false);
+  useFocusEffect(
+    useCallback(() => {
+      if (focusedBefore.current) reload();
+      focusedBefore.current = true;
+    }, [reload]),
+  );
 
   return { stats: stats.value, posts: posts.value, activity: activity.value, reload };
 }

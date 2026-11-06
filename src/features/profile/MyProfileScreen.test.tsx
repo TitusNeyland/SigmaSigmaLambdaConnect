@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
 
 jest.mock('@/data/auth');
@@ -96,15 +97,143 @@ describe('My profile', () => {
   it('shows a post grid with one tile per post', async () => {
     profile.setMockExtras({
       posts: [
-        { id: 'p1', coverPath: 'posts/u/p1/a.jpg', photoCount: 2, caption: 'Service day' },
-        { id: 'p2', coverPath: null, photoCount: 0, caption: 'Text only post' },
+        {
+          id: 'p1',
+          coverPath: 'posts/u/p1/a.jpg',
+          photoCount: 2,
+          caption: 'Service day',
+          createdAt: null,
+        },
+      ],
+    });
+    await openProfile();
+    await waitFor(() => expect(screen.getByTestId('profile-post-p1')).toBeTruthy());
+    await waitFor(() => expect(profile.photoUrl).toHaveBeenCalledWith('posts/u/p1/a.jpg'));
+  });
+
+  it('keeps photos in the grid and text posts in their own tab', async () => {
+    const day = 86_400_000;
+    profile.setMockExtras({
+      posts: [
+        {
+          id: 'p1',
+          coverPath: 'posts/u/p1/a.jpg',
+          photoCount: 3,
+          caption: 'Service day',
+          createdAt: null,
+        },
+        {
+          id: 'p2',
+          coverPath: 'posts/u/p2/a.jpg',
+          photoCount: 1,
+          caption: 'Gala',
+          createdAt: null,
+        },
+        {
+          id: 'p3',
+          coverPath: null,
+          photoCount: 0,
+          caption: 'Hello',
+          createdAt: new Date(Date.now() - 2 * day),
+        },
       ],
     });
     await openProfile();
     await waitFor(() => expect(screen.getByTestId('profile-post-p1')).toBeTruthy());
     expect(screen.getByTestId('profile-post-p2')).toBeTruthy();
-    expect(screen.getByText('Text only post')).toBeTruthy();
-    await waitFor(() => expect(profile.photoUrl).toHaveBeenCalledWith('posts/u/p1/a.jpg'));
+    expect(screen.queryByTestId('profile-post-p3')).toBeNull();
+    expect(screen.queryByText('Hello')).toBeNull();
+    // Only the post with more than one photo gets the stacked-squares icon.
+    expect(screen.getAllByTestId('more-photos')).toHaveLength(1);
+    await waitFor(() => expect(screen.getByLabelText('Service day, 3 photos')).toBeTruthy());
+
+    await press(screen.getByRole('tab', { name: 'Text' }));
+    expect(screen.getByTestId('profile-text-p3')).toHaveTextContent(/Hello/);
+    expect(screen.getByTestId('profile-text-p3').props.accessibilityLabel).toMatch(/, 2d, Hello$/);
+    // The name and when sit above the words, beside the member's photo.
+    expect(screen.getByTestId('profile-text-p3')).toHaveTextContent(/· 2d/);
+    expect(screen.queryByTestId('profile-grid')).toBeNull();
+  });
+
+  it('opens a post from the grid or the Text tab, and Back returns to the profile', async () => {
+    profile.setMockExtras({
+      posts: [
+        {
+          id: 'p1',
+          coverPath: 'posts/u/p1/a.jpg',
+          photoCount: 1,
+          caption: 'Gala',
+          createdAt: null,
+        },
+        { id: 'p3', coverPath: null, photoCount: 0, caption: 'Hello', createdAt: null },
+      ],
+    });
+    const r = await renderRouter('src/app', { initialUrl: '/profile' });
+    await waitFor(() => expect(screen.getByTestId('profile-post-p1')).toBeTruthy());
+    await press(screen.getByTestId('profile-post-p1'));
+    expect(r.getPathname()).toBe('/profile/post/p1');
+    await act(async () => router.back());
+    await waitFor(() => expect(r.getPathname()).toBe('/profile'));
+    await press(screen.getByRole('tab', { name: 'Text' }));
+    await press(screen.getByTestId('profile-text-p3'));
+    expect(r.getPathname()).toBe('/profile/post/p3');
+  });
+
+  it('refreshes when you come back, so a post you deleted is gone', async () => {
+    profile.setMockExtras({
+      posts: [
+        {
+          id: 'p1',
+          coverPath: 'posts/u/p1/a.jpg',
+          photoCount: 1,
+          caption: 'Gala',
+          createdAt: null,
+        },
+        {
+          id: 'p2',
+          coverPath: 'posts/u/p2/a.jpg',
+          photoCount: 1,
+          caption: 'Cookout',
+          createdAt: null,
+        },
+      ],
+      stats: { posts: 2, eventsAttended: 0, serviceHours: 0 },
+    });
+    const r = await renderRouter('src/app', { initialUrl: '/profile' });
+    await waitFor(() => expect(screen.getByTestId('profile-post-p1')).toBeTruthy());
+    await press(screen.getByTestId('profile-post-p1'));
+    expect(r.getPathname()).toBe('/profile/post/p1');
+    // Deleted while it was open.
+    profile.setMockExtras({
+      posts: [
+        {
+          id: 'p2',
+          coverPath: 'posts/u/p2/a.jpg',
+          photoCount: 1,
+          caption: 'Cookout',
+          createdAt: null,
+        },
+      ],
+      stats: { posts: 1, eventsAttended: 0, serviceHours: 0 },
+    });
+    await act(async () => router.back());
+    await waitFor(() => expect(screen.queryByTestId('profile-post-p1')).toBeNull());
+    expect(screen.getByTestId('profile-post-p2')).toBeTruthy();
+    expect(screen.getByLabelText('1 Posts')).toBeTruthy();
+    // It kept showing the grid while it reloaded, rather than "Loading posts…".
+    expect(screen.queryByText('Loading posts…')).toBeNull();
+  });
+
+  it('with only text posts, Photos says so and the Text tab has them', async () => {
+    profile.setMockExtras({
+      posts: [{ id: 'p3', coverPath: null, photoCount: 0, caption: 'Hello', createdAt: null }],
+    });
+    await openProfile();
+    await waitFor(() =>
+      expect(screen.getByText('Your photo posts will show up here.')).toBeTruthy(),
+    );
+    await press(screen.getByRole('tab', { name: 'Text' }));
+    expect(screen.getByTestId('profile-text-p3')).toHaveTextContent(/Hello/);
   });
 
   it('shows a friendly empty state with no posts', async () => {
@@ -157,7 +286,15 @@ describe('My profile', () => {
     await waitFor(() => expect(screen.getByText('Couldn’t load posts.')).toBeTruthy());
     profile.setMockExtras({
       fail: false,
-      posts: [{ id: 'p9', coverPath: null, photoCount: 0, caption: 'Back online' }],
+      posts: [
+        {
+          id: 'p9',
+          coverPath: 'posts/u/p9/a.jpg',
+          photoCount: 1,
+          caption: 'Back online',
+          createdAt: null,
+        },
+      ],
     });
     await press(screen.getByRole('button', { name: 'Try again' }));
     await waitFor(() => expect(screen.getByTestId('profile-post-p9')).toBeTruthy());

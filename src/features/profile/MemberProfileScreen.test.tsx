@@ -149,6 +149,20 @@ describe('layout', () => {
   });
 });
 
+it('opens one of his posts in the Chapter tab, not Home', async () => {
+  profile.setMockExtras({
+    posts: [
+      { id: 'p1', coverPath: 'posts/c/p1/a.jpg', photoCount: 1, caption: 'Gala', createdAt: null },
+    ],
+  });
+  await openMember();
+  await waitFor(() => expect(screen.getByTestId('profile-post-p1')).toBeTruthy());
+  await act(async () => {
+    fireEvent.press(screen.getByTestId('profile-post-p1'));
+  });
+  expect(screen).toHavePathname('/chapter/post/p1');
+});
+
 describe('contact details follow his privacy settings', () => {
   it('shows no contact buttons when he hides both', async () => {
     await openMember();

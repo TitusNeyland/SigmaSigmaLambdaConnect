@@ -55,6 +55,7 @@ export type ProfilePost = {
   coverPath: string | null;
   photoCount: number;
   caption: string;
+  createdAt: Date | null;
 };
 
 export type ActivityItem = {
@@ -229,6 +230,10 @@ export async function fetchProfilePosts(uid: string, max = 30): Promise<ProfileP
       coverPath: paths[0] ?? null,
       photoCount: paths.length,
       caption: text(data.caption),
+      createdAt:
+        typeof (data.createdAt as Timestamp | undefined)?.toDate === 'function'
+          ? (data.createdAt as Timestamp).toDate()
+          : null,
     };
   });
 }
