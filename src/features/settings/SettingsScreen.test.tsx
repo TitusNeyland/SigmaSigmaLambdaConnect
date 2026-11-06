@@ -1,7 +1,7 @@
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
 import { Linking } from 'react-native';
 
-import { PRIVACY_URL, SUPPORT_EMAIL, TERMS_URL } from '@/config/app';
+import { SUPPORT_EMAIL } from '@/config/app';
 
 jest.mock('@/data/auth');
 const auth = jest.requireMock<typeof import('@/data/__mocks__/auth')>('@/data/auth');
@@ -144,14 +144,21 @@ describe('Settings: privacy and help', () => {
     expect(screen.getByText('Chapter members')).toBeTruthy();
   });
 
+  it('emails support', async () => {
+    await openSettings();
+    await press(screen.getByTestId('row-support'));
+    expect(openURL).toHaveBeenCalledWith(`mailto:${SUPPORT_EMAIL}`);
+  });
+
   it.each([
-    ['row-terms', TERMS_URL],
-    ['row-privacy', PRIVACY_URL],
-    ['row-support', `mailto:${SUPPORT_EMAIL}`],
-  ])('%s opens %s', async (testID, url) => {
+    ['row-terms', '/profile/terms', 'Terms of use'],
+    ['row-privacy', '/profile/privacy', 'Privacy policy'],
+  ])('%s opens %s in the app', async (testID, path, title) => {
     await openSettings();
     await press(screen.getByTestId(testID));
-    expect(openURL).toHaveBeenCalledWith(url);
+    await waitFor(() => expect(screen).toHavePathname(path));
+    expect(screen.getByRole('header', { name: title })).toBeTruthy();
+    expect(openURL).not.toHaveBeenCalled();
   });
 
   it('opens the community guidelines in the app', async () => {

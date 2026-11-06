@@ -117,6 +117,13 @@ jest.mock('@/data/push');
 jest.mock('@/data/activity');
 // The Chapter routes load committee reports (Documents), and most app tests render them.
 jest.mock('@/data/committeeReports');
+// The web view is native. The mock renders a plain view; tests read its source and call its
+// onShouldStartLoadWithRequest prop.
+jest.mock('react-native-webview', () => {
+  const { View } = jest.requireActual('react-native');
+  const React = jest.requireActual('react');
+  return { WebView: (props) => React.createElement(View, props) };
+});
 // Haptics are native; tests can check they were asked for.
 jest.mock('expo-haptics', () => ({
   impactAsync: jest.fn(async () => {}),
