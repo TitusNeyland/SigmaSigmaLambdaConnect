@@ -86,6 +86,8 @@ export const MIN_TOUCH = 44;
 export const motion = {
   /** Photos fade in as they load, instead of popping in. */
   photoFade: 250,
+  /** A held profile photo lifting toward the screen, and settling back. */
+  avatarZoom: 220,
 } as const;
 
 /** Type scale modeled on the iOS text styles. Uses the system font (SF Pro, Roboto). */

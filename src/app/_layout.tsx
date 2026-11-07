@@ -8,6 +8,7 @@ import { SessionProvider, useSession } from '@/features/auth/session';
 import { PushRegistration } from '@/features/notifications/PushRegistration';
 import { RoleProvider } from '@/features/roles/RoleProvider';
 import { colors } from '@/theme';
+import { AvatarZoomProvider } from '@/ui';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -62,9 +63,11 @@ export default function RootLayout() {
     <AuthProvider>
       <SessionProvider>
         <RoleProvider>
-          <StatusBar style="dark" />
-          <PushRegistration />
-          <RootStack />
+          <AvatarZoomProvider>
+            <StatusBar style="dark" />
+            <PushRegistration />
+            <RootStack />
+          </AvatarZoomProvider>
         </RoleProvider>
       </SessionProvider>
     </AuthProvider>

@@ -33,6 +33,9 @@ export function avatarTone(name: string): { bg: string; fg: string } {
   return { bg, fg: DARK_TONES.has(bg) ? palette.onInk : '#2B2824' };
 }
 
+/** How far the gold ring sits outside the photo: its padding plus its border. */
+export const RING_INSET = 4;
+
 export function Avatar({ name, uri, size = 40, ring = false, testID }: AvatarProps) {
   const { bg, fg } = avatarTone(name);
   const circle = { width: size, height: size, borderRadius: size / 2 };
@@ -42,7 +45,7 @@ export function Avatar({ name, uri, size = 40, ring = false, testID }: AvatarPro
 
   return (
     <View
-      style={[ring && { ...styles.ring, borderRadius: size / 2 + 4 }]}
+      style={[ring && { ...styles.ring, borderRadius: size / 2 + RING_INSET }]}
       accessible
       accessibilityRole="image"
       accessibilityLabel={name}
@@ -67,8 +70,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   ring: {
-    padding: 2,
-    borderWidth: 2,
+    padding: RING_INSET / 2,
+    borderWidth: RING_INSET / 2,
     borderColor: palette.gold,
   },
 });
