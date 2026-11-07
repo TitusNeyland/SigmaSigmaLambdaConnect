@@ -19,7 +19,7 @@ import {
   type ProfileStats,
 } from '@/data/profile';
 import { colors, MIN_TOUCH, motion, palette, radius, spacing } from '@/theme';
-import { AppText, Avatar, Button, SegmentedControl, StatusChip } from '@/ui';
+import { AppText, Avatar, Button, SegmentedControl, StatusChip, ZoomableAvatar } from '@/ui';
 
 import { timeAgo } from '@/features/feed/feedLogic';
 
@@ -535,7 +535,14 @@ export function ProfileView({
       testID="profile-scroll"
     >
       <View style={styles.top}>
-        <Avatar name={profile.displayName} uri={profile.photoURL} size={86} ring={own} />
+        {/* Hold the photo to see it up close, like Instagram. */}
+        <ZoomableAvatar
+          name={profile.displayName}
+          uri={profile.photoURL}
+          size={86}
+          ring={own}
+          testID="profile-avatar"
+        />
         <View style={styles.stats}>
           <Stat value={pick(stats, 'posts')} label="Posts" testID="stat-posts" />
           <Stat value={pick(stats, 'eventsAttended')} label="Events" testID="stat-events" />

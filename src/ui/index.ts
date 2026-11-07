@@ -1,5 +1,6 @@
 export * from './AppText';
 export * from './Avatar';
+export * from './AvatarZoom';
 export * from './BottomSheet';
 export * from './Button';
 export * from './ListRow';
