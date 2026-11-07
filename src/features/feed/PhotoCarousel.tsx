@@ -3,6 +3,7 @@ import { useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { colors, motion, palette, radius, spacing } from '@/theme';
+import { ZoomablePhoto } from '@/ui';
 
 import { useStorageUrl } from './useStorageUrl';
 
@@ -22,7 +23,12 @@ function Photo({
 }) {
   const uri = useStorageUrl(path);
   return (
-    <View style={[styles.photo, { width, height }]} testID={`photo-frame-${path}`}>
+    // Pinch to look closer, like Instagram.
+    <ZoomablePhoto
+      uri={uri}
+      style={[styles.photo, { width, height }]}
+      testID={`photo-frame-${path}`}
+    >
       {uri ? (
         <Image
           source={{ uri }}
@@ -33,7 +39,7 @@ function Photo({
           testID={`photo-${path}`}
         />
       ) : null}
-    </View>
+    </ZoomablePhoto>
   );
 }
 

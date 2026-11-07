@@ -88,6 +88,8 @@ export const motion = {
   photoFade: 250,
   /** A held profile photo lifting toward the screen, and settling back. */
   avatarZoom: 220,
+  /** A pinched post photo settling back into the post. */
+  pinchRelease: 250,
 } as const;
 
 /** Type scale modeled on the iOS text styles. Uses the system font (SF Pro, Roboto). */

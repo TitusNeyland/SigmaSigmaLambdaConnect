@@ -2,13 +2,15 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
+import { StyleSheet } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { AuthProvider } from '@/features/auth/AuthProvider';
 import { SessionProvider, useSession } from '@/features/auth/session';
 import { PushRegistration } from '@/features/notifications/PushRegistration';
 import { RoleProvider } from '@/features/roles/RoleProvider';
 import { colors } from '@/theme';
-import { AvatarZoomProvider } from '@/ui';
+import { AvatarZoomProvider, PhotoZoomProvider } from '@/ui';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -63,13 +65,22 @@ export default function RootLayout() {
     <AuthProvider>
       <SessionProvider>
         <RoleProvider>
-          <AvatarZoomProvider>
-            <StatusBar style="dark" />
-            <PushRegistration />
-            <RootStack />
-          </AvatarZoomProvider>
+          {/* Gestures (pinching a post photo) work on every screen. */}
+          <GestureHandlerRootView style={styles.root}>
+            <AvatarZoomProvider>
+              <PhotoZoomProvider>
+                <StatusBar style="dark" />
+                <PushRegistration />
+                <RootStack />
+              </PhotoZoomProvider>
+            </AvatarZoomProvider>
+          </GestureHandlerRootView>
         </RoleProvider>
       </SessionProvider>
     </AuthProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  root: { flex: 1 },
+});
