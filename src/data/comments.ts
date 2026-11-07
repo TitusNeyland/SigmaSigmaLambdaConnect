@@ -1,5 +1,4 @@
 import {
-  addDoc,
   collection,
   deleteDoc,
   doc,
@@ -12,15 +11,19 @@ import {
   setDoc,
   Timestamp,
 } from 'firebase/firestore';
+import { ref, uploadBytes } from 'firebase/storage';
 
 import { fetchAuthor, type FeedAuthor } from './feed';
-import { db } from './firebase';
+import { db, storage } from './firebase';
+import { localJpeg } from './localJpeg';
 
 export type PostComment = {
   id: string;
   authorId: string;
   author: FeedAuthor | null;
   text: string;
+  /** Storage path of a photo on the comment. Null for text-only. */
+  photoPath: string | null;
   createdAt: Date;
   replyToId: string | null;
   likeCount: number;
@@ -40,12 +43,14 @@ export function toComment(
 ): PostComment | null {
   const authorId = text(data.authorId);
   const body = text(data.text).trim();
-  if (!authorId || !body) return null;
+  const photoPath = typeof data.photoPath === 'string' && data.photoPath ? data.photoPath : null;
+  if (!authorId || (!body && !photoPath)) return null;
   return {
     id,
     authorId,
     author,
     text: body,
+    photoPath,
     // Our own new comment shows before the server stamps its time.
     createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(),
     replyToId: typeof data.replyToId === 'string' && data.replyToId ? data.replyToId : null,
@@ -100,18 +105,45 @@ export function subscribeToComments(
   );
 }
 
-/** Adds a comment, or a reply to one. The post's comment count is kept by a Cloud Function. */
+/** Where a comment photo lives. The storage rules only let that member write this file. */
+export const commentPhotoStoragePath = (postId: string, uid: string, commentId: string) =>
+  `comments/${postId}/${uid}-${commentId}.jpg`;
+
+/** Uploads a prepared JPEG for a comment and returns its Storage path. */
+export async function uploadCommentPhoto(
+  postId: string,
+  uid: string,
+  commentId: string,
+  localUri: string,
+): Promise<string> {
+  const path = commentPhotoStoragePath(postId, uid, commentId);
+  await uploadBytes(ref(storage, path), await localJpeg(localUri), {
+    contentType: 'image/jpeg',
+  });
+  return path;
+}
+
+/**
+ * Adds a comment, or a reply to one. A photo is optional; text can be empty when there is
+ * one. The post's comment count is kept by a Cloud Function.
+ */
 export async function addComment(
   postId: string,
   uid: string,
   body: string,
   replyToId: string | null = null,
+  photoUri?: string,
 ): Promise<void> {
-  await addDoc(collection(db, 'posts', postId, 'comments'), {
+  const commentRef = doc(collection(db, 'posts', postId, 'comments'));
+  const photoPath = photoUri
+    ? await uploadCommentPhoto(postId, uid, commentRef.id, photoUri)
+    : null;
+  await setDoc(commentRef, {
     authorId: uid,
     text: body.trim(),
     createdAt: serverTimestamp(),
     ...(replyToId ? { replyToId } : {}),
+    ...(photoPath ? { photoPath } : {}),
   });
 }
 

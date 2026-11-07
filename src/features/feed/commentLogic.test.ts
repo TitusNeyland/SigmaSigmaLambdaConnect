@@ -35,11 +35,13 @@ describe('threadComments', () => {
   });
 });
 
-it('needs some words, up to 1000 characters', () => {
+it('needs some words or a photo, up to 1000 characters', () => {
   expect(canPostComment('  ')).toBe(false);
+  expect(canPostComment('  ', true)).toBe(true);
   expect(canPostComment(' Nice ')).toBe(true);
   expect(canPostComment('a'.repeat(1000))).toBe(true);
   expect(canPostComment('a'.repeat(1001))).toBe(false);
+  expect(canPostComment('a'.repeat(1001), true)).toBe(false);
 });
 
 describe('previewOf', () => {
@@ -69,5 +71,11 @@ describe('previewOf', () => {
   it('is empty with no top-level comments', () => {
     expect(previewOf([])).toEqual([]);
     expect(previewOf([at('c2', 2, { replyToId: 'c1' })])).toEqual([]);
+  });
+
+  it('previews a photo-only comment as Shared a photo', () => {
+    expect(previewOf([at('c1', 1, { text: '', photoPath: 'https://cdn.test/c.jpg' })])).toEqual([
+      { id: 'c1', authorId: 'a', authorName: 'Name c1', text: 'Shared a photo' },
+    ]);
   });
 });

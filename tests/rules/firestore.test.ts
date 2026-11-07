@@ -1210,6 +1210,27 @@ describe('comments', () => {
     );
   });
 
+  it('allows a photo-only comment when the path is this member’s file for this comment', async () => {
+    await assertSucceeds(
+      setDoc(doc(as(USERS.bob), 'posts/alicePost/comments/pic'), {
+        ...newComment(USERS.bob, ''),
+        photoPath: 'comments/alicePost/bob-pic.jpg',
+      }),
+    );
+    await assertFails(
+      setDoc(doc(as(USERS.bob), 'posts/alicePost/comments/stolen'), {
+        ...newComment(USERS.bob, ''),
+        photoPath: 'comments/alicePost/alice-stolen.jpg',
+      }),
+    );
+    await assertFails(
+      setDoc(doc(as(USERS.bob), 'posts/alicePost/comments/wrong'), {
+        ...newComment(USERS.bob, 'Nice'),
+        photoPath: 'comments/other/bob-wrong.jpg',
+      }),
+    );
+  });
+
   it('comments cannot be edited', async () => {
     await assertFails(
       updateDoc(doc(as(USERS.alice), 'posts/alicePost/comments/c1'), { text: 'Edited' }),

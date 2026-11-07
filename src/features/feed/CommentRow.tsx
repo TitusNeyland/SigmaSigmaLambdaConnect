@@ -1,3 +1,4 @@
+import { Image } from 'expo-image';
 import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
@@ -5,13 +6,14 @@ import Svg, { Path } from 'react-native-svg';
 import { deleteComment, type PostComment } from '@/data/comments';
 import { block } from '@/data/blocks';
 import { reportContent } from '@/data/reports';
-import { colors, MIN_TOUCH, spacing } from '@/theme';
+import { colors, MIN_TOUCH, motion, radius, spacing } from '@/theme';
 import { AppText, Avatar, BottomSheet, Button } from '@/ui';
 
 import { likesLabel, timeAgo } from './feedLogic';
 import { BlockSheet } from './BlockSheet';
 import { ReportSheet } from './ReportSheet';
 import { useCommentLike } from './useLike';
+import { useStorageUrl } from './useStorageUrl';
 
 function SmallHeart({ filled }: { filled: boolean }) {
   return (
@@ -71,6 +73,7 @@ export function CommentItem({
   }
 
   const name = comment.authorId === me ? 'You' : (comment.author?.displayName ?? 'Former member');
+  const photoUri = useStorageUrl(comment.photoPath);
 
   return (
     <View style={[styles.row, isReply && styles.reply]} testID={`comment-${comment.id}`}>
@@ -86,6 +89,16 @@ export function CommentItem({
           </AppText>
           {comment.text}
         </AppText>
+        {photoUri ? (
+          <Image
+            source={{ uri: photoUri }}
+            style={styles.photo}
+            contentFit="cover"
+            transition={motion.photoFade}
+            accessibilityLabel="Comment photo"
+            testID={`comment-photo-${comment.id}`}
+          />
+        ) : null}
         <View style={styles.meta}>
           <AppText variant="caption" color={colors.textSecondary}>
             {timeAgo(comment.createdAt, now)}
@@ -228,6 +241,13 @@ const styles = StyleSheet.create({
   },
   reply: { paddingLeft: spacing.lg + spacing.xxl + spacing.sm },
   flex: { flex: 1, gap: spacing.xxs },
+  photo: {
+    width: '100%',
+    height: 200,
+    borderRadius: radius.md,
+    backgroundColor: colors.fill,
+    overflow: 'hidden',
+  },
   meta: { flexDirection: 'row', gap: spacing.md, alignItems: 'center' },
   heart: { width: MIN_TOUCH, height: MIN_TOUCH, alignItems: 'center', justifyContent: 'center' },
 });

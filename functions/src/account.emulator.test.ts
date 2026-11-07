@@ -115,7 +115,15 @@ async function seed() {
         createdAt: now(),
       },
     ],
-    ['posts/theirs/comments/c2', { authorId: 'gone', text: 'Mine to delete', createdAt: now() }],
+    [
+      'posts/theirs/comments/c2',
+      {
+        authorId: 'gone',
+        text: 'Mine to delete',
+        photoPath: 'comments/theirs/gone-c2.jpg',
+        createdAt: now(),
+      },
+    ],
     ['posts/theirs/comments/c3', { authorId: 'stays', text: 'Stays', createdAt: now() }],
     ['posts/theirs/likes/gone', { memberId: 'gone', createdAt: now() }],
     ['posts/theirs/likes/stays', { memberId: 'stays', createdAt: now() }],
@@ -190,7 +198,12 @@ async function seed() {
   ];
   for (const [path, data] of writes) await db.doc(path).set(data);
 
-  for (const path of ['avatars/gone/1.jpg', 'posts/gone/mine/1.jpg', 'avatars/stays/1.jpg']) {
+  for (const path of [
+    'avatars/gone/1.jpg',
+    'posts/gone/mine/1.jpg',
+    'avatars/stays/1.jpg',
+    'comments/theirs/gone-c2.jpg',
+  ]) {
     await bucket.file(path).save(Buffer.from('jpg'), { contentType: 'image/jpeg' });
   }
 }
@@ -326,6 +339,7 @@ describe('deleteUserData', () => {
     await run();
     expect(await fileExists('avatars/gone/1.jpg')).toBe(false);
     expect(await fileExists('posts/gone/mine/1.jpg')).toBe(false);
+    expect(await fileExists('comments/theirs/gone-c2.jpg')).toBe(false);
     expect(await fileExists('avatars/stays/1.jpg')).toBe(true);
   });
 

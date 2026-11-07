@@ -19,6 +19,9 @@ const feed = jest.requireMock<typeof import('@/data/__mocks__/feed')>('@/data/fe
 jest.mock('@/data/likes');
 jest.mock('@/data/posts');
 jest.mock('@/data/comments');
+jest.mock('./pickCommentPhoto', () => ({ pickCommentPhoto: jest.fn() }));
+const { pickCommentPhoto } =
+  jest.requireMock<typeof import('./pickCommentPhoto')>('./pickCommentPhoto');
 jest.mock('@/data/programs');
 jest.mock('@/data/announcements');
 jest.mock('@/data/leadership');
@@ -47,6 +50,7 @@ beforeEach(() => {
   members.resetMembersMock(members.sampleMember({ status: 'approved' }));
   blocks.resetBlocksMock();
   comments.resetCommentsMock();
+  jest.mocked(pickCommentPhoto).mockReset();
   mod.resetModerationMock();
   feed.resetFeedMock([
     feed.samplePost({ id: 'p1', caption: 'Sample gala photos', commentCount: 2 }),
@@ -78,6 +82,19 @@ async function openFromFeed() {
   await waitFor(() => expect(screen.getByTestId('comments-sheet')).toBeTruthy());
   await waitFor(() => expect(screen.queryByText('Loading comments…')).toBeNull());
 }
+
+it('shows a photo on a comment that is just a picture', async () => {
+  comments.setMockComments('p1', [
+    comments.sampleComment({
+      id: 'pic',
+      text: '',
+      photoPath: 'https://cdn.test/comment.jpg',
+    }),
+  ]);
+  await openFromFeed();
+  await waitFor(() => expect(screen.getByTestId('comment-photo-pic')).toBeTruthy());
+  expect(screen.getByTestId('comment-text-pic')).toHaveTextContent('Chris Baptiste');
+});
 
 it('opens from the feed with the comments, replies threaded', async () => {
   await openFromFeed();
@@ -152,4 +169,33 @@ it('corrects a stale count as soon as the comments open', async () => {
   await waitFor(() => expect(screen.queryByText('Loading comments…')).toBeNull());
   await act(async () => router.back());
   await waitFor(() => expect(screen.getByTestId('comment-count-p1')).toHaveTextContent('2'));
+});
+
+it('posts a photo-only comment from the sheet', async () => {
+  jest.mocked(pickCommentPhoto).mockResolvedValue({ status: 'picked', uri: 'file:///c.jpg' });
+  await openFromFeed();
+  expect(screen.getByTestId('comment-post').props.accessibilityState).toMatchObject({
+    disabled: true,
+  });
+  await press(screen.getByTestId('comment-add-photo'));
+  await waitFor(() => expect(screen.getByTestId('comment-photo-preview')).toBeTruthy());
+  expect(screen.getByTestId('comment-post').props.accessibilityState).toMatchObject({
+    disabled: false,
+  });
+  await press(screen.getByTestId('comment-post'));
+  expect(comments.addComment).toHaveBeenCalledWith('p1', me(), '', null, 'file:///c.jpg');
+  await waitFor(() => expect(screen.getByTestId('comment-photo-new-1')).toBeTruthy());
+  expect(screen.queryByTestId('comment-photo-preview')).toBeNull();
+});
+
+it('lets you take the photo back off before posting', async () => {
+  jest.mocked(pickCommentPhoto).mockResolvedValue({ status: 'picked', uri: 'file:///c.jpg' });
+  await openFromFeed();
+  await press(screen.getByTestId('comment-add-photo'));
+  await waitFor(() => expect(screen.getByTestId('comment-photo-preview')).toBeTruthy());
+  await press(screen.getByTestId('comment-photo-remove'));
+  expect(screen.queryByTestId('comment-photo-preview')).toBeNull();
+  expect(screen.getByTestId('comment-post').props.accessibilityState).toMatchObject({
+    disabled: true,
+  });
 });
