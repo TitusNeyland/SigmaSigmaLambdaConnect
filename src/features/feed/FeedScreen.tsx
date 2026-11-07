@@ -1,6 +1,7 @@
 import { router, useFocusEffect, useScrollToTop } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
+import Animated from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { fetchActivity, fetchActivitySeen, type ActivityItem } from '@/data/activity';
@@ -19,6 +20,7 @@ import { LineAnniversaries } from './LineAnniversaries';
 import { WelcomeCard } from './WelcomeCard';
 import { PostCard } from './PostCard';
 import { ReportedNotice } from './ReportedNotice';
+import { useCollapsingHeader } from './useCollapsingHeader';
 import { useHiddenContent } from './useHidden';
 
 type Feed =
@@ -40,6 +42,8 @@ export function FeedScreen() {
   // Tapping the tab again scrolls back to the top.
   const list = useRef<FlatList<FeedPost>>(null);
   useScrollToTop(list);
+  // The top bar scrolls away going down the feed and comes back going up.
+  const header = useCollapsingHeader();
   const auth = useAuth();
   const uid = auth.status === 'signedIn' ? auth.user.uid : '';
   const { blocked, hidden } = useHiddenContent(uid);
@@ -152,81 +156,94 @@ export function FeedScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <HomeHeader hasNew={hasNew} />
-      <FlatList
-        ref={list}
-        data={posts}
-        keyExtractor={(p) => p.id}
-        renderItem={({ item }) => (
-          <PostCard post={item} now={now} me={uid} onDeleted={removePost} />
-        )}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
-        ListHeaderComponent={
-          <>
-            <WelcomeCard uid={uid} />
-            <LineAnniversaries me={uid} />
-          </>
-        }
-        ListEmptyComponent={
-          feed.state === 'loading' ? (
-            <FeedSkeleton />
-          ) : feed.state === 'error' ? (
-            <View style={styles.message}>
-              <AppText variant="callout" color={colors.textSecondary} align="center">
-                Couldn’t load the feed.
-              </AppText>
-              <Button
-                title="Try again"
-                variant="secondary"
-                onPress={() => {
-                  setFeed({ state: 'loading' });
-                  loadFirst();
-                }}
-                testID="feed-retry"
-              />
-            </View>
-          ) : (
-            <View style={styles.message} testID="feed-empty">
-              <AppText variant="headline" align="center">
-                No posts yet
-              </AppText>
-              <AppText variant="callout" color={colors.textSecondary} align="center">
-                Photos from chapter events and brotherhood will show up here. Be the first.
-              </AppText>
-              <Button
-                title="Share a post"
-                onPress={() => router.push(NEW_POST_ROUTE)}
-                testID="feed-new-post"
-              />
-            </View>
-          )
-        }
-        ListFooterComponent={
-          feed.state === 'ready' && feed.moreFailed ? (
-            <View style={styles.message}>
-              <Button title="Load more" variant="secondary" onPress={loadMore} testID="feed-more" />
-            </View>
-          ) : feed.state === 'ready' && feed.loadingMore ? (
-            <AppText
-              variant="footnote"
-              color={colors.textSecondary}
-              align="center"
-              style={styles.footer}
-            >
-              Loading more…
-            </AppText>
-          ) : undefined
-        }
-        onEndReached={loadMore}
-        onEndReachedThreshold={0.6}
-        refreshing={refreshing}
-        onRefresh={() => {
-          haptics.tap();
-          setRefreshing(true);
-          loadFirst();
-        }}
-        testID="feed"
-      />
+      <View style={styles.clip}>
+        <Animated.View style={[styles.flex, { marginBottom: -header.height }, header.slideStyle]}>
+          <Animated.View style={header.fadeStyle} onLayout={header.onHeaderLayout}>
+            <HomeHeader hasNew={hasNew} />
+          </Animated.View>
+          <Animated.FlatList
+            ref={list}
+            onScroll={header.onScroll}
+            scrollEventThrottle={16}
+            data={posts}
+            keyExtractor={(p) => p.id}
+            renderItem={({ item }) => (
+              <PostCard post={item} now={now} me={uid} onDeleted={removePost} />
+            )}
+            ItemSeparatorComponent={() => <View style={styles.separator} />}
+            ListHeaderComponent={
+              <>
+                <WelcomeCard uid={uid} />
+                <LineAnniversaries me={uid} />
+              </>
+            }
+            ListEmptyComponent={
+              feed.state === 'loading' ? (
+                <FeedSkeleton />
+              ) : feed.state === 'error' ? (
+                <View style={styles.message}>
+                  <AppText variant="callout" color={colors.textSecondary} align="center">
+                    Couldn’t load the feed.
+                  </AppText>
+                  <Button
+                    title="Try again"
+                    variant="secondary"
+                    onPress={() => {
+                      setFeed({ state: 'loading' });
+                      loadFirst();
+                    }}
+                    testID="feed-retry"
+                  />
+                </View>
+              ) : (
+                <View style={styles.message} testID="feed-empty">
+                  <AppText variant="headline" align="center">
+                    No posts yet
+                  </AppText>
+                  <AppText variant="callout" color={colors.textSecondary} align="center">
+                    Photos from chapter events and brotherhood will show up here. Be the first.
+                  </AppText>
+                  <Button
+                    title="Share a post"
+                    onPress={() => router.push(NEW_POST_ROUTE)}
+                    testID="feed-new-post"
+                  />
+                </View>
+              )
+            }
+            ListFooterComponent={
+              feed.state === 'ready' && feed.moreFailed ? (
+                <View style={styles.message}>
+                  <Button
+                    title="Load more"
+                    variant="secondary"
+                    onPress={loadMore}
+                    testID="feed-more"
+                  />
+                </View>
+              ) : feed.state === 'ready' && feed.loadingMore ? (
+                <AppText
+                  variant="footnote"
+                  color={colors.textSecondary}
+                  align="center"
+                  style={styles.footer}
+                >
+                  Loading more…
+                </AppText>
+              ) : undefined
+            }
+            onEndReached={loadMore}
+            onEndReachedThreshold={0.6}
+            refreshing={refreshing}
+            onRefresh={() => {
+              haptics.tap();
+              setRefreshing(true);
+              loadFirst();
+            }}
+            testID="feed"
+          />
+        </Animated.View>
+      </View>
       <ReportedNotice />
     </SafeAreaView>
   );
@@ -234,6 +251,9 @@ export function FeedScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
+  // Keeps the sliding header out of the status bar area.
+  clip: { flex: 1, overflow: 'hidden' },
+  flex: { flex: 1 },
   separator: { height: spacing.sm },
   message: {
     paddingTop: spacing.xxl,
