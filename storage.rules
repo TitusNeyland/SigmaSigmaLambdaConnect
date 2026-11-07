@@ -52,6 +52,17 @@ service firebase.storage {
       allow delete: if (isSelf(userId) && isApproved()) || isOfficer();
     }
 
+    // Photos on comments. Named `{uid}-{commentId}.jpg` so a post's comments can be
+    // deleted together, and nobody can write over someone else's file.
+    match /comments/{postId}/{fileName} {
+      allow read: if isApproved();
+      allow create, update: if isApproved()
+        && isImageUnder(10 * 1024 * 1024)
+        && fileName.matches(request.auth.uid + '-.*');
+      allow delete: if isApproved()
+        && (fileName.matches(request.auth.uid + '-.*') || isOfficer());
+    }
+
     // Event hero photos.
     match /events/{eventId}/{fileName} {
       allow read: if isApproved();

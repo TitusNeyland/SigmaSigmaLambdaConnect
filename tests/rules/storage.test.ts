@@ -109,6 +109,51 @@ describe('post photos', () => {
   });
 });
 
+describe('comment photos', () => {
+  it('approved members upload a photo named after themselves', async () => {
+    await assertSucceeds(
+      uploadBytes(ref(as(USERS.bob), 'comments/alicePost/bob-c1.jpg'), image(), jpeg),
+    );
+    await assertFails(
+      uploadBytes(ref(as(USERS.bob), 'comments/alicePost/alice-c1.jpg'), image(), jpeg),
+    );
+  });
+
+  it('pending members cannot upload comment photos', async () => {
+    await assertFails(
+      uploadBytes(ref(as(USERS.pete), 'comments/alicePost/pete-c1.jpg'), image(), jpeg),
+    );
+  });
+
+  it('only images, up to 10 MB', async () => {
+    await assertFails(
+      uploadBytes(ref(as(USERS.bob), 'comments/p/bob-big.jpg'), image(10 * MB + 1), jpeg),
+    );
+    await assertFails(
+      uploadBytes(ref(as(USERS.bob), 'comments/p/bob-c.mp4'), image(), {
+        contentType: 'video/mp4',
+      }),
+    );
+    await assertFails(
+      uploadBytes(ref(as(USERS.bob), 'comments/p/bob-c.jpg'), image(), {
+        contentType: 'application/octet-stream',
+      }),
+    );
+  });
+
+  it('authors and officers can delete comment photos; others cannot', async () => {
+    await put('comments/alicePost/bob-c1.jpg');
+    await assertFails(deleteObject(ref(as(USERS.alice), 'comments/alicePost/bob-c1.jpg')));
+    await assertSucceeds(deleteObject(ref(as(USERS.olivia), 'comments/alicePost/bob-c1.jpg')));
+  });
+
+  it('approved members can view comment photos', async () => {
+    await put('comments/alicePost/bob-c1.jpg');
+    await assertSucceeds(getBytes(ref(as(USERS.alice), 'comments/alicePost/bob-c1.jpg')));
+    await assertFails(getBytes(ref(as(USERS.pete), 'comments/alicePost/bob-c1.jpg')));
+  });
+});
+
 describe('event photos', () => {
   it('officers upload photos to any event', async () => {
     await assertSucceeds(uploadBytes(ref(as(USERS.olivia), 'events/new/hero.jpg'), image(), jpeg));

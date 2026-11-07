@@ -1,5 +1,5 @@
 import type { PostComment } from '@/data/comments';
-import { PREVIEW_COMMENTS, type CommentPreview } from '@/data/types';
+import { IMAGE_COMMENT_LABEL, PREVIEW_COMMENTS, type CommentPreview } from '@/data/types';
 
 export type CommentRow = { comment: PostComment; isReply: boolean };
 
@@ -44,9 +44,10 @@ export function threadComments(
 
 export const MAX_COMMENT = 1000;
 
-export function canPostComment(text: string): boolean {
+export function canPostComment(text: string, hasPhoto = false): boolean {
   const trimmed = text.trim();
-  return trimmed.length > 0 && trimmed.length <= MAX_COMMENT;
+  if (trimmed.length > MAX_COMMENT) return false;
+  return trimmed.length > 0 || hasPhoto;
 }
 
 /**
@@ -55,13 +56,13 @@ export function canPostComment(text: string): boolean {
  */
 export function previewOf(comments: PostComment[]): CommentPreview[] {
   return [...comments]
-    .filter((c) => !c.replyToId && c.text.trim())
+    .filter((c) => !c.replyToId && (c.text.trim() || c.photoPath))
     .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
     .slice(-PREVIEW_COMMENTS)
     .map((c) => ({
       id: c.id,
       authorId: c.authorId,
       authorName: c.author?.displayName ?? 'Former member',
-      text: c.text.trim(),
+      text: c.text.trim() || IMAGE_COMMENT_LABEL,
     }));
 }

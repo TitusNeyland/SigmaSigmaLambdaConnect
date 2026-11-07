@@ -1,15 +1,9 @@
-import {
-  addDoc,
-  deleteDoc,
-  getDoc,
-  onSnapshot,
-  orderBy,
-  setDoc,
-  Timestamp,
-} from 'firebase/firestore';
+import { deleteDoc, getDoc, onSnapshot, orderBy, setDoc, Timestamp } from 'firebase/firestore';
+import { uploadBytes } from 'firebase/storage';
 
 import {
   addComment,
+  commentPhotoStoragePath,
   deleteComment,
   likeComment,
   subscribeToComments,
@@ -17,7 +11,11 @@ import {
   unlikeComment,
 } from './comments';
 
-jest.mock('./firebase', () => ({ db: { name: 'db' } }));
+jest.mock('./firebase', () => ({ db: { name: 'db' }, storage: { name: 'storage' } }));
+jest.mock('firebase/storage', () => ({
+  ref: jest.fn((_s: unknown, path: string) => ({ storagePath: path })),
+  uploadBytes: jest.fn(async () => ({})),
+}));
 jest.mock('./feed', () => ({
   fetchAuthor: jest.fn(async (uid: string) => (uid === 'gone' ? null : { uid, displayName: uid })),
 }));
@@ -35,13 +33,18 @@ jest.mock('firebase/firestore', () => {
   return {
     Timestamp: MockTimestamp,
     collection: jest.fn((_db: unknown, ...s: string[]) => ({ path: s.join('/') })),
-    doc: jest.fn((_db: unknown, ...s: string[]) => ({ path: s.join('/') })),
+    doc: jest.fn((first: unknown, ...s: string[]) => {
+      if (s.length === 0) {
+        const path = (first as { path: string }).path;
+        return { id: 'gen', path: `${path}/gen` };
+      }
+      return { path: s.join('/'), id: s.at(-1) };
+    }),
     query: jest.fn((ref: object, ...parts: unknown[]) => ({ ref, parts })),
     orderBy: jest.fn((...a: unknown[]) => ({ orderBy: a })),
     limit: jest.fn((n: number) => ({ limit: n })),
     onSnapshot: jest.fn(),
     getDoc: jest.fn(),
-    addDoc: jest.fn(),
     setDoc: jest.fn(),
     deleteDoc: jest.fn(),
     serverTimestamp: jest.fn(() => 'NOW'),
@@ -66,6 +69,7 @@ describe('toComment', () => {
       authorId: 'a',
       author: null,
       text: 'Hi',
+      photoPath: null,
       createdAt: new Date(5),
       replyToId: 'p',
       likeCount: 2,
@@ -75,6 +79,13 @@ describe('toComment', () => {
       toComment('c', { authorId: 'a', text: 'x', createdAt: null }, null, false)?.createdAt,
     ).toBeInstanceOf(Date);
     expect(toComment('c', { authorId: 'a', text: '  ' }, null, false)).toBeNull();
+  });
+
+  it('keeps a comment that is just a photo', () => {
+    expect(
+      toComment('c', { authorId: 'a', text: '', photoPath: 'comments/p/a-c.jpg' }, null, false),
+    ).toMatchObject({ id: 'c', text: '', photoPath: 'comments/p/a-c.jpg' });
+    expect(toComment('c', { authorId: 'a', text: 'Look' }, null, false)?.photoPath).toBeNull();
   });
 });
 
@@ -116,29 +127,46 @@ describe('subscribeToComments', () => {
 describe('writes', () => {
   it('adds a comment, or a reply, with exactly the fields the rules allow', async () => {
     await addComment('p', 'me', '  Great night ');
-    expect(addDoc).toHaveBeenLastCalledWith(
-      { path: 'posts/p/comments' },
+    expect(setDoc).toHaveBeenLastCalledWith(
+      { id: 'gen', path: 'posts/p/comments/gen' },
       { authorId: 'me', text: 'Great night', createdAt: 'NOW' },
     );
     await addComment('p', 'me', 'Agreed', 'c1');
-    expect(addDoc).toHaveBeenLastCalledWith(
-      { path: 'posts/p/comments' },
+    expect(setDoc).toHaveBeenLastCalledWith(
+      { id: 'gen', path: 'posts/p/comments/gen' },
       { authorId: 'me', text: 'Agreed', createdAt: 'NOW', replyToId: 'c1' },
     );
   });
 
+  it('uploads a photo first and stores its Storage path on the comment', async () => {
+    const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue({
+      blob: async () => new Blob(['pic'], { type: 'application/octet-stream' }),
+    } as never);
+    await addComment('p', 'me', '', null, 'file:///pic.jpg');
+    expect(commentPhotoStoragePath('p', 'me', 'gen')).toBe('comments/p/me-gen.jpg');
+    const uploaded = jest.mocked(uploadBytes).mock.calls[0];
+    expect(uploaded[0]).toEqual({ storagePath: 'comments/p/me-gen.jpg' });
+    expect((uploaded[1] as Blob).type).toBe('image/jpeg');
+    expect(uploaded[2]).toEqual({ contentType: 'image/jpeg' });
+    expect(setDoc).toHaveBeenLastCalledWith(
+      { id: 'gen', path: 'posts/p/comments/gen' },
+      { authorId: 'me', text: '', createdAt: 'NOW', photoPath: 'comments/p/me-gen.jpg' },
+    );
+    fetchMock.mockRestore();
+  });
+
   it('deletes a comment', async () => {
     await deleteComment('p', 'c1');
-    expect(deleteDoc).toHaveBeenCalledWith({ path: 'posts/p/comments/c1' });
+    expect(deleteDoc).toHaveBeenCalledWith({ id: 'c1', path: 'posts/p/comments/c1' });
   });
 
   it('likes and unlikes a comment', async () => {
     await likeComment('p', 'c1', 'me');
     expect(setDoc).toHaveBeenCalledWith(
-      { path: 'posts/p/comments/c1/likes/me' },
+      { id: 'me', path: 'posts/p/comments/c1/likes/me' },
       { memberId: 'me', createdAt: 'NOW' },
     );
     await unlikeComment('p', 'c1', 'me');
-    expect(deleteDoc).toHaveBeenCalledWith({ path: 'posts/p/comments/c1/likes/me' });
+    expect(deleteDoc).toHaveBeenCalledWith({ id: 'me', path: 'posts/p/comments/c1/likes/me' });
   });
 });

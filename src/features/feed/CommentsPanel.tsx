@@ -1,18 +1,37 @@
+import { Image } from 'expo-image';
 import { useEffect, useMemo, useState, type ReactElement } from 'react';
 import { FlatList, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import Svg, { Path, Rect } from 'react-native-svg';
 
 import { addComment, subscribeToComments, type PostComment } from '@/data/comments';
 import { restrictionNote, useRestriction } from '@/features/moderation/useRestriction';
-import { colors, MIN_TOUCH, spacing, type } from '@/theme';
+import { colors, MIN_TOUCH, radius, spacing, type } from '@/theme';
 import { useProfile } from '@/features/profile/useProfileData';
-import { AppText, Avatar, useKeyboardInset } from '@/ui';
+import { AppText, Avatar, haptics, useKeyboardInset } from '@/ui';
 
 import { canPostComment, MAX_COMMENT, previewOf, threadComments } from './commentLogic';
 import { notifyCommentsChanged } from './feedEvents';
 import { CommentItem } from './CommentRow';
+import { pickCommentPhoto } from './pickCommentPhoto';
 import { useHiddenContent } from './useHidden';
 
 const AVATAR = 36;
+const THUMB = 72;
+
+function PhotoIcon() {
+  return (
+    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" accessibilityElementsHidden>
+      <Rect x={3} y={5} width={18} height={14} rx={2.5} stroke={colors.text} strokeWidth={1.8} />
+      <Path
+        d="M3 16l5-5 4 4 3-3 6 6"
+        stroke={colors.text}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
 
 export type CommentsPanelProps = {
   postId: string;
@@ -40,6 +59,7 @@ export function CommentsPanel({
   const [comments, setComments] = useState<PostComment[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [draft, setDraft] = useState('');
+  const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [replyTo, setReplyTo] = useState<PostComment | null>(null);
   const [sending, setSending] = useState(false);
   const [sendFailed, setSendFailed] = useState(false);
@@ -82,13 +102,25 @@ export function CommentsPanel({
   // The count follows the live list, so it updates the moment a comment lands.
   const count = comments ? comments.length : initialCount;
 
+  async function choosePhoto() {
+    const pick = await pickCommentPhoto();
+    if (pick.status !== 'picked') return;
+    haptics.select();
+    setPhotoUri(pick.uri);
+  }
+
   async function send() {
-    if (!canPostComment(draft) || sending) return;
+    if (!canPostComment(draft, !!photoUri) || sending) return;
     setSending(true);
     setSendFailed(false);
     try {
-      await addComment(postId, me, draft, replyTo?.id ?? null);
+      if (photoUri) {
+        await addComment(postId, me, draft, replyTo?.id ?? null, photoUri);
+      } else {
+        await addComment(postId, me, draft, replyTo?.id ?? null);
+      }
       setDraft('');
+      setPhotoUri(null);
       setReplyTo(null);
     } catch {
       setSendFailed(true);
@@ -97,7 +129,7 @@ export function CommentsPanel({
     }
   }
 
-  const ready = canPostComment(draft) && !sending;
+  const ready = canPostComment(draft, !!photoUri) && !sending;
 
   return (
     <View style={[styles.flex, { paddingBottom: keyboardPadding }]} testID="comments-panel">
@@ -165,6 +197,28 @@ export function CommentsPanel({
               Couldn’t post your comment. Try again.
             </AppText>
           ) : null}
+          {photoUri ? (
+            <View style={styles.thumbRow}>
+              <Image
+                source={{ uri: photoUri }}
+                style={styles.thumb}
+                contentFit="cover"
+                accessibilityLabel="Photo to comment"
+                testID="comment-photo-preview"
+              />
+              <Pressable
+                onPress={() => setPhotoUri(null)}
+                accessibilityRole="button"
+                accessibilityLabel="Remove photo"
+                hitSlop={spacing.md}
+                testID="comment-photo-remove"
+              >
+                <AppText variant="caption" weight="600" color={colors.textSecondary}>
+                  Remove
+                </AppText>
+              </Pressable>
+            </View>
+          ) : null}
           <View style={styles.inputRow}>
             {myProfile ? (
               <Avatar
@@ -174,6 +228,15 @@ export function CommentsPanel({
                 testID="comment-avatar"
               />
             ) : null}
+            <Pressable
+              onPress={choosePhoto}
+              accessibilityRole="button"
+              accessibilityLabel="Add a photo"
+              style={styles.photoBtn}
+              testID="comment-add-photo"
+            >
+              <PhotoIcon />
+            </Pressable>
             {/* A rounded pill with Post inside it, like Instagram's comment box. */}
             <View style={styles.pill}>
               <TextInput
@@ -224,6 +287,19 @@ const styles = StyleSheet.create({
   },
   replying: { flexDirection: 'row', alignItems: 'center' },
   inputRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  photoBtn: {
+    width: MIN_TOUCH,
+    height: MIN_TOUCH,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  thumbRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  thumb: {
+    width: THUMB,
+    height: THUMB,
+    borderRadius: radius.md,
+    backgroundColor: colors.fill,
+  },
   pill: {
     flex: 1,
     flexDirection: 'row',

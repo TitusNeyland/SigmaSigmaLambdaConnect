@@ -38,12 +38,16 @@ export async function deleteUserData(
 
   // Their posts, with every comment and like on them.
   const posts = await db.collection('posts').where('authorId', '==', uid).get();
-  for (const post of posts.docs) await db.recursiveDelete(post.ref);
+  for (const post of posts.docs) {
+    await db.recursiveDelete(post.ref);
+    await bucket.deleteFiles({ prefix: `comments/${post.id}/` });
+  }
   const deletedPosts = new Set(posts.docs.map((p) => p.ref.path));
   // The chapter's welcome post about them, which names them.
   const welcome = db.doc(`posts/${welcomePostId(uid)}`);
   await db.recursiveDelete(welcome);
   deletedPosts.add(welcome.path);
+  await bucket.deleteFiles({ prefix: `comments/${welcome.id}/` });
 
   // Their comments and likes on other people's posts, keeping those posts' counts right.
   const comments = await db.collectionGroup('comments').where('authorId', '==', uid).get();
@@ -52,6 +56,10 @@ export async function deleteUserData(
 
   const writes: ((batch: FirebaseFirestore.WriteBatch) => void)[] = [];
   for (const doc of comments.docs) {
+    const photoPath = doc.get('photoPath');
+    if (typeof photoPath === 'string' && photoPath.startsWith('comments/')) {
+      await bucket.deleteFiles({ prefix: photoPath });
+    }
     const post = doc.ref.parent.parent;
     writes.push((b) => b.delete(doc.ref));
     if (post && !deletedPosts.has(post.path)) {

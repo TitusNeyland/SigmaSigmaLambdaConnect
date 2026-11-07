@@ -313,13 +313,20 @@ service cloud.firestore {
       match /comments/{commentId} {
         allow read: if isApproved();
         // A reply (#34) points at the comment it answers, which must be on the same post.
+        // Text can be empty when there is a photo. The photo, if present, must be the
+        // file this member just uploaded for this comment.
         allow create: if isApproved()
-          && incoming().keys().hasOnly(['authorId', 'text', 'createdAt', 'replyToId'])
+          && incoming().keys().hasOnly(['authorId', 'text', 'createdAt', 'replyToId', 'photoPath'])
           && incoming().authorId == request.auth.uid
-          && isText(incoming().text, 1, 1000)
+          && isText(incoming().text, 0, 1000)
+          && (incoming().text.size() > 0
+              || ('photoPath' in incoming()
+                  && incoming().photoPath == 'comments/' + postId + '/' + request.auth.uid + '-' + commentId + '.jpg'))
           && isNow(incoming().createdAt)
           && (!('replyToId' in incoming())
               || exists(/databases/$(database)/documents/posts/$(postId)/comments/$(incoming().replyToId)))
+          && (!('photoPath' in incoming())
+              || incoming().photoPath == 'comments/' + postId + '/' + request.auth.uid + '-' + commentId + '.jpg')
           && get(postPath(postId)).data.allowComments == true
           && get(postPath(postId)).data.removed == false
           && notRestricted();

@@ -21,6 +21,7 @@ export function sampleComment(overrides: Partial<PostComment> = {}): PostComment
       role: null,
     },
     text: 'Sample comment.',
+    photoPath: null,
     createdAt: new Date(Date.now() - 3600_000),
     replyToId: null,
     likeCount: 0,
@@ -61,12 +62,19 @@ export const subscribeToComments = jest.fn(
 
 let counter = 0;
 export const addComment = jest.fn(
-  async (postId: string, uid: string, text: string, replyToId: string | null = null) => {
+  async (
+    postId: string,
+    uid: string,
+    text: string,
+    replyToId: string | null = null,
+    photoUri?: string,
+  ) => {
     const mine = sampleComment({
       id: `new-${++counter}`,
       authorId: uid,
       author: null,
       text: text.trim(),
+      photoPath: photoUri ?? null,
       createdAt: new Date(),
       replyToId,
     });

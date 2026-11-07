@@ -291,6 +291,9 @@ export type KpiSnapshot = {
   computedAt: Timestamp;
 };
 
+/** Feed preview for a comment that is just a photo. */
+export const IMAGE_COMMENT_LABEL = 'Shared a photo';
+
 /** A comment as previewed under a post in the feed. */
 export type CommentPreview = {
   id: string;
