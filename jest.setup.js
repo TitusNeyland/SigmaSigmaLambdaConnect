@@ -170,6 +170,14 @@ jest.mock('@react-native-community/datetimepicker', () => {
   };
 });
 
+// Gesture Handler asks Worklets for the UI runtime just after it loads, which the JS-only
+// test build doesn't have, so short test files failed after their tests passed. Gesture
+// Handler's own test mocks don't need it.
+jest.mock('react-native-worklets', () => ({
+  ...jest.requireActual('react-native-worklets'),
+  getUIRuntimeHolder: () => ({}),
+}));
+
 // Pinch and drag in the photo editor: gestures and animations without the native side.
 require('react-native-reanimated').setUpTests();
 require('react-native-gesture-handler/jestSetup');
