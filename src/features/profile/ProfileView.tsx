@@ -24,6 +24,8 @@ import { AppText, Avatar, Button, SegmentedControl, StatusChip, ZoomableAvatar }
 import { timeAgo } from '@/features/feed/feedLogic';
 
 import { businessLine, industryLine } from './aboutYou';
+import { hasMoreDetails } from './detailsLogic';
+import { EmailFact, PhoneFact } from './ProfileDetails';
 import { GridSkeleton } from './ProfileSkeleton';
 import { buildTimeline, type TimelineItem } from './timelineLogic';
 import type { Loadable } from './useProfileData';
@@ -526,6 +528,9 @@ export function ProfileView({
   ];
   const current: Tab = segments.some((s) => s.value === tab) ? tab : 'photos';
   const subtitle = profileSubtitle(profile);
+  // His details start folded up; "More details" opens them in place.
+  const [expanded, setExpanded] = useState(false);
+  const hasMore = hasMoreDetails(profile);
 
   return (
     <ScrollView
@@ -577,39 +582,83 @@ export function ProfileView({
           )
         ) : null}
         {profile.bio ? <AppText variant="subhead">{profile.bio}</AppText> : null}
-        {profile.industry ? (
-          <View style={styles.fact} testID="profile-industry">
-            <FactIcon kind="work" />
-            <AppText variant="subhead" style={styles.factText}>
-              {industryLine(profile.industry)}
-            </AppText>
+        {/* What he does, where he lives and how to reach him stay up top. */}
+        {profile.industry || profile.city.trim() || (profile.showEmail && profile.email.trim()) ? (
+          <View style={styles.facts}>
+            {profile.industry ? (
+              <View style={styles.fact} testID="profile-industry">
+                <FactIcon kind="work" />
+                <AppText variant="subhead" style={styles.factText}>
+                  {industryLine(profile.industry)}
+                </AppText>
+              </View>
+            ) : null}
+            {profile.city.trim() ? (
+              <View style={styles.fact} testID="profile-city">
+                <FactIcon kind="place" />
+                <AppText variant="subhead" style={styles.factText}>
+                  {`Lives in ${profile.city.trim()}`}
+                </AppText>
+              </View>
+            ) : null}
+            <EmailFact profile={profile} />
           </View>
         ) : null}
-        {profile.city.trim() ? (
-          <View style={styles.fact} testID="profile-city">
-            <FactIcon kind="place" />
-            <AppText variant="subhead" style={styles.factText}>
-              {`Lives in ${profile.city.trim()}`}
-            </AppText>
-          </View>
-        ) : null}
-        {profile.businesses.length > 0 ? (
-          <View style={styles.fact} testID="profile-businesses">
-            <FactIcon kind="business" />
-            <AppText variant="subhead" style={styles.factText}>
-              {businessLine(profile.businesses)}
-            </AppText>
-          </View>
-        ) : null}
-        {roleLabel || profile.interests.length > 0 ? (
+        {roleLabel ? (
           <View style={styles.chips}>
-            {roleLabel ? <StatusChip label={roleLabel} tone="gold" testID="role-chip" /> : null}
-            {profile.interests.map((interest) => (
-              <StatusChip key={interest} label={interest} tone="neutral" />
-            ))}
+            <StatusChip label={roleLabel} tone="gold" testID="role-chip" />
           </View>
+        ) : null}
+
+        {/* The rest of his details wait behind "More details", so his posts start higher up. */}
+        {hasMore && !expanded ? (
+          <Pressable
+            onPress={() => setExpanded(true)}
+            accessibilityRole="button"
+            accessibilityState={{ expanded: false }}
+            style={({ pressed }) => [styles.moreRow, pressed && styles.pressed]}
+            testID="profile-more"
+          >
+            <AppText variant="subhead" weight="600">
+              More details
+            </AppText>
+          </Pressable>
         ) : null}
       </View>
+
+      {hasMore && expanded ? (
+        <View style={styles.details} testID="profile-details">
+          <View style={styles.facts}>
+            {profile.businesses.length > 0 ? (
+              <View style={styles.fact} testID="profile-businesses">
+                <FactIcon kind="business" />
+                <AppText variant="subhead" style={styles.factText}>
+                  {businessLine(profile.businesses)}
+                </AppText>
+              </View>
+            ) : null}
+            <PhoneFact profile={profile} />
+          </View>
+          {profile.interests.length > 0 ? (
+            <View style={styles.interests} testID="profile-interests">
+              {profile.interests.map((interest) => (
+                <StatusChip key={interest} label={interest} tone="neutral" />
+              ))}
+            </View>
+          ) : null}
+          <Pressable
+            onPress={() => setExpanded(false)}
+            accessibilityRole="button"
+            accessibilityState={{ expanded: true }}
+            style={({ pressed }) => [styles.lessRow, pressed && styles.pressed]}
+            testID="profile-less"
+          >
+            <AppText variant="subhead" weight="600" color={colors.textSecondary}>
+              Show less
+            </AppText>
+          </Pressable>
+        </View>
+      ) : null}
 
       {actions ? <View style={styles.actions}>{actions}</View> : null}
 
@@ -687,7 +736,13 @@ const styles = StyleSheet.create({
   stats: { flex: 1, flexDirection: 'row', justifyContent: 'space-around' },
   stat: { alignItems: 'center', gap: spacing.xxs },
   about: { gap: spacing.xs },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.sm },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.xs },
+  interests: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  // A full-size touch target, though it reads as one line of text.
+  moreRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, minHeight: MIN_TOUCH },
+  details: { gap: spacing.lg },
+  facts: { gap: spacing.xs },
+  lessRow: { minHeight: MIN_TOUCH, justifyContent: 'center', alignSelf: 'flex-start' },
   actions: { flexDirection: 'row', gap: spacing.sm },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: GRID_GAP, marginHorizontal: -spacing.xl },
   tile: {

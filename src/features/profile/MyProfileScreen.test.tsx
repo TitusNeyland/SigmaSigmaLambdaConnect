@@ -51,6 +51,8 @@ describe('My profile', () => {
     await openProfile();
     expect(screen.getByText('Software engineer · Initiated Spring 2019')).toBeTruthy();
     expect(screen.getByText('Mentoring chair. Happy to review a resume.')).toBeTruthy();
+    // Interests wait behind More details.
+    await press(screen.getByTestId('profile-more'));
     expect(screen.getByText('Tech')).toBeTruthy();
     expect(screen.getByText('Career mentoring')).toBeTruthy();
   });
