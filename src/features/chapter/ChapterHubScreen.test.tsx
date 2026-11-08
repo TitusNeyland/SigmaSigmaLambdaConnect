@@ -72,39 +72,45 @@ describe('everyone', () => {
     await openChapter();
     expect(screen.getByRole('header', { name: 'Chapter' })).toBeTruthy();
     await waitFor(() =>
-      expect(screen.getByTestId('progress-line')).toHaveTextContent(
-        '50% of milestones done · 1 program needs help',
-      ),
+      expect(screen.getByTestId('progress-line')).toHaveTextContent('0 of 2 programs complete'),
     );
-    for (const t of ['programs', 'calendar', 'documents']) {
+    expect(screen.getByTestId('progress-card').props.accessibilityLabel).toBe(
+      'Chapter progress, 50 percent, 0 of 2 programs complete',
+    );
+    for (const t of ['businesses', 'calendar', 'documents']) {
       expect(screen.getByTestId(`tile-${t}`)).toBeTruthy();
     }
+    expect(screen.queryByTestId('tile-programs')).toBeNull();
     await waitFor(() => expect(screen.getByTestId('officer-sample-pres')).toBeTruthy());
     expect(screen.queryByTestId('officer-sample-member')).toBeNull();
     expect(screen.queryByTestId('leadership-entry')).toBeNull();
     expect(leadership.fetchWaitingCounts).not.toHaveBeenCalled();
   });
 
-  it('the progress card counts brothers, officers and programs', async () => {
+  it('lists programs with their percent, needs help first', async () => {
     await openChapter();
-    await waitFor(() => expect(screen.getByTestId('stat-brothers')).toHaveTextContent('2'));
-    expect(screen.getByTestId('stat-officers')).toHaveTextContent('1');
-    expect(screen.getByTestId('stat-programs')).toHaveTextContent('2');
-    expect(screen.getByTestId('progress-card').props.accessibilityLabel).toBe(
-      'Chapter progress, 50 percent, 50% of milestones done · 1 program needs help, ' +
-        '2 Brothers, 1 Officer, 2 Programs',
+    await waitFor(() => expect(screen.getByTestId('program-sample-drive')).toBeTruthy());
+    const rows = screen.getAllByTestId(/^program-sample-/);
+    expect(rows.map((r) => r.props.testID)).toEqual([
+      'program-sample-drive',
+      'program-sample-scholarship',
+    ]);
+    expect(screen.getByTestId('program-percent-sample-drive')).toHaveTextContent('50%');
+    expect(screen.getByTestId('program-sample-drive').props.accessibilityLabel).toMatch(
+      /^Sample scholarship initiative, Director of Education · Due \w+ \d+ · Needs help, 50 percent$/,
     );
   });
 
-  it('progress card and Programs tile open chapter progress', async () => {
+  it('a program opens its page', async () => {
     const r = await openChapter();
-    await press(screen.getByTestId('progress-card'));
-    expect(r.getPathname()).toBe('/chapter/progress');
+    await waitFor(() => expect(screen.getByTestId('program-sample-drive')).toBeTruthy());
+    await press(screen.getByTestId('program-sample-drive'));
+    expect(r.getPathname()).toBe('/chapter/programs/sample-drive');
   });
 
-  it('Programs tile opens chapter progress', async () => {
+  it('progress card opens chapter progress', async () => {
     const r = await openChapter();
-    await press(screen.getByTestId('tile-programs'));
+    await press(screen.getByTestId('progress-card'));
     expect(r.getPathname()).toBe('/chapter/progress');
   });
 
@@ -151,6 +157,7 @@ describe('everyone', () => {
     await waitFor(() =>
       expect(screen.getByTestId('progress-line')).toHaveTextContent('No programs yet'),
     );
+    expect(screen.getByTestId('programs-empty')).toBeTruthy();
     expect(screen.getByTestId('directory-entry')).toBeTruthy();
   });
 });
