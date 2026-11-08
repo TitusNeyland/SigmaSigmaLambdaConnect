@@ -92,6 +92,17 @@ export const motion = {
   pinchRelease: 250,
 } as const;
 
+/** Shadows. Cards on a white screen get a faint lift, with a border so they read without it. */
+export const shadow = {
+  card: {
+    shadowColor: palette.ink,
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+} as const;
+
 /** Type scale modeled on the iOS text styles. Uses the system font (SF Pro, Roboto). */
 export const type = {
   largeTitle: { fontSize: 34, lineHeight: 41, fontWeight: '700', letterSpacing: -0.6 },

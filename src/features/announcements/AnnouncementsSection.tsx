@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 
 import {
   markRead,
@@ -9,7 +10,7 @@ import {
 } from '@/data/announcements';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { timeAgo } from '@/features/feed/feedLogic';
-import { colors, MIN_TOUCH, palette, radius, spacing } from '@/theme';
+import { colors, MIN_TOUCH, palette, radius, shadow, spacing } from '@/theme';
 import { AppText, SectionTitle, StatusChip } from '@/ui';
 
 import { sortAnnouncements } from './announcementLogic';
@@ -121,14 +122,33 @@ export function AnnouncementsSection({
             Loading…
           </AppText>
         ) : sorted.length === 0 ? (
-          <AppText
-            variant="callout"
-            color={colors.textSecondary}
-            style={styles.message}
-            testID="announcements-empty"
-          >
-            No announcements yet.
-          </AppText>
+          <View style={styles.empty} testID="announcements-empty">
+            <View style={styles.emptyIcon}>
+              <Svg
+                width={EMPTY_ICON}
+                height={EMPTY_ICON}
+                viewBox="0 0 24 24"
+                fill="none"
+                accessibilityElementsHidden
+              >
+                <Path
+                  d={MEGAPHONE}
+                  stroke={colors.link}
+                  strokeWidth={1.8}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </Svg>
+            </View>
+            <View style={styles.flex}>
+              <AppText variant="subhead" weight="700">
+                No announcements yet.
+              </AppText>
+              <AppText variant="footnote" color={colors.textSecondary}>
+                Check back soon for chapter updates.
+              </AppText>
+            </View>
+          </View>
         ) : (
           sorted.map((a, i) => (
             <View key={a.id}>
@@ -149,9 +169,20 @@ export function AnnouncementsSection({
   );
 }
 
+const MEGAPHONE =
+  'M4 10v4a1 1 0 0 0 1 1h2l6 4V5L7 9H5a1 1 0 0 0-1 1zM7 15l1 4.5M16.5 9a4 4 0 0 1 0 6M19 6.5a7.5 7.5 0 0 1 0 11';
+const EMPTY_ICON = 24;
+const EMPTY_TILE = 48;
+
 const styles = StyleSheet.create({
-  wrap: { gap: spacing.xs },
-  card: { borderRadius: radius.xl, backgroundColor: colors.surface, overflow: 'hidden' },
+  wrap: { gap: spacing.md },
+  card: {
+    borderRadius: radius.xl,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.separator,
+    backgroundColor: colors.surface,
+    ...shadow.card,
+  },
   row: {
     flexDirection: 'row',
     gap: spacing.md,
@@ -174,4 +205,13 @@ const styles = StyleSheet.create({
     marginLeft: spacing.xxxl,
   },
   message: { padding: spacing.lg },
+  empty: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg, padding: spacing.lg },
+  emptyIcon: {
+    width: EMPTY_TILE,
+    height: EMPTY_TILE,
+    borderRadius: radius.md,
+    backgroundColor: colors.accentSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });
