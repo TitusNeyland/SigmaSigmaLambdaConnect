@@ -78,6 +78,8 @@ describe('layout', () => {
     await openMember();
     expect(screen.getByText('Nurse · Initiated Fall 2021')).toBeTruthy();
     expect(screen.getByText('Service chair.')).toBeTruthy();
+    // Interests wait behind More details.
+    await press(screen.getByTestId('profile-more'));
     expect(screen.getByText('Golf')).toBeTruthy();
     expect(screen.queryByTestId('edit-profile')).toBeNull();
     expect(screen.queryByTestId('open-settings')).toBeNull();

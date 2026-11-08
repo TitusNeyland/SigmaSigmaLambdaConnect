@@ -139,6 +139,9 @@ describe('about him', () => {
     );
     expect(screen.getByTestId('profile-industry')).toHaveTextContent('Works in Real estate');
     expect(screen.getByTestId('profile-city')).toHaveTextContent('Lives in Atlanta, GA');
+    // Businesses wait behind More details.
+    expect(screen.queryByTestId('profile-businesses')).toBeNull();
+    await fireEvent.press(screen.getByTestId('profile-more'));
     expect(screen.getByTestId('profile-businesses')).toHaveTextContent(
       'Owns Sample Realty and Sample Barbershop',
     );
@@ -149,6 +152,58 @@ describe('about him', () => {
     expect(screen.queryByTestId('profile-industry')).toBeNull();
     expect(screen.queryByTestId('profile-businesses')).toBeNull();
     expect(screen.queryByTestId('profile-city')).toBeNull();
+    // Nothing to fold away, so no More details.
+    expect(screen.queryByTestId('profile-more')).toBeNull();
+  });
+});
+
+describe('More details', () => {
+  const withDetails = () =>
+    baseProps({
+      profile: {
+        ...baseProps().profile,
+        industry: 'Technology',
+        email: 'sample@example.com',
+        showEmail: true,
+        phone: '(555) 010-0100',
+        showPhone: true,
+        businesses: ['Sample Studio'],
+        interests: ['Golf', 'Travel'],
+      },
+    });
+
+  it('keeps work and email up top, and folds businesses, phone and interests away', async () => {
+    await render(<ProfileView {...withDetails()} />);
+    expect(screen.getByTestId('profile-industry')).toBeTruthy();
+    expect(screen.getByTestId('profile-email')).toHaveTextContent('sample@example.com');
+    expect(screen.queryByTestId('profile-details')).toBeNull();
+    expect(screen.queryByText('Golf')).toBeNull();
+    expect(screen.queryByTestId('profile-phone')).toBeNull();
+  });
+
+  it('opens in place, and Show less folds it again', async () => {
+    await render(<ProfileView {...withDetails()} />);
+    await fireEvent.press(screen.getByTestId('profile-more'));
+    expect(screen.getByTestId('profile-businesses')).toHaveTextContent('Owns Sample Studio');
+    expect(screen.getByTestId('profile-phone')).toHaveTextContent('(555) 010-0100');
+    expect(screen.getByTestId('profile-interests')).toHaveTextContent(/Golf.*Travel/);
+    expect(screen.queryByTestId('profile-more')).toBeNull();
+    await fireEvent.press(screen.getByTestId('profile-less'));
+    expect(screen.queryByTestId('profile-details')).toBeNull();
+    expect(screen.getByTestId('profile-more')).toBeTruthy();
+  });
+
+  it('hides his email and phone unless he chose to show them', async () => {
+    const props = withDetails();
+    await render(
+      <ProfileView
+        {...props}
+        profile={{ ...props.profile, showEmail: false, showPhone: false, businesses: [] }}
+      />,
+    );
+    expect(screen.queryByTestId('profile-email')).toBeNull();
+    await fireEvent.press(screen.getByTestId('profile-more'));
+    expect(screen.queryByTestId('profile-phone')).toBeNull();
   });
 });
 
